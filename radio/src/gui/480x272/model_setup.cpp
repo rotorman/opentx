@@ -1619,7 +1619,7 @@ bool menuModelSetup(event_t event)
             if (pdef->optionsstr) {
               lcdDrawText(MENUS_MARGIN_LEFT + INDENT_WIDTH, y, pdef->optionsstr);
               if (attr && pdef->optionsstr == STR_MULTI_RFTUNE)  {
-                lcdDrawNumber(LCD_W - 10, y, TELEMETRY_RSSI(), RIGHT, 0, "RSSI(", ")");
+                lcdDrawNumber(LCD_W - 10, y, TELEMETRY_TQLY(), RIGHT, 0, "RSSI(", ")");
               }
             }
           }
@@ -1627,7 +1627,7 @@ bool menuModelSetup(event_t event)
             MultiModuleStatus &status = getMultiModuleStatus(moduleIdx);
             lcdDrawText(MENUS_MARGIN_LEFT + INDENT_WIDTH, y, mm_options_strings::options[status.optionDisp]);
             if (attr && status.optionDisp == 2)  {
-              lcdDrawNumber(LCD_W - 10, y, TELEMETRY_RSSI(), RIGHT, 0, "RSSI(", ")");
+              lcdDrawNumber(LCD_W - 10, y, TELEMETRY_TQLY(), RIGHT, 0, "RSSI(", ")");
             }
           }
           if (multi_proto == MODULE_SUBTYPE_MULTI_FS_AFHDS2A)

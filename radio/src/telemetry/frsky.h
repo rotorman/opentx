@@ -215,6 +215,7 @@ class TelemetryData {
     TelemetryExpiringDecorator<TelemetryValue> swrInternal;
     TelemetryExpiringDecorator<TelemetryValue> swrExternal;
     TelemetryFilterDecorator<TelemetryValue> rssi;
+    TelemetryFilterDecorator<TelemetryValue> tqly;
     uint16_t xjtVersion;
     uint8_t varioHighPrecision:1;
     uint8_t telemetryValid:3;
@@ -239,6 +240,11 @@ extern TelemetryData telemetryData;
 inline uint8_t TELEMETRY_RSSI()
 {
   return telemetryData.rssi.value();
+}
+
+inline uint8_t TELEMETRY_TQLY()
+{
+  return telemetryData.tqly.value();
 }
 
 constexpr uint8_t START_STOP = 0x7E;
