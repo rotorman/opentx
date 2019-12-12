@@ -78,6 +78,12 @@ inline bool isModuleMultimoduleDSM2(uint8_t idx)
 {
   return isModuleMultimodule(idx) && g_model.moduleData[idx].getMultiProtocol() == MODULE_SUBTYPE_MULTI_DSM2;
 }
+
+inline bool isModuleMultimoduleFrSkyD8(uint8_t idx)
+{
+  return isModuleMultimodule(idx) && g_model.moduleData[idx].getMultiProtocol() == MODULE_SUBTYPE_MULTI_FRSKY && g_model.moduleData[idx].subType == MM_RF_FRSKY_SUBTYPE_D8;
+}
+
 #else
 inline bool isModuleMultimodule(uint8_t)
 {

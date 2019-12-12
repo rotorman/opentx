@@ -367,7 +367,7 @@ static void processMultiTelemetryPaket(const uint8_t * packet, uint8_t module)
 
     case FrSkyHubTelemetry:
       if (len >= 4)
-        frskyDProcessPacket(data);
+        frskyDProcessPacket(data, !isModuleMultimoduleFrSkyD8(module));
       else
         TRACE("[MP] Received Frsky HUB telemetry len %d < 4", len);
       break;

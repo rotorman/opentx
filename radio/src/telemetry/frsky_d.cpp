@@ -61,7 +61,7 @@ void parseTelemHubByte(uint8_t byte)
   processHubPacket(structPos, (byte << 8) + lowByte);
 }
 
-void frskyDProcessPacket(const uint8_t *packet)
+void frskyDProcessPacket(const uint8_t *packet, uint8_t multiEmulation)
 {
   // What type of packet?
   switch (packet[0])
@@ -74,8 +74,10 @@ void frskyDProcessPacket(const uint8_t *packet)
 #if defined(MULTIMODULE)
       if (telemetryProtocol == PROTOCOL_TELEMETRY_MULTIMODULE) {
         setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_D, TX_RSSI_ID, 0, 0, packet[4]>>1, UNIT_DB,  0);
-        setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_D, RX_LQI_ID,  0, 0, packet[5]   , UNIT_RAW, 0);
         setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_D, TX_LQI_ID , 0, 0, packet[6]   , UNIT_RAW, 0);
+        if (multiEmulation) {
+          setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_D, RX_LQI_ID,  0, 0, packet[5]   , UNIT_RAW, 0);
+        }
       }
 #endif
       telemetryData.rssi.set(packet[3]);

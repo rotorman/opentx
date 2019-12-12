@@ -255,7 +255,7 @@ typedef enum {
 
 // FrSky D Telemetry Protocol
 void processHubPacket(uint8_t id, int16_t value);
-void frskyDProcessPacket(const uint8_t *packet);
+void frskyDProcessPacket(const uint8_t *packet, uint8_t multiEmulation = false);
 
 // FrSky S.PORT Telemetry Protocol
 void sportProcessTelemetryPacket(const uint8_t * packet);
