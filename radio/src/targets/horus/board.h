@@ -628,6 +628,22 @@ void bluetoothWriteWakeup();
 uint8_t bluetoothIsWriting();
 void bluetoothDisable();
 
+//OW
+// MAVLINK_TELEM driver
+//XX#if defined(MAVLINK_TELEM)
+#if defined(RADIO_T16) && defined(PCBX10)
+#define MAVLINK_TELEM_BAUDRATE			57600 //115200
+#define MAVLINK_TELEM_TX_FIFO_SIZE		512
+#define MAVLINK_TELEM_RX_FIFO_SIZE		512
+void mavlinkTelemInit(void);
+void mavlinkTelemDeInit(void);
+uint32_t mavlinkTelemAvailable(void);
+uint8_t mavlinkTelemGetc(uint8_t *c);
+bool mavlinkTelemPutc(char c);
+bool mavlinkTelemPutBuf(const uint8_t *buf, const uint16_t count);
+#endif
+//OWEND
+
 #if defined(__cplusplus)
 #include "fifo.h"
 #include "dmafifo.h"
