@@ -547,11 +547,7 @@ void MavlinkTelem::handleMessageCamera(void)
     			has_voltage = true;
     		}
     	}
-    	if (has_voltage) {
-    		cameraStatus.battery_voltage = 0.001f * (float)voltage;
-    	} else {
-    		cameraStatus.battery_voltage = NAN;
-    	}
+  		cameraStatus.battery_voltage = (has_voltage) ? 0.001f * (float)voltage : NAN;
     	cameraStatus.battery_remainingpct = payload.battery_remaining; // -1 if not known
 		}break;
 
