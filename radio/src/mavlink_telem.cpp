@@ -172,115 +172,92 @@ void MavlinkTelem::generateParamRequestList(uint8_t tsystem, uint8_t tcomponent)
 	_txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
 }
 
+void MavlinkTelem::_generateCmdLong(uint8_t tsystem, uint8_t tcomponent, uint16_t cmd, float p1, float p2, float p3, float p4, float p5, float p6, float p7)
+{
+    setOutVersionV2();
+    mavlink_msg_command_long_pack(
+            _my_sysid, _my_compid, &_msg_out,
+            tsystem, tcomponent, cmd, 0, p1, p2, p3, p4, p5, p6, p7
+            );
+    _txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+}
+
+//for ArduPilot:
+//  base_mode must have MAV_MODE_FLAG_CUSTOM_MODE_ENABLED bit set,
+//  custom_mode then determines the mode it will switch to
+//  usage of this cmd is thus very likely very flightstack dependent!!
+void MavlinkTelem::generateCmdDoSetMode(uint8_t tsystem, uint8_t tcomponent, MAV_MODE base_mode, uint32_t custom_mode)
+{
+    _generateCmdLong(tsystem, tcomponent, MAV_CMD_DO_SET_MODE, base_mode, custom_mode);
+}
+
+//for ArduPilot:
+//  doesn't support acceleration
+//  position:  type_mask = 0x0DF8
+//  position & velocity: type_mask = 0x0DC0
+//  velocity: type_mask = 0x0DC7
+void MavlinkTelem::generateSetPositionTargetGlobalInt(uint8_t tsystem, uint8_t tcomponent, uint8_t coordinate_frame, uint16_t type_mask, int32_t lat, int32_t lon, float alt, float vx, float vy, float vz, float yaw, float yaw_rate)
+{
+    setOutVersionV2();
+    mavlink_msg_set_position_target_global_int_pack(
+            _my_sysid, _my_compid, &_msg_out,
+            0, //uint32_t time_boot_ms
+            tsystem, tcomponent,
+            coordinate_frame, type_mask,
+            lat, lon, alt, vx, vy, vz, 0.0f, 0.0f, 0.0f, yaw, yaw_rate
+            );
+    _txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+}
+
 
 void MavlinkTelem::generateRequestCameraInformation(uint8_t tsystem, uint8_t tcomponent)
 {
-	setOutVersionV2();
-	mavlink_msg_command_long_pack(
-			_my_sysid, _my_compid, &_msg_out,
-			tsystem, tcomponent, MAV_CMD_REQUEST_CAMERA_INFORMATION, 0,
-			1, 0,0,0,0,0,0
-			);
-	_txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+    _generateCmdLong(tsystem, tcomponent, MAV_CMD_REQUEST_CAMERA_INFORMATION, 1, 0,0,0,0,0,0);
 }
 
 void MavlinkTelem::generateRequestCameraSettings(uint8_t tsystem, uint8_t tcomponent)
 {
-	setOutVersionV2();
-	mavlink_msg_command_long_pack(
-			_my_sysid, _my_compid, &_msg_out,
-			tsystem, tcomponent, MAV_CMD_REQUEST_CAMERA_SETTINGS, 0,
-			1, 0,0,0,0,0,0
-			);
-	_txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+    _generateCmdLong(tsystem, tcomponent, MAV_CMD_REQUEST_CAMERA_SETTINGS, 1, 0,0,0,0,0,0);
 }
 
 void MavlinkTelem::generateRequestStorageInformation(uint8_t tsystem, uint8_t tcomponent)
 {
-	setOutVersionV2();
-	mavlink_msg_command_long_pack(
-			_my_sysid, _my_compid, &_msg_out,
-			tsystem, tcomponent, MAV_CMD_REQUEST_STORAGE_INFORMATION, 0,
-			0, 1, 0,0,0,0,0
-			);
-	_txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+    _generateCmdLong(tsystem, tcomponent, MAV_CMD_REQUEST_STORAGE_INFORMATION, 0, 1, 0,0,0,0,0);
 }
 
 void MavlinkTelem::generateRequestCameraCapturesStatus(uint8_t tsystem, uint8_t tcomponent)
 {
-	setOutVersionV2();
-	mavlink_msg_command_long_pack(
-			_my_sysid, _my_compid, &_msg_out,
-			tsystem, tcomponent, MAV_CMD_REQUEST_CAMERA_CAPTURE_STATUS, 0,
-			1, 0,0,0,0,0,0
-			);
-	_txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+    _generateCmdLong(tsystem, tcomponent, MAV_CMD_REQUEST_CAMERA_CAPTURE_STATUS, 1, 0,0,0,0,0,0);
 }
 
 void MavlinkTelem::generateCmdSetCameraMode(uint8_t tsystem, uint8_t tcomponent, uint8_t mode)
 {
-	setOutVersionV2();
-	mavlink_msg_command_long_pack(
-			_my_sysid, _my_compid, &_msg_out,
-			tsystem, tcomponent, MAV_CMD_SET_CAMERA_MODE, 0,
-			0, mode, 0,0,0,0,0
-			);
-	_txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+    _generateCmdLong(tsystem, tcomponent, MAV_CMD_SET_CAMERA_MODE, 0, mode, 0,0,0,0,0);
 }
 
 void MavlinkTelem::generateCmdImageStartCapture(uint8_t tsystem, uint8_t tcomponent)
 {
-	setOutVersionV2();
-	mavlink_msg_command_long_pack(
-			_my_sysid, _my_compid, &_msg_out,
-			tsystem, tcomponent, MAV_CMD_IMAGE_START_CAPTURE, 0,
-			0, 0, 1, 0, 0,0,0
-			);
-	_txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+    _generateCmdLong(tsystem, tcomponent, MAV_CMD_IMAGE_START_CAPTURE, 0, 0, 1, 0, 0,0,0);
 }
 
 void MavlinkTelem::generateCmdVideoStartCapture(uint8_t tsystem, uint8_t tcomponent)
 {
-	setOutVersionV2();
-	mavlink_msg_command_long_pack(
-			_my_sysid, _my_compid, &_msg_out,
-			tsystem, tcomponent, MAV_CMD_VIDEO_START_CAPTURE, 0,
-			0, 0.2f, 0,0,0,0,0
-			);
-	_txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+    _generateCmdLong(tsystem, tcomponent, MAV_CMD_VIDEO_START_CAPTURE, 0, 0.2f, 0,0,0,0,0);
 }
 
 void MavlinkTelem::generateCmdVideoStopCapture(uint8_t tsystem, uint8_t tcomponent)
 {
-	setOutVersionV2();
-	mavlink_msg_command_long_pack(
-			_my_sysid, _my_compid, &_msg_out,
-			tsystem, tcomponent, MAV_CMD_VIDEO_STOP_CAPTURE, 0,
-			0,0,0,0,0,0,0
-			);
-	_txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+    _generateCmdLong(tsystem, tcomponent, MAV_CMD_VIDEO_STOP_CAPTURE, 0,0,0,0,0,0,0);
 }
 
 void MavlinkTelem::generateCmdDoMountConfigure(uint8_t tsystem, uint8_t tcomponent, uint8_t mode)
 {
-	setOutVersionV2();
-	mavlink_msg_command_long_pack(
-			_my_sysid, _my_compid, &_msg_out,
-			tsystem, tcomponent, MAV_CMD_DO_MOUNT_CONFIGURE, 0,
-			mode, 0,0,0,0,0,0
-			);
-	_txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+    _generateCmdLong(tsystem, tcomponent, MAV_CMD_DO_MOUNT_CONFIGURE, mode, 0,0,0,0,0,0);
 }
 
 void MavlinkTelem::generateCmdDoMountControl(uint8_t tsystem, uint8_t tcomponent, float pitch, float yaw)
 {
-	setOutVersionV2();
-	mavlink_msg_command_long_pack(
-			_my_sysid, _my_compid, &_msg_out,
-			tsystem, tcomponent, MAV_CMD_DO_MOUNT_CONTROL, 0,
-			pitch, 0.0, yaw, 0,0,0, MAV_MOUNT_MODE_MAVLINK_TARGETING
-			);
-	_txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+    _generateCmdLong(tsystem, tcomponent, MAV_CMD_DO_MOUNT_CONTROL, pitch, 0.0, yaw, 0,0,0, MAV_MOUNT_MODE_MAVLINK_TARGETING);
 }
 
 

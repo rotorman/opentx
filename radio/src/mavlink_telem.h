@@ -54,9 +54,12 @@ class MavlinkTelem
     void setOutVersionV1(void);
 
     void generateHeartbeat(uint8_t base_mode, uint32_t custom_mode, uint8_t system_status);
-    //to autopilot
     void generateRequestDataStream(uint8_t tsystem, uint8_t tcomponent, uint8_t data_stream, uint16_t rate, uint8_t startstop);
     void generateParamRequestList(uint8_t tsystem, uint8_t tcomponent);
+    void _generateCmdLong(uint8_t tsystem, uint8_t tcomponent, uint16_t cmd, float p1=0.0f, float p2=0.0f, float p3=0.0f, float p4=0.0f, float p5=0.0f, float p6=0.0f, float p7=0.0f);
+    //to autopilot
+    void generateCmdDoSetMode(uint8_t tsystem, uint8_t tcomponent, MAV_MODE base_mode, uint32_t custom_mode);
+    void generateSetPositionTargetGlobalInt(uint8_t tsystem, uint8_t tcomponent, uint8_t coordinate_frame, uint16_t type_mask, int32_t lat, int32_t lon, float alt, float vx, float vy, float vz, float yaw, float yaw_rate);
     //to camera
     void generateRequestCameraInformation(uint8_t tsystem, uint8_t tcomponent);
     void generateRequestCameraSettings(uint8_t tsystem, uint8_t tcomponent);
@@ -176,6 +179,31 @@ class MavlinkTelem
     struct Bat bat1;
     struct Bat bat2;
     uint8_t bat_instancemask;
+
+    uint8_t _t_base_mode;
+    uint32_t _t_custom_mode;
+    void apSetFlightMode(uint32_t ap_flight_mode) {
+        _t_base_mode = MAV_MODE_FLAG_CUSTOM_MODE_ENABLED; _t_custom_mode = ap_flight_mode;
+        SETTASK(TASK_AUTOPILOT, TASK_SENDCMD_SET_MODE);
+    }
+
+    uint8_t _t_coordinate_frame;
+    uint16_t _t_type_mask;
+    int32_t _t_lat, _t_lon;
+    float _t_alt, _t_vx, _t_vy, _t_vz, _t_yaw, _t_yaw_rate;
+    void apGotoPositionAltYaw(int32_t lat, int32_t lon, float alt, float yaw) {
+        _t_coordinate_frame = MAV_FRAME_GLOBAL_RELATIVE_ALT_INT; _t_type_mask = 0x0DF8;
+        _t_lat = lat; _t_lon = lon; _t_alt = alt; _t_vx = _t_vy = _t_vz = 0.0f; _t_yaw = yaw; _t_yaw_rate = 0.0f;
+        SETTASK(TASK_AUTOPILOT, TASK_SENDCMD_SET_POSITION_TARGET_GLOBAL_INT);
+    }
+
+    float _t_takeoff_alt;
+    void apArm(bool arm) { SETTASK(TASK_AP, (arm) ? TASK_ARDUPILOT_ARM : TASK_ARDUPILOT_DISARM); }
+    void apCopterTakeOff(float alt) { _t_takeoff_alt = alt; SETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_TAKEOFF); }
+    void apLand(void) { SETTASK(TASK_AP, TASK_ARDUPILOT_LAND); }
+    void apCopterFlyClick(void) { SETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_FLYCLICK); }
+    void apCopterFlyHold(float alt) { _t_takeoff_alt = alt; SETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_FLYHOLD); }
+    void apCopterFlyPause(void) { SETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_FLYPAUSE); }
 
     // MAVSDK CAMERA
     struct CameraInfo {
