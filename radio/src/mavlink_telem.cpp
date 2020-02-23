@@ -31,6 +31,94 @@
 MavlinkTelem mavlinkTelem;
 
 
+// -- TASK handlers --
+
+void MavlinkTelem::push_task(uint8_t idx, uint32_t task)
+{
+    struct Task t = {.task = task, .idx = idx};
+    _taskFifo.push(t);
+}
+
+
+void MavlinkTelem::pop_and_set_task(void)
+{
+    struct Task t;
+    if (_taskFifo.pop(t)) SETTASK(t.idx, t.task);
+}
+
+
+void MavlinkTelem::set_request(uint8_t idx, uint32_t task, uint8_t retry, tmr10ms_t rate)
+{
+    push_task(idx, task);
+
+    _request_waiting[idx] |= task;
+
+    if (retry == 0) return; //well, if there would be another pending we would not kill it
+
+    int8_t empty_i = -1;
+
+    // first check if request is already pending, at the same time find free slot, to avoid having to loop twice
+    for (uint16_t i = 0; i < REQUESTLIST_MAX; i++) {
+        // TODO: should we modify the retry & rate of the pending task?
+        if ((_requestList[i].idx == idx) && (_requestList[i].task == task)) return; // already pending, we can get out of here
+        if ((empty_i < 0) && !_requestList[i].task) empty_i = i;
+    }
+
+    // if not already pending, add it
+    if (empty_i < 0) return; // no free slot
+
+    _requestList[empty_i].task = task;
+    _requestList[empty_i].idx = idx;
+    _requestList[empty_i].retry = retry;
+    _requestList[empty_i].tlast = get_tmr10ms();
+    _requestList[empty_i].trate = rate; // every ca 1 sec
+}
+
+
+void MavlinkTelem::clear_request(uint8_t idx, uint32_t task)
+{
+    for (uint16_t i = 0; i < REQUESTLIST_MAX; i++) {
+        if ((_requestList[i].idx == idx) && (_requestList[i].task == task)) {
+            _requestList[i].task = 0;
+            _request_waiting[idx] &=~ task;
+        }
+    }
+}
+
+//TODO: what happens if a clear never comes?
+
+void MavlinkTelem::do_requests(void)
+{
+    tmr10ms_t tnow = get_tmr10ms();
+
+    for (uint16_t i = 0; i < TASKIDX_MAX; i++) _request_waiting[i] = 0;
+
+    for (uint16_t i = 0; i < REQUESTLIST_MAX; i++) {
+        if (!_requestList[i].task) continue;
+
+        _request_waiting[_requestList[i].idx] |= _requestList[i].task;
+
+        if ((tnow - _requestList[i].tlast) >= _requestList[i].trate) {
+            push_task(_requestList[i].idx, _requestList[i].task);
+            _requestList[i].tlast = get_tmr10ms();
+            if (_requestList[i].retry < UINT8_MAX) {
+                if (_requestList[i].retry) _requestList[i].retry--;
+                if (!_requestList[i].retry) _requestList[i].task = 0;
+            }
+        }
+    }
+
+    if ((tnow - _taskFifo_tlast) > 11) { // 110 ms decimation
+        _taskFifo_tlast = tnow;
+        // change this, so that it skips tasks with 0, this would allow an easy means to clear tasks also in the Fifo
+        if (!_taskFifo.isEmpty()) pop_and_set_task();
+    }
+}
+
+
+
+// -- MAVLink stuff --
+
 bool MavlinkTelem::isInVersionV2(void)
 {
 	return (_status.flags & MAVLINK_STATUS_FLAG_IN_MAVLINK1) ? false : true;
@@ -202,21 +290,25 @@ void MavlinkTelem::doTask(void)
 {
 	tmr10ms_t tnow = get_tmr10ms();
 
+	bool tick_1Hz = false;
+
 	if ((tnow - _my_heartbeat_tlast) > 100) { //1 sec
 		_my_heartbeat_tlast = tnow;
-		SETTASK(TASK_SENDMYHEARTBEAT);
+		SETTASK(TASK_ME, TASK_SENDMYHEARTBEAT);
 
 		msg_rx_persec = _msg_rx_persec_cnt;
 		_msg_rx_persec_cnt = 0;
 		bytes_rx_persec = _bytes_rx_persec_cnt;
 		_bytes_rx_persec_cnt = 0;
+
+		tick_1Hz = true;
 	}
 
 	if (!isSystemIdValid()) return;
 
 	// we need to wait until at least one heartbeat was send out before requesting data streams
 	if (autopilot.requests_triggered) {
-		if (_task & TASK_SENDMYHEARTBEAT) autopilot.requests_triggered++;
+		if (tick_1Hz) autopilot.requests_triggered++;
 		if (autopilot.requests_triggered > 3) { // wait for 3 heartbeats
 			autopilot.requests_triggered = 0;
 			requestDataStreamFromAutopilot();
@@ -225,14 +317,13 @@ void MavlinkTelem::doTask(void)
 
 	// we wait until at least one heartbeat was send out, and autopilot requests have been done
     if (camera.compid && camera.requests_triggered && !autopilot.requests_triggered) {
-		if (_task & TASK_SENDMYHEARTBEAT) camera.requests_triggered++;
+		if (tick_1Hz) camera.requests_triggered++;
 		if (camera.requests_triggered > 1) { // wait for the next heartbeat
 			camera.requests_triggered = 0;
-			camera.requests_tlast = tnow;
-	    	push_request(TASK_SENDREQUEST_CAMERA_INFORMATION, 0);
-	    	push_request(TASK_SENDREQUEST_CAMERA_SETTINGS, 0);
-	    	push_request(TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS, 0);
-	    	push_request(TASK_SENDREQUEST_STORAGE_INFORMATION, 0);
+	    	set_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_INFORMATION, 10, 200); //10x every ca 2sec
+	    	set_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_SETTINGS, 10, 205);
+	    	set_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS, 10, 210);
+	    	set_request(TASK_CAMERA, TASK_SENDREQUEST_STORAGE_INFORMATION, 10, 215);
     	}
     }
 
@@ -240,129 +331,167 @@ void MavlinkTelem::doTask(void)
     	cameraStatus.initialized = (cameraInfo.info_received && cameraInfo.settings_received && cameraInfo.status_received);
     }
 
-    if (camera.compid && !camera.requests_triggered && !cameraStatus.initialized && ((tnow - camera.requests_tlast) > 300)) {
-        if (!cameraInfo.info_received) push_request(TASK_SENDREQUEST_CAMERA_INFORMATION, 0);
-        if (!cameraInfo.settings_received) push_request(TASK_SENDREQUEST_CAMERA_SETTINGS, 0);
-        if (!cameraInfo.status_received) push_request(TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS, 0);
-        push_request(TASK_SENDREQUEST_STORAGE_INFORMATION, 0); // this is not mandatory, but a nice to have, so just request it again
-        camera.requests_tlast = tnow;
-   	}
-
     // do pending requests
-    if ((tnow - _requestFifo_tlast) > 61) { // we do one every 61 ms
-        _requestFifo_tlast = tnow;
-        if (!_requestFifo.isEmpty()) pop_and_set_request();
-    }
+    do_requests();
 
     // send out pending messages
-	if ((_txcount == 0) && TASK_IS_PENDING) {
-		if (_task & TASK_SENDMYHEARTBEAT) {
-	        RESETTASK(TASK_SENDMYHEARTBEAT);
+	if ((_txcount == 0) && TASK_IS_PENDING()) {
+		if (_task[TASK_ME] & TASK_SENDMYHEARTBEAT) {
+	        RESETTASK(TASK_ME,TASK_SENDMYHEARTBEAT);
 	        uint8_t base_mode = MAV_MODE_PREFLIGHT | MAV_MODE_FLAG_CUSTOM_MODE_ENABLED | MAV_MODE_FLAG_SAFETY_ARMED;
 	        uint8_t system_status = MAV_STATE_UNINIT | MAV_STATE_ACTIVE;
             uint32_t custom_mode = 0;
             generateHeartbeat(base_mode, custom_mode, system_status);
 	        return; //do only one per loop
 	    }
+
 	    // autopilot tasks
-		if (_task & TASK_SENDPARAMREQUESTLIST) {
-	        RESETTASK(TASK_SENDPARAMREQUESTLIST);
+        if (_task[TASK_AUTOPILOT] & TASK_SENDCMD_SET_MODE) {
+            RESETTASK(TASK_AUTOPILOT,TASK_SENDCMD_SET_MODE);
+            generateCmdDoSetMode(_sysid, autopilot.compid, (MAV_MODE)_t_base_mode, _t_custom_mode);
+            return; //do only one per loop
+        }
+        if (_task[TASK_AUTOPILOT] & TASK_SENDCMD_SET_POSITION_TARGET_GLOBAL_INT) {
+            RESETTASK(TASK_AUTOPILOT,TASK_SENDCMD_SET_POSITION_TARGET_GLOBAL_INT);
+            generateSetPositionTargetGlobalInt(_sysid, autopilot.compid, _t_coordinate_frame, _t_type_mask, _t_lat, _t_lon, _t_alt, _t_vx, _t_vy, _t_vz, _t_yaw, _t_yaw_rate);
+            return; //do only one per loop
+        }
+
+		if (_task[TASK_AUTOPILOT] & TASK_SENDPARAMREQUESTLIST) {
+	        RESETTASK(TASK_AUTOPILOT,TASK_SENDPARAMREQUESTLIST);
 	        generateParamRequestList(_sysid, autopilot.compid);
 	        return; //do only one per loop
 		}
-		if (_task & TASK_SENDREQUESTDATASTREAM_RAW_SENSORS) {
-	        RESETTASK(TASK_SENDREQUESTDATASTREAM_RAW_SENSORS);
+		if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_RAW_SENSORS) {
+	        RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_RAW_SENSORS);
 	        generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_RAW_SENSORS, 2, 1);
 	        return; //do only one per loop
 		}
-		if (_task & TASK_SENDREQUESTDATASTREAM_EXTENDED_STATUS) {
-	        RESETTASK(TASK_SENDREQUESTDATASTREAM_EXTENDED_STATUS);
+		if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_EXTENDED_STATUS) {
+	        RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_EXTENDED_STATUS);
 	        generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_EXTENDED_STATUS, 2, 1);
 	        return; //do only one per loop
 		}
-		if (_task & TASK_SENDREQUESTDATASTREAM_POSITION) {
-	        RESETTASK(TASK_SENDREQUESTDATASTREAM_POSITION);
+		if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_POSITION) {
+	        RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_POSITION);
 	        generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_POSITION, 2, 1);
 	        return; //do only one per loop
 		}
-		if (_task & TASK_SENDREQUESTDATASTREAM_EXTRA1) {
-	        RESETTASK(TASK_SENDREQUESTDATASTREAM_EXTRA1);
+		if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_EXTRA1) {
+	        RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_EXTRA1);
 	        generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_EXTRA1, 4, 1);
 	        return; //do only one per loop
 		}
-		if (_task & TASK_SENDREQUESTDATASTREAM_EXTRA2) {
-	        RESETTASK(TASK_SENDREQUESTDATASTREAM_EXTRA2);
+		if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_EXTRA2) {
+	        RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_EXTRA2);
 	        generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_EXTRA2, 4, 1);
 	        return; //do only one per loop
 		}
-		if (_task & TASK_SENDREQUESTDATASTREAM_EXTRA3) {
-	        RESETTASK(TASK_SENDREQUESTDATASTREAM_EXTRA3);
+		if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_EXTRA3) {
+	        RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_EXTRA3);
 	        generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_EXTRA3, 2, 1);
 	        return; //do only one per loop
 		}
 
+        if (_task[TASK_AP] & TASK_ARDUPILOT_ARM) { //MAV_CMD_COMPONENT_ARM_DISARM
+            RESETTASK(TASK_AP, TASK_ARDUPILOT_ARM);
+            _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_COMPONENT_ARM_DISARM, 1.0f);
+            return; //do only one per loop
+        }
+        if (_task[TASK_AP] & TASK_ARDUPILOT_DISARM) { //MAV_CMD_COMPONENT_ARM_DISARM
+            RESETTASK(TASK_AP, TASK_ARDUPILOT_DISARM);
+            _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_COMPONENT_ARM_DISARM, 0.0f);
+            return; //do only one per loop
+        }
+        if (_task[TASK_AP] & TASK_ARDUPILOT_COPTER_TAKEOFF) { //MAV_CMD_NAV_TAKEOFF
+            RESETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_TAKEOFF);
+            _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_NAV_TAKEOFF, 0,0, 0.0f, 0,0,0, _t_takeoff_alt); //no input, 5 m
+            return; //do only one per loop
+        }
+        if (_task[TASK_AP] & TASK_ARDUPILOT_LAND) { //MAV_CMD_NAV_LAND
+            RESETTASK(TASK_AP, TASK_ARDUPILOT_LAND);
+            _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_NAV_LAND);
+            return; //do only one per loop
+        }
+        if (_task[TASK_AP] & TASK_ARDUPILOT_COPTER_FLYCLICK) {
+            RESETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_FLYCLICK);
+            _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_SOLO_BTN_FLY_CLICK);
+            return; //do only one per loop
+        }
+        if (_task[TASK_AP] & TASK_ARDUPILOT_COPTER_FLYHOLD) {
+            RESETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_FLYHOLD);
+            _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_SOLO_BTN_FLY_CLICK, _t_takeoff_alt); //5m
+            return; //do only one per loop
+        }
+        if (_task[TASK_AP] & TASK_ARDUPILOT_COPTER_FLYPAUSE) {
+            RESETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_FLYPAUSE);
+            _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_SOLO_BTN_PAUSE_CLICK, 0.0f); //shoot = no
+            return; //do only one per loop
+        }
+
 	    // camera tasks
-		if (_task & TASK_SENDCMD_SET_CAMERA_VIDEO_MODE) {
-	        RESETTASK(TASK_SENDCMD_SET_CAMERA_VIDEO_MODE);
+		if (_task[TASK_CAMERA] & TASK_SENDCMD_SET_CAMERA_VIDEO_MODE) {
+	        RESETTASK(TASK_CAMERA, TASK_SENDCMD_SET_CAMERA_VIDEO_MODE);
 	        if (camera.compid) generateCmdSetCameraMode(_sysid, camera.compid, CAMERA_MODE_VIDEO);
-	        SETTASK(TASK_SENDREQUEST_CAMERA_SETTINGS);
+	        set_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_SETTINGS, 2);
 	        return; //do only one per loop
 		}
-		if (_task & TASK_SENDCMD_SET_CAMERA_PHOTO_MODE) {
-	        RESETTASK(TASK_SENDCMD_SET_CAMERA_PHOTO_MODE);
+		if (_task[TASK_CAMERA] & TASK_SENDCMD_SET_CAMERA_PHOTO_MODE) {
+	        RESETTASK(TASK_CAMERA, TASK_SENDCMD_SET_CAMERA_PHOTO_MODE);
 	        if (camera.compid) generateCmdSetCameraMode(_sysid, camera.compid, CAMERA_MODE_IMAGE);
-	        SETTASK(TASK_SENDREQUEST_CAMERA_SETTINGS);
+            set_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_SETTINGS, 2);
 	        return; //do only one per loop
 		}
-		if (_task & TASK_SENDCMD_IMAGE_START_CAPTURE) {
-	        RESETTASK(TASK_SENDCMD_IMAGE_START_CAPTURE);
+		if (_task[TASK_CAMERA] & TASK_SENDCMD_IMAGE_START_CAPTURE) {
+	        RESETTASK(TASK_CAMERA, TASK_SENDCMD_IMAGE_START_CAPTURE);
 	        if (camera.compid) generateCmdImageStartCapture(_sysid, camera.compid);
-	        SETTASK(TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS);
+            set_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS, 2);
 	        return; //do only one per loop
 		}
-		if (_task & TASK_SENDCMD_VIDEO_START_CAPTURE) {
-	        RESETTASK(TASK_SENDCMD_VIDEO_START_CAPTURE);
+		if (_task[TASK_CAMERA] & TASK_SENDCMD_VIDEO_START_CAPTURE) {
+	        RESETTASK(TASK_CAMERA, TASK_SENDCMD_VIDEO_START_CAPTURE);
 	        if (camera.compid) generateCmdVideoStartCapture(_sysid, camera.compid);
-	        SETTASK(TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS);
+            set_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS, 2);
 	        return; //do only one per loop
 		}
-		if (_task & TASK_SENDCMD_VIDEO_STOP_CAPTURE) {
-	        RESETTASK(TASK_SENDCMD_VIDEO_STOP_CAPTURE);
+		if (_task[TASK_CAMERA] & TASK_SENDCMD_VIDEO_STOP_CAPTURE) {
+	        RESETTASK(TASK_CAMERA, TASK_SENDCMD_VIDEO_STOP_CAPTURE);
 	        if (camera.compid) generateCmdVideoStopCapture(_sysid, camera.compid);
-	        SETTASK(TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS);
+            set_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS, 2);
 	        return; //do only one per loop
 		}
+
 		// the sequence here defines the startup sequence
-		if (_task & TASK_SENDREQUEST_CAMERA_INFORMATION) {
-	        RESETTASK(TASK_SENDREQUEST_CAMERA_INFORMATION);
+		if (_task[TASK_CAMERA] & TASK_SENDREQUEST_CAMERA_INFORMATION) {
+	        RESETTASK(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_INFORMATION);
 	        if (camera.compid) generateRequestCameraInformation(_sysid, camera.compid);
 	        return; //do only one per loop
 		}
-		if (_task & TASK_SENDREQUEST_CAMERA_SETTINGS) {
-	        RESETTASK(TASK_SENDREQUEST_CAMERA_SETTINGS);
+		if (_task[TASK_CAMERA] & TASK_SENDREQUEST_CAMERA_SETTINGS) {
+	        RESETTASK(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_SETTINGS);
 	        if (camera.compid) generateRequestCameraSettings(_sysid, camera.compid);
 	        return; //do only one per loop
 		}
-		if (_task & TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS) {
-	        RESETTASK(TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS);
+		if (_task[TASK_CAMERA] & TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS) {
+	        RESETTASK(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS);
 	        if (camera.compid) generateRequestCameraCapturesStatus(_sysid, camera.compid);
 	        return; //do only one per loop
 		}
-		if (_task & TASK_SENDREQUEST_STORAGE_INFORMATION) {
-	        RESETTASK(TASK_SENDREQUEST_STORAGE_INFORMATION);
+		if (_task[TASK_CAMERA] & TASK_SENDREQUEST_STORAGE_INFORMATION) {
+	        RESETTASK(TASK_CAMERA, TASK_SENDREQUEST_STORAGE_INFORMATION);
 	        if (camera.compid) generateRequestStorageInformation(_sysid, camera.compid);
 	        return; //do only one per loop
 		}
 
 	    // gimbal tasks
-		if (_task & TASK_SENDCMD_DO_MOUNT_CONFIGURE) {
-	        RESETTASK(TASK_SENDCMD_DO_MOUNT_CONFIGURE);
-	        generateCmdDoMountConfigure(_sysid, autopilot.compid, _gimbal_domountconfigure_mode);
+		if (_task[TASK_GIMBAL] & TASK_SENDCMD_DO_MOUNT_CONFIGURE) {
+	        RESETTASK(TASK_GIMBAL, TASK_SENDCMD_DO_MOUNT_CONFIGURE);
+	        generateCmdDoMountConfigure(_sysid, autopilot.compid, _t_gimbal_domountconfigure_mode);
 	        return; //do only one per loop
 		}
-		if (_task & TASK_SENDCMD_DO_MOUNT_CONTROL) {
-	        RESETTASK(TASK_SENDCMD_DO_MOUNT_CONTROL);
-	        generateCmdDoMountControl(_sysid, autopilot.compid, _gimbal_domountcontrol_pitch, _gimbal_domountcontrol_yaw);
+		if (_task[TASK_GIMBAL] & TASK_SENDCMD_DO_MOUNT_CONTROL) {
+	        RESETTASK(TASK_GIMBAL, TASK_SENDCMD_DO_MOUNT_CONTROL);
+	        generateCmdDoMountControl(_sysid, autopilot.compid, _t_gimbal_domountcontrol_pitch, _t_gimbal_domountcontrol_yaw);
 	        return; //do only one per loop
 		}
 	}
@@ -395,6 +524,7 @@ void MavlinkTelem::handleMessageCamera(void)
 		cameraInfo.has_photo = (cameraInfo.flags & CAMERA_CAP_FLAGS_CAPTURE_IMAGE);
 		cameraInfo.has_modes = (cameraInfo.flags & CAMERA_CAP_FLAGS_HAS_MODES);
         cameraInfo.info_received = true;
+        clear_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_INFORMATION);
 		}break;
 
 	case MAVLINK_MSG_ID_CAMERA_SETTINGS: {
@@ -402,6 +532,7 @@ void MavlinkTelem::handleMessageCamera(void)
 		mavlink_msg_camera_settings_decode(&_msg, &payload);
 		cameraStatus.mode = (payload.mode_id == CAMERA_MODE_IMAGE) ? CAMERA_MODE_IMAGE : CAMERA_MODE_VIDEO;
         cameraInfo.settings_received = true;
+        clear_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_SETTINGS);
 		}break;
 
 	case MAVLINK_MSG_ID_CAMERA_CAPTURE_STATUS: {
@@ -412,6 +543,7 @@ void MavlinkTelem::handleMessageCamera(void)
 		cameraStatus.video_on = (payload.video_status > 0);
 		cameraStatus.photo_on = (payload.image_status > 0); //0: idle, 1: capture in progress, 2: interval set but idle, 3: interval set and capture in progress
         cameraInfo.status_received = true;
+        clear_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS);
 		}break;
 
 	case MAVLINK_MSG_ID_STORAGE_INFORMATION: {
@@ -424,6 +556,7 @@ void MavlinkTelem::handleMessageCamera(void)
 			cameraInfo.total_capacity = NAN;
 			cameraStatus.available_capacity = NAN;
 		}
+        clear_request(TASK_CAMERA, TASK_SENDREQUEST_STORAGE_INFORMATION);
 		}break;
 
 	case MAVLINK_MSG_ID_BATTERY_STATUS: {
@@ -787,11 +920,11 @@ void MavlinkTelem::wakeup()
 void MavlinkTelem::requestDataStreamFromAutopilot(void)
 {
 	if (autopilottype == MAV_AUTOPILOT_ARDUPILOTMEGA) {
-		push_request(TASK_SENDREQUESTDATASTREAM_EXTENDED_STATUS, 0);
-		push_request(TASK_SENDREQUESTDATASTREAM_POSITION, 0);
-		push_request(TASK_SENDREQUESTDATASTREAM_EXTRA1, 0);
-		push_request(TASK_SENDREQUESTDATASTREAM_EXTRA2, 0);
-		push_request(TASK_SENDREQUESTDATASTREAM_EXTRA3, 0);
+		push_task(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTENDED_STATUS); // there is no clear_request() yet, so push task
+		push_task(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_POSITION);
+		push_task(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTRA1);
+		push_task(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTRA2);
+		push_task(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTRA3);
 		return;
 	}
 /*
@@ -804,6 +937,9 @@ void MavlinkTelem::requestDataStreamFromAutopilot(void)
 
 void MavlinkTelem::_resetAutopilot(void)
 {
+    _task[TASK_AUTOPILOT] = 0;
+    _task[TASK_AP] = 0;
+
     autopilot.compid = 0;
     autopilot.is_receiving = 0;
     autopilot.system_status = MAV_STATE_UNINIT;
@@ -858,6 +994,8 @@ void MavlinkTelem::_resetAutopilot(void)
 
 void MavlinkTelem::_resetGimbal(void)
 {
+    _task[TASK_GIMBAL] = 0;
+
 	gimbal.compid = 0;
 	gimbal.is_receiving = 0;
 	gimbal.system_status = MAV_STATE_UNINIT;
@@ -876,6 +1014,8 @@ void MavlinkTelem::_resetGimbal(void)
 
 void MavlinkTelem::_resetCamera(void)
 {
+    _task[TASK_CAMERA] = 0;
+
     camera.compid = 0;
     camera.is_receiving = 0;
     camera.system_status = MAV_STATE_UNINIT;
@@ -935,8 +1075,10 @@ void MavlinkTelem::_reset(void)
 	vehicletype = MAV_TYPE_GENERIC;
 	flightmode = 0;
 
-    _requestFifo.clear();
-    _requestFifo_tlast = 0;
+	for (uint16_t i = 0; i < TASKIDX_MAX; i++) _task[i] = 0;
+    _taskFifo.clear();
+    _taskFifo_tlast = 0;
+    for (uint16_t i = 0; i < REQUESTLIST_MAX; i++) _requestList[i].task = 0;
 
     _resetRadio();
 	_resetAutopilot();

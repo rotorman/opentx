@@ -70,16 +70,18 @@ class MavlinkTelem
     void generateCmdDoMountConfigure(uint8_t tsystem, uint8_t tcomponent, uint8_t mode);
     void generateCmdDoMountControl(uint8_t tsystem, uint8_t tcomponent, float pitch, float yaw);
 
-    bool isSystemIdValid(void){ return (_sysid > 0); }
+    bool isSystemIdValid(void) { return (_sysid > 0); }
 
     void handleMessageAutopilot(void);
     void requestDataStreamFromAutopilot(void);
     void handleMessageCamera(void);
     void handleMessageGimbal(void);
 
-    #define SETTASK(x)          {_task |= (x);}
-    #define RESETTASK(x)        {_task &=~ (x);}
-    #define TASK_IS_PENDING     (_task > 0)
+    #define SETTASK(idx,x)      {_task[idx] |= (x);}
+    #define RESETTASK(idx,x)    {_task[idx] &=~ (x);}
+    //#define TASK_IS_PENDING     (_task.task > 0)
+    #define TASKIDX_MAX  8
+    bool TASK_IS_PENDING()      {for(uint16_t i=0; i<TASKIDX_MAX; i++) if (_task[i] > 0) return true; return false;}
 
     uint32_t msg_rx_count;
     uint32_t msg_rx_persec;
@@ -93,11 +95,11 @@ class MavlinkTelem
     // 16 is sufficient for a rate of 43 msg/s or 1350 bytes/s, 8 was NOT!
     Fifo<mavlink_message_t, 2> msgRxFifo;  // HUGE! 16* 256 = 5kB
     bool msgFifo_enabled = false;
-    void setTaskParamRequestList(void){ SETTASK(TASK_SENDPARAMREQUESTLIST); }
+    void setTaskParamRequestList(void) { SETTASK(TASK_AUTOPILOT, TASK_SENDPARAMREQUESTLIST); }
 
     // MAVSDK GENERAL
-    bool isReceiving(void){ return (_is_receiving > 0); }
-    const mavlink_status_t* getChannelStatus(void){ return &_status; }
+    bool isReceiving(void) { return (_is_receiving > 0); }
+    const mavlink_status_t* getChannelStatus(void) { return &_status; }
 
     uint8_t autopilottype = MAV_AUTOPILOT_GENERIC;
     uint8_t vehicletype = MAV_TYPE_GENERIC;
@@ -202,11 +204,11 @@ class MavlinkTelem
     };
     struct CameraStatus cameraStatus; // Status: variable data
 
-    void setCameraSetVideoMode(void){ SETTASK(TASK_SENDCMD_SET_CAMERA_VIDEO_MODE); }
-	void setCameraSetPhotoMode(void){ SETTASK(TASK_SENDCMD_SET_CAMERA_PHOTO_MODE); }
-    void setCameraStartVideo(void){ SETTASK(TASK_SENDCMD_VIDEO_START_CAPTURE); }
-    void setCameraStopVideo(void){ SETTASK(TASK_SENDCMD_VIDEO_STOP_CAPTURE); }
-    void setCameraTakePhoto(void){ SETTASK(TASK_SENDCMD_IMAGE_START_CAPTURE); }
+    void setCameraSetVideoMode(void) { SETTASK(TASK_CAMERA, TASK_SENDCMD_SET_CAMERA_VIDEO_MODE); }
+	void setCameraSetPhotoMode(void) { SETTASK(TASK_CAMERA, TASK_SENDCMD_SET_CAMERA_PHOTO_MODE); }
+    void setCameraStartVideo(void) { SETTASK(TASK_CAMERA, TASK_SENDCMD_VIDEO_START_CAPTURE); }
+    void setCameraStopVideo(void) { SETTASK(TASK_CAMERA, TASK_SENDCMD_VIDEO_STOP_CAPTURE); }
+    void setCameraTakePhoto(void) { SETTASK(TASK_CAMERA, TASK_SENDCMD_IMAGE_START_CAPTURE); }
 
     // MAVSDK GIMBAL
     struct GimbalAtt {
@@ -217,13 +219,13 @@ class MavlinkTelem
     };
     struct GimbalAtt gimbalAtt;
 
-    uint8_t _gimbal_domountconfigure_mode;
-    void setGimbalTargetingMode(uint8_t mode){
-    	_gimbal_domountconfigure_mode = mode; SETTASK(TASK_SENDCMD_DO_MOUNT_CONFIGURE);
+    uint8_t _t_gimbal_domountconfigure_mode;
+    void setGimbalTargetingMode(uint8_t mode) {
+        _t_gimbal_domountconfigure_mode = mode; SETTASK(TASK_GIMBAL, TASK_SENDCMD_DO_MOUNT_CONFIGURE);
     }
-    float _gimbal_domountcontrol_pitch, _gimbal_domountcontrol_yaw;
-    void setGimbalPitchYawDeg(float pitch, float yaw){
-    	_gimbal_domountcontrol_pitch = pitch; _gimbal_domountcontrol_yaw = yaw; SETTASK(TASK_SENDCMD_DO_MOUNT_CONTROL);
+    float _t_gimbal_domountcontrol_pitch, _t_gimbal_domountcontrol_yaw;
+    void setGimbalPitchYawDeg(float pitch, float yaw) {
+        _t_gimbal_domountcontrol_pitch = pitch; _t_gimbal_domountcontrol_yaw = yaw; SETTASK(TASK_GIMBAL, TASK_SENDCMD_DO_MOUNT_CONTROL);
     }
 
   protected:
@@ -242,48 +244,77 @@ class MavlinkTelem
     uint16_t _is_receiving = 0;
 
     typedef enum {
+      TASK_ME = 0,
+      TASK_AUTOPILOT,
+      TASK_AP,
+      TASK_GIMBAL,
+      TASK_CAMERA,
+    } TASKIDXENUM;
+
+    typedef enum {
       TASK_SENDMYHEARTBEAT                          = 0x00000001,
-      //to autopilot
-      TASK_SENDREQUESTDATASTREAM_RAW_SENSORS        = 0x00000010, // group 1
-      TASK_SENDREQUESTDATASTREAM_EXTENDED_STATUS    = 0x00000020, // group 2
-      TASK_SENDREQUESTDATASTREAM_RC_CHANNELS        = 0x00000040, // group 3
-      TASK_SENDREQUESTDATASTREAM_RAW_CONTROLLER     = 0x00000080, // group 4
-      TASK_SENDREQUESTDATASTREAM_POSITION           = 0x00000100, // group 6
-      TASK_SENDREQUESTDATASTREAM_EXTRA1             = 0x00000200, // group 10
-      TASK_SENDREQUESTDATASTREAM_EXTRA2             = 0x00000400, // group 11
-      TASK_SENDREQUESTDATASTREAM_EXTRA3             = 0x00000800, // group 12
-      TASK_SENDPARAMREQUESTLIST                     = 0x00001000,
-      //to camera
-      TASK_SENDREQUEST_CAMERA_INFORMATION           = 0x00010000,
-      TASK_SENDREQUEST_CAMERA_SETTINGS              = 0x00020000,
-      TASK_SENDREQUEST_STORAGE_INFORMATION          = 0x00040000,
-      TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS        = 0x00080000,
-      TASK_SENDCMD_SET_CAMERA_VIDEO_MODE            = 0x00100000,
-      TASK_SENDCMD_SET_CAMERA_PHOTO_MODE            = 0x00200000,
-      TASK_SENDCMD_VIDEO_START_CAPTURE              = 0x00400000,
-      TASK_SENDCMD_VIDEO_STOP_CAPTURE               = 0x00800000,
-      TASK_SENDCMD_IMAGE_START_CAPTURE              = 0x01000000,
-      //to gimbal
-      TASK_SENDCMD_DO_MOUNT_CONFIGURE               = 0x10000000,
-      TASK_SENDCMD_DO_MOUNT_CONTROL                 = 0x20000000,
+      //autopilot
+      TASK_SENDREQUESTDATASTREAM_RAW_SENSORS        = 0x00000001, // group 1
+      TASK_SENDREQUESTDATASTREAM_EXTENDED_STATUS    = 0x00000002, // group 2
+      TASK_SENDREQUESTDATASTREAM_RC_CHANNELS        = 0x00000004, // group 3
+      TASK_SENDREQUESTDATASTREAM_RAW_CONTROLLER     = 0x00000008, // group 4
+      TASK_SENDREQUESTDATASTREAM_POSITION           = 0x00000010, // group 6
+      TASK_SENDREQUESTDATASTREAM_EXTRA1             = 0x00000020, // group 10
+      TASK_SENDREQUESTDATASTREAM_EXTRA2             = 0x00000040, // group 11
+      TASK_SENDREQUESTDATASTREAM_EXTRA3             = 0x00000080, // group 12
+      TASK_SENDPARAMREQUESTLIST                     = 0x00000100,
+      TASK_SENDCMD_SET_MODE                         = 0x00000200,
+      TASK_SENDCMD_SET_POSITION_TARGET_GLOBAL_INT   = 0x00000400,
+      //ap
+      TASK_ARDUPILOT_ARM                            = 0x00000800,
+      TASK_ARDUPILOT_DISARM                         = 0x00001000,
+      TASK_ARDUPILOT_COPTER_TAKEOFF                 = 0x00002000,
+      TASK_ARDUPILOT_LAND                           = 0x00004000,
+      TASK_ARDUPILOT_COPTER_FLYCLICK                = 0x00008000,
+      TASK_ARDUPILOT_COPTER_FLYHOLD                 = 0x00010000,
+      TASK_ARDUPILOT_COPTER_FLYPAUSE                = 0x00020000,
+      //camera
+      TASK_SENDREQUEST_CAMERA_INFORMATION           = 0x00000001,
+      TASK_SENDREQUEST_CAMERA_SETTINGS              = 0x00000002,
+      TASK_SENDREQUEST_STORAGE_INFORMATION          = 0x00000004,
+      TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS        = 0x00000008,
+      TASK_SENDCMD_SET_CAMERA_VIDEO_MODE            = 0x00000010,
+      TASK_SENDCMD_SET_CAMERA_PHOTO_MODE            = 0x00000020,
+      TASK_SENDCMD_VIDEO_START_CAPTURE              = 0x00000040,
+      TASK_SENDCMD_VIDEO_STOP_CAPTURE               = 0x00000080,
+      TASK_SENDCMD_IMAGE_START_CAPTURE              = 0x00000100,
+      //gimbal
+      TASK_SENDCMD_DO_MOUNT_CONFIGURE               = 0x00000001,
+      TASK_SENDCMD_DO_MOUNT_CONTROL                 = 0x00000002,
     } TASKMASKENUM;
 
-    uint32_t _task;
+    uint32_t _task[TASKIDX_MAX];
+
+    struct Task {
+        uint32_t task;
+        uint8_t idx;
+    };
+
+    Fifo<struct Task, 32> _taskFifo; // the fifo is to further rate limit the execution of tasks
+    tmr10ms_t _taskFifo_tlast;
 
     struct Request {
         uint32_t task;
-        uint8_t retry;
+        uint8_t idx;
+        uint8_t retry; //UINT8_MAX means for ever
         tmr10ms_t tlast;
+        tmr10ms_t trate;
     };
-    Fifo<struct Request, 32> _requestFifo;
-    tmr10ms_t _requestFifo_tlast;
 
-    void push_request(uint32_t task, uint8_t retry) {
-        struct Request r; r.task = task; r.retry = retry; r.tlast = get_tmr10ms(); _requestFifo.push(r);
-    }
-    void pop_and_set_request(void) {
-        struct Request r; _requestFifo.pop(r); SETTASK(r.task);
-    }
+    #define REQUESTLIST_MAX  32
+    struct Request _requestList[REQUESTLIST_MAX];  // 0 in the task field indicates that the slot is free and unused
+    uint32_t _request_waiting[TASKIDX_MAX];
+
+    void push_task(uint8_t idx, uint32_t task);
+    void pop_and_set_task(void);
+    void set_request(uint8_t idx, uint32_t task, uint8_t retry, tmr10ms_t rate = 102);
+    void clear_request(uint8_t idx, uint32_t task);
+    void do_requests(void);
 
     uint32_t _msg_rx_persec_cnt, _bytes_rx_persec_cnt;
     int16_t _seq_rx_last = -1;
