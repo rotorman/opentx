@@ -733,6 +733,12 @@ static int luaMavsdkApSetFlightMode(lua_State *L)
     return 0;
 }
 
+static int luaMavsdkApRequestBanner(lua_State *L)
+{
+    mavlinkTelem.apRequestBanner();
+    return 0;
+}
+
 static int luaMavsdkApArm(lua_State *L)
 {
     int32_t arm = luaL_checkinteger(L, 1);
@@ -917,6 +923,7 @@ const luaL_Reg mavsdkLib[] = {
   { "apIsFlying", luaMavsdkApIsFlying },
   { "apIsFailsafe", luaMavsdkApIsFailsafe },
   { "apSetFlightMode", luaMavsdkApSetFlightMode },
+  { "apRequestBanner", luaMavsdkApRequestBanner },
   { "apArm", luaMavsdkApArm },
   { "apCopterTakeOff", luaMavsdkApCopterTakeOff },
   { "apLand", luaMavsdkApLand },

@@ -414,6 +414,11 @@ void MavlinkTelem::doTask(void)
 	        return; //do only one per loop
 		}
 
+        if (_task[TASK_AP] & TASK_ARDUPILOT_REQUESTBANNER) { //MAV_CMD_DO_SEND_BANNER
+            RESETTASK(TASK_AP, TASK_ARDUPILOT_REQUESTBANNER);
+            _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_DO_SEND_BANNER);
+            return; //do only one per loop
+        }
         if (_task[TASK_AP] & TASK_ARDUPILOT_ARM) { //MAV_CMD_COMPONENT_ARM_DISARM
             RESETTASK(TASK_AP, TASK_ARDUPILOT_ARM);
             _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_COMPONENT_ARM_DISARM, 1.0f);
@@ -966,6 +971,8 @@ void MavlinkTelem::requestDataStreamFromAutopilot(void)
 		push_task(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTRA1);
 		push_task(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTRA2);
 		push_task(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTRA3);
+
+		push_task(TASK_AP, TASK_ARDUPILOT_REQUESTBANNER);
 		return;
 	}
 /*

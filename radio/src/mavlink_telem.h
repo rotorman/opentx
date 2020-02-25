@@ -207,6 +207,7 @@ class MavlinkTelem
     void apSetYaw(float yaw, bool relative); //note, we can enter negative yaw here, sign determines direction
 
     float _t_takeoff_alt;
+    void apRequestBanner(void) { SETTASK(TASK_AP, TASK_ARDUPILOT_REQUESTBANNER); }
     void apArm(bool arm) { SETTASK(TASK_AP, (arm) ? TASK_ARDUPILOT_ARM : TASK_ARDUPILOT_DISARM); }
     void apCopterTakeOff(float alt) { _t_takeoff_alt = alt; SETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_TAKEOFF); }
     void apLand(void) { SETTASK(TASK_AP, TASK_ARDUPILOT_LAND); }
@@ -304,13 +305,14 @@ class MavlinkTelem
       TASK_SENDMSG_SET_POSITION_TARGET_GLOBAL_INT   = 0x00000400,
       TASK_SENDCMD_CONDITION_YAW                    = 0x00000800,
       //ap
-      TASK_ARDUPILOT_ARM                            = 0x00000001,
-      TASK_ARDUPILOT_DISARM                         = 0x00000002,
-      TASK_ARDUPILOT_COPTER_TAKEOFF                 = 0x00000004,
-      TASK_ARDUPILOT_LAND                           = 0x00000008,
-      TASK_ARDUPILOT_COPTER_FLYCLICK                = 0x00000010,
-      TASK_ARDUPILOT_COPTER_FLYHOLD                 = 0x00000020,
-      TASK_ARDUPILOT_COPTER_FLYPAUSE                = 0x00000040,
+      TASK_ARDUPILOT_REQUESTBANNER                  = 0x00000001,
+      TASK_ARDUPILOT_ARM                            = 0x00000002,
+      TASK_ARDUPILOT_DISARM                         = 0x00000004,
+      TASK_ARDUPILOT_COPTER_TAKEOFF                 = 0x00000008,
+      TASK_ARDUPILOT_LAND                           = 0x00000010,
+      TASK_ARDUPILOT_COPTER_FLYCLICK                = 0x00000020,
+      TASK_ARDUPILOT_COPTER_FLYHOLD                 = 0x00000040,
+      TASK_ARDUPILOT_COPTER_FLYPAUSE                = 0x00000080,
       //camera
       TASK_SENDREQUEST_CAMERA_INFORMATION           = 0x00000001,
       TASK_SENDREQUEST_CAMERA_SETTINGS              = 0x00000002,
