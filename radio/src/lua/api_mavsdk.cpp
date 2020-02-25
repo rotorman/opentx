@@ -797,18 +797,18 @@ static int luaMavsdkApCopterFlyPause(lua_State *L)
 
 static int luaMavsdkIsStatusTextAvailable(lua_State *L)
 {
-    lua_pushboolean(L, (mavlinkTelem.statustext.updated) ? true : false);
+    lua_pushboolean(L, !mavlinkTelem.statustextFifo.isEmpty());
     return 1;
 }
 
 static int luaMavsdkGetStatusText(lua_State *L)
 {
-    lua_pushinteger(L, mavlinkTelem.statustext.severity);
-    lua_pushstring(L, mavlinkTelem.statustext.text);
-    mavlinkTelem.statustext.updated = 0;
+    mavlink_statustext_t payload;
+    if (!mavlinkTelem.statustextFifo.pop(payload)) { payload.text[0] = '\0'; payload.severity = 6; }
+    lua_pushinteger(L, payload.severity);
+    lua_pushstring(L, payload.text);
     return 2;
 }
-
 
 
 

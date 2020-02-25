@@ -795,10 +795,8 @@ void MavlinkTelem::handleMessageAutopilot(void)
     case MAVLINK_MSG_ID_STATUSTEXT: {
         mavlink_statustext_t payload;
         mavlink_msg_statustext_decode(&_msg, &payload);
-        statustext.severity = payload.severity;
-        memcpy(statustext.text, payload.text, 50);
-        statustext.text[50] = '\0';
-        if (statustext.updated < 100) statustext.updated++;
+        payload.text[49] = '\0'; //terminate it properly, never mind losing the last char
+        statustextFifo.push(payload);
         }break;
 
     };
@@ -1047,9 +1045,7 @@ void MavlinkTelem::_resetAutopilot(void)
 
     bat_instancemask = 0;
 
-    statustext.severity = MAV_SEVERITY_INFO;
-    statustext.text[0] = '\0';
-    statustext.updated = 0;
+    statustextFifo.clear();
 }
 
 
