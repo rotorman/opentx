@@ -792,6 +792,15 @@ void MavlinkTelem::handleMessageAutopilot(void)
         // { RBOX_CNSP_FIRST_ID, RBOX_CNSP_LAST_ID, 0, ZSTR_BATT1_CONSUMPTION, UNIT_MAH, 0 },
     	}break;
 
+    case MAVLINK_MSG_ID_STATUSTEXT: {
+        mavlink_statustext_t payload;
+        mavlink_msg_statustext_decode(&_msg, &payload);
+        statustext.severity = payload.severity;
+        memcpy(statustext.text, payload.text, 50);
+        statustext.text[50] = '\0';
+        if (statustext.updated < 100) statustext.updated++;
+        }break;
+
     };
 }
 
@@ -1037,6 +1046,10 @@ void MavlinkTelem::_resetAutopilot(void)
 	bat2.cellcount = -1;
 
     bat_instancemask = 0;
+
+    statustext.severity = MAV_SEVERITY_INFO;
+    statustext.text[0] = '\0';
+    statustext.updated = 0;
 }
 
 

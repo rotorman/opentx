@@ -191,6 +191,13 @@ class MavlinkTelem
     struct Bat bat2;
     uint8_t bat_instancemask;
 
+    struct StatusText {
+        uint8_t severity;
+        char text[50+1];
+        uint8_t updated; // to indicate that a new message was received since last call, is increased with each receive to indicate if polled fast enough
+    };
+    struct StatusText statustext;
+
     uint8_t _t_base_mode;
     uint32_t _t_custom_mode;
     void apSetFlightMode(uint32_t ap_flight_mode);

@@ -793,6 +793,24 @@ static int luaMavsdkApCopterFlyPause(lua_State *L)
 }
 
 
+// -- MAVSDK STATUSTEXT --
+
+static int luaMavsdkIsStatusTextAvailable(lua_State *L)
+{
+    lua_pushboolean(L, (mavlinkTelem.statustext.updated) ? true : false);
+    return 1;
+}
+
+static int luaMavsdkGetStatusText(lua_State *L)
+{
+    lua_pushinteger(L, mavlinkTelem.statustext.severity);
+    lua_pushstring(L, mavlinkTelem.statustext.text);
+    mavlinkTelem.statustext.updated = 0;
+    return 2;
+}
+
+
+
 
 const luaL_Reg mavsdkLib[] = {
 #if defined(MAVLINK_TELEM)
@@ -892,6 +910,9 @@ const luaL_Reg mavsdkLib[] = {
   { "isBatAvailable", luaMavsdkIsBatAvailable },
   { "isBat2Available", luaMavsdkIsBat2Available },
   { "getBatCount", luaMavsdkGetBatCount },
+
+  { "isStatusTextAvailable", luaMavsdkIsStatusTextAvailable },
+  { "getStatusText", luaMavsdkGetStatusText },
 
   { "apIsFlying", luaMavsdkApIsFlying },
   { "apIsFailsafe", luaMavsdkApIsFailsafe },
