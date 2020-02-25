@@ -98,7 +98,7 @@ class MavlinkTelem
     // 16 is sufficient for a rate of 43 msg/s or 1350 bytes/s, 8 was NOT!
     Fifo<mavlink_message_t, 2> msgRxFifo;  // HUGE! 16* 256 = 5kB
     bool msgFifo_enabled = false;
-    void setTaskParamRequestList(void) { SETTASK(TASK_AUTOPILOT, TASK_SENDPARAMREQUESTLIST); }
+    void setTaskParamRequestList(void) { SETTASK(TASK_AUTOPILOT, TASK_SENDMSG_PARAM_REQUEST_LIST); }
 
     // MAVSDK GENERAL
     bool isReceiving(void) { return (_is_receiving > 0); }
@@ -123,6 +123,8 @@ class MavlinkTelem
         uint8_t system_status;
         uint32_t custom_mode;
 		bool is_armed;
+		bool is_standby;
+		bool is_critical;
         bool prearm_ok;
         uint8_t requests_triggered;
         tmr10ms_t requests_tlast;
@@ -150,10 +152,19 @@ class MavlinkTelem
     	uint16_t vel; // m/s * 100
     	uint16_t cog; // degrees * 100, 0.0..359.99 degrees
     };
-    struct Gps gps;
+    struct Gps gps1;
+    struct Gps gps2;
+    uint8_t gps_instancemask;
 
     struct GlobalPositionInt {
-    	int32_t relative_alt; // mm
+        int32_t lat; // in degrees * 1E7*/
+        int32_t lon; // in degrees * 1E7*/
+        int32_t alt; // (MSL), in meters * 1000
+    	int32_t relative_alt; // in meters * 1000
+        int16_t vx; // (Latitude, positive north), in cm/s
+        int16_t vy; // (Longitude, positive east), in cm/s
+        int16_t vz; // (Altitude, positive down), in cm/s
+        int16_t hdg; // degrees * 100, 0.0..359.99 degrees, UINT16_NAX if unknown
     };
     struct GlobalPositionInt gposition;
 
@@ -182,20 +193,16 @@ class MavlinkTelem
 
     uint8_t _t_base_mode;
     uint32_t _t_custom_mode;
-    void apSetFlightMode(uint32_t ap_flight_mode) {
-        _t_base_mode = MAV_MODE_FLAG_CUSTOM_MODE_ENABLED; _t_custom_mode = ap_flight_mode;
-        SETTASK(TASK_AUTOPILOT, TASK_SENDCMD_SET_MODE);
-    }
+    void apSetFlightMode(uint32_t ap_flight_mode);
 
     uint8_t _t_coordinate_frame;
     uint16_t _t_type_mask;
     int32_t _t_lat, _t_lon;
     float _t_alt, _t_vx, _t_vy, _t_vz, _t_yaw, _t_yaw_rate;
-    void apGotoPositionAltYaw(int32_t lat, int32_t lon, float alt, float yaw) {
-        _t_coordinate_frame = MAV_FRAME_GLOBAL_RELATIVE_ALT_INT; _t_type_mask = 0x0DF8;
-        _t_lat = lat; _t_lon = lon; _t_alt = alt; _t_vx = _t_vy = _t_vz = 0.0f; _t_yaw = yaw; _t_yaw_rate = 0.0f;
-        SETTASK(TASK_AUTOPILOT, TASK_SENDCMD_SET_POSITION_TARGET_GLOBAL_INT);
-    }
+    void apGotoPositionAltYaw(int32_t lat, int32_t lon, float alt, float yaw);
+
+    float _tsy_yaw, _tsy_yaw_dir, _tsy_yaw_relative;
+    void apSetYaw(float yaw, bool relative); //note, we can enter negative yaw here, sign determines direction
 
     float _t_takeoff_alt;
     void apArm(bool arm) { SETTASK(TASK_AP, (arm) ? TASK_ARDUPILOT_ARM : TASK_ARDUPILOT_DISARM); }
@@ -290,17 +297,18 @@ class MavlinkTelem
       TASK_SENDREQUESTDATASTREAM_EXTRA1             = 0x00000020, // group 10
       TASK_SENDREQUESTDATASTREAM_EXTRA2             = 0x00000040, // group 11
       TASK_SENDREQUESTDATASTREAM_EXTRA3             = 0x00000080, // group 12
-      TASK_SENDPARAMREQUESTLIST                     = 0x00000100,
+      TASK_SENDMSG_PARAM_REQUEST_LIST               = 0x00000100,
       TASK_SENDCMD_SET_MODE                         = 0x00000200,
-      TASK_SENDCMD_SET_POSITION_TARGET_GLOBAL_INT   = 0x00000400,
+      TASK_SENDMSG_SET_POSITION_TARGET_GLOBAL_INT   = 0x00000400,
+      TASK_SENDCMD_CONDITION_YAW                    = 0x00000800,
       //ap
-      TASK_ARDUPILOT_ARM                            = 0x00000800,
-      TASK_ARDUPILOT_DISARM                         = 0x00001000,
-      TASK_ARDUPILOT_COPTER_TAKEOFF                 = 0x00002000,
-      TASK_ARDUPILOT_LAND                           = 0x00004000,
-      TASK_ARDUPILOT_COPTER_FLYCLICK                = 0x00008000,
-      TASK_ARDUPILOT_COPTER_FLYHOLD                 = 0x00010000,
-      TASK_ARDUPILOT_COPTER_FLYPAUSE                = 0x00020000,
+      TASK_ARDUPILOT_ARM                            = 0x00000001,
+      TASK_ARDUPILOT_DISARM                         = 0x00000002,
+      TASK_ARDUPILOT_COPTER_TAKEOFF                 = 0x00000004,
+      TASK_ARDUPILOT_LAND                           = 0x00000008,
+      TASK_ARDUPILOT_COPTER_FLYCLICK                = 0x00000010,
+      TASK_ARDUPILOT_COPTER_FLYHOLD                 = 0x00000020,
+      TASK_ARDUPILOT_COPTER_FLYPAUSE                = 0x00000040,
       //camera
       TASK_SENDREQUEST_CAMERA_INFORMATION           = 0x00000001,
       TASK_SENDREQUEST_CAMERA_SETTINGS              = 0x00000002,

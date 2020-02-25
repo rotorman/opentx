@@ -56,19 +56,19 @@ static int luaMavsdkGimbalGetStatus(lua_State *L)
 
 static int luaMavsdkGimbalGetAttRollDeg(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.gimbalAtt.roll*(180.0/3.141592654));
+    lua_pushnumber(L, mavlinkTelem.gimbalAtt.roll*(180.0f/3.141592654f));
 	return 1;
 }
 
 static int luaMavsdkGimbalGetAttPitchDeg(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.gimbalAtt.pitch*(180.0/3.141592654));
+    lua_pushnumber(L, mavlinkTelem.gimbalAtt.pitch*(180.0f/3.141592654f));
 	return 1;
 }
 
 static int luaMavsdkGimbalGetAttYawDeg(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.gimbalAtt.yaw_relative*(180.0/3.141592654));
+    lua_pushnumber(L, mavlinkTelem.gimbalAtt.yaw_relative*(180.0f/3.141592654f));
 	return 1;
 }
 
@@ -330,26 +330,26 @@ static int luaMavsdkGetRadioRemoteNoise(lua_State *L)
 
 static int luaMavsdkGetAttRollDeg(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.att.roll*(180.0/3.141592654));
+    lua_pushnumber(L, mavlinkTelem.att.roll*(180.0f/3.141592654f));
 	return 1;
 }
 
 static int luaMavsdkGetAttPitchDeg(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.att.pitch*(180.0/3.141592654));
+    lua_pushnumber(L, mavlinkTelem.att.pitch*(180.0f/3.141592654f));
 	return 1;
 }
 
 static int luaMavsdkGetAttYawDeg(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.att.yaw*(180.0/3.141592654));
+    lua_pushnumber(L, mavlinkTelem.att.yaw*(180.0f/3.141592654f));
 	return 1;
 }
 
 
 // -- MAVSDK GPS --
 
-static int luaMavsdkGetGpsStatus(lua_State *L)
+static int luaMavsdkGetGps1Status(lua_State *L)
 {
 /*	lua_createtable(L, 0, 4);
 	lua_pushtablenumber(L, "fix", mavlinkTelem.gps_fix);
@@ -358,70 +358,207 @@ static int luaMavsdkGetGpsStatus(lua_State *L)
 	lua_pushtablenumber(L, "sat", mavlinkTelem.gps_sat);
 */
 	lua_newtable(L);
-	lua_pushtablenumber(L, "fix", mavlinkTelem.gps.fix);
-	lua_pushtablenumber(L, "hdop", mavlinkTelem.gps.hdop * 0.01);
-	lua_pushtablenumber(L, "vdop", mavlinkTelem.gps.vdop * 0.01);
-	lua_pushtablenumber(L, "sat", mavlinkTelem.gps.sat);
+	lua_pushtablenumber(L, "fix", mavlinkTelem.gps1.fix);
+	lua_pushtablenumber(L, "hdop", mavlinkTelem.gps1.hdop * 0.01f);
+	lua_pushtablenumber(L, "vdop", mavlinkTelem.gps1.vdop * 0.01f);
+	lua_pushtablenumber(L, "sat", mavlinkTelem.gps1.sat);
 	return 1;
 }
 
-static int luaMavsdkGetGpsFix(lua_State *L)
+static int luaMavsdkGetGps1Fix(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.gps.fix);
+    lua_pushnumber(L, mavlinkTelem.gps1.fix);
 	return 1;
 }
 
-static int luaMavsdkGetGpsHDop(lua_State *L)
+static int luaMavsdkGetGps1HDop(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.gps.hdop * 0.01);
+    lua_pushnumber(L, mavlinkTelem.gps1.hdop * 0.01f);
 	return 1;
 }
 
-static int luaMavsdkGetGpsVDop(lua_State *L)
+static int luaMavsdkGetGps1VDop(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.gps.vdop * 0.01);
+    lua_pushnumber(L, mavlinkTelem.gps1.vdop * 0.01f);
 	return 1;
 }
 
-static int luaMavsdkGetGpsSat(lua_State *L)
+static int luaMavsdkGetGps1Sat(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.gps.sat);
+    lua_pushnumber(L, mavlinkTelem.gps1.sat);
 	return 1;
 }
 
-static int luaMavsdkGetGpsLatLonDeg(lua_State *L)
+/*static int luaMavsdkGetGps1LatLonDeg(lua_State *L)
 {
 	lua_newtable(L);
-    lua_pushtablenumber(L, "lat", mavlinkTelem.gps.lat * 1.0E-7);
-    lua_pushtablenumber(L, "lon", mavlinkTelem.gps.lon * 1.0E-7);
+    lua_pushtablenumber(L, "lat", mavlinkTelem.gps1.lat * 1.0E-7);
+    lua_pushtablenumber(L, "lon", mavlinkTelem.gps1.lon * 1.0E-7);
+	return 1;
+}*/
+
+static int luaMavsdkGetGps1LatLonInt(lua_State *L)
+{
+    lua_newtable(L);
+    lua_pushtableinteger(L, "lat", mavlinkTelem.gps1.lat);
+    lua_pushtableinteger(L, "lon", mavlinkTelem.gps1.lon);
+    return 1;
+}
+
+static int luaMavsdkGetGps1AltitudeAmsl(lua_State *L)
+{
+    lua_pushnumber(L, mavlinkTelem.gps1.alt * 0.001f);
 	return 1;
 }
 
-static int luaMavsdkGetGpsAltitudeAmsl(lua_State *L)
+static int luaMavsdkGetGps1Speed(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.gps.alt * 0.001);
+    lua_pushnumber(L, mavlinkTelem.gps1.vel * 0.01f);
 	return 1;
 }
 
-static int luaMavsdkGetGpsSpeed(lua_State *L)
+static int luaMavsdkGetGps1CourseOverGroundDeg(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.gps.vel * 0.01);
+    lua_pushnumber(L, mavlinkTelem.gps1.cog * 0.01f);
 	return 1;
 }
 
-static int luaMavsdkGetGpsCourseOverGround(lua_State *L)
+
+static int luaMavsdkGetGps2Status(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.gps.cog * 0.01);
-	return 1;
+    lua_newtable(L);
+    lua_pushtablenumber(L, "fix", mavlinkTelem.gps2.fix);
+    lua_pushtablenumber(L, "hdop", mavlinkTelem.gps2.hdop * 0.01f);
+    lua_pushtablenumber(L, "vdop", mavlinkTelem.gps2.vdop * 0.01f);
+    lua_pushtablenumber(L, "sat", mavlinkTelem.gps2.sat);
+    return 1;
+}
+
+static int luaMavsdkGetGps2Fix(lua_State *L)
+{
+    lua_pushnumber(L, mavlinkTelem.gps2.fix);
+    return 1;
+}
+
+static int luaMavsdkGetGps2HDop(lua_State *L)
+{
+    lua_pushnumber(L, mavlinkTelem.gps2.hdop * 0.01f);
+    return 1;
+}
+
+static int luaMavsdkGetGps2VDop(lua_State *L)
+{
+    lua_pushnumber(L, mavlinkTelem.gps2.vdop * 0.01f);
+    return 1;
+}
+
+static int luaMavsdkGetGps2Sat(lua_State *L)
+{
+    lua_pushnumber(L, mavlinkTelem.gps2.sat);
+    return 1;
+}
+
+/*static int luaMavsdkGetGps2LatLonDeg(lua_State *L)
+{
+    lua_newtable(L);
+    lua_pushtablenumber(L, "lat", mavlinkTelem.gps2.lat * 1.0E-7);
+    lua_pushtablenumber(L, "lon", mavlinkTelem.gps2.lon * 1.0E-7);
+    return 1;
+}*/
+
+static int luaMavsdkGetGps2LatLonInt(lua_State *L)
+{
+    lua_newtable(L);
+    lua_pushtableinteger(L, "lat", mavlinkTelem.gps2.lat);
+    lua_pushtableinteger(L, "lon", mavlinkTelem.gps2.lon);
+    return 1;
+}
+
+static int luaMavsdkGetGps2AltitudeAmsl(lua_State *L)
+{
+    lua_pushnumber(L, mavlinkTelem.gps2.alt * 0.001f);
+    return 1;
+}
+
+static int luaMavsdkGetGps2Speed(lua_State *L)
+{
+    lua_pushnumber(L, mavlinkTelem.gps2.vel * 0.01f);
+    return 1;
+}
+
+static int luaMavsdkGetGps2CourseOverGroundDeg(lua_State *L)
+{
+    lua_pushnumber(L, mavlinkTelem.gps2.cog * 0.01f);
+    return 1;
+}
+
+
+static int luaMavsdkIsGpsAvailable(lua_State *L)
+{
+    bool flag = mavlinkTelem.gps_instancemask & 0x01;
+    lua_pushboolean(L, flag);
+    return 1;
+}
+
+static int luaMavsdkIsGps2Available(lua_State *L)
+{
+    bool flag = mavlinkTelem.gps_instancemask & 0x02;
+    lua_pushboolean(L, flag);
+    return 1;
+}
+
+static int luaMavsdkGetGpsCount(lua_State *L)
+{
+    uint16_t cnt = 0, mask = mavlinkTelem.gps_instancemask;
+    for(uint8_t i = 0; i < 8; i++) { if (mask & 0x01) cnt++; mask >>= 1; }
+    lua_pushinteger(L, cnt);
+    return 1;
 }
 
 
 // -- MAVSDK POSITION --
 
-static int luaMavsdkGetPositionAltitudeRelative(lua_State *L)
+/*static int luaMavsdkGetPosLatLonDeg(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.gposition.relative_alt * 0.001);
+    lua_newtable(L);
+    lua_pushtablenumber(L, "lat", mavlinkTelem.gposition.lat * 1.0E-7);
+    lua_pushtablenumber(L, "lon", mavlinkTelem.gposition.lon * 1.0E-7);
+    return 1;
+}*/
+
+static int luaMavsdkGetPosLatLonInt(lua_State *L)
+{
+    lua_newtable(L);
+    lua_pushtableinteger(L, "lat", mavlinkTelem.gposition.lat);
+    lua_pushtableinteger(L, "lon", mavlinkTelem.gposition.lon);
+    return 1;
+}
+
+static int luaMavsdkGetPosAltitudeAmsl(lua_State *L)
+{
+    lua_pushnumber(L, mavlinkTelem.gposition.alt * 0.001f);
+    return 1;
+}
+
+static int luaMavsdkGetPosAltitudeRelative(lua_State *L)
+{
+    lua_pushnumber(L, mavlinkTelem.gposition.relative_alt * 0.001f);
 	return 1;
+}
+
+static int luaMavsdkGetPosHeadingDeg(lua_State *L)
+{
+    lua_pushnumber(L, mavlinkTelem.gposition.hdg * 0.01f);
+    return 1;
+}
+
+static int luaMavsdkGetPosSpeedNED(lua_State *L)
+{
+    lua_newtable(L);
+    lua_pushtablenumber(L, "vx", mavlinkTelem.gposition.vx * 0.001f);
+    lua_pushtablenumber(L, "vy", mavlinkTelem.gposition.vy * 0.001f);
+    lua_pushtablenumber(L, "vz", mavlinkTelem.gposition.vz * 0.001f);
+    return 1;
 }
 
 
@@ -451,7 +588,7 @@ static int luaMavsdkGetVfrClimbRate(lua_State *L)
 	return 1;
 }
 
-static int luaMavsdkGetVfrHeading(lua_State *L)
+static int luaMavsdkGetVfrHeadingDeg(lua_State *L)
 {
     lua_pushnumber(L, mavlinkTelem.vfr.heading);
 	return 1;
@@ -474,25 +611,25 @@ static int luaMavsdkGetBat1ChargeConsumed(lua_State *L)
 
 static int luaMavsdkGetBat1EnergyConsumed(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.bat1.energy_consumed * 100.0);
+    lua_pushnumber(L, mavlinkTelem.bat1.energy_consumed * 100.0f);
 	return 1;
 }
 
 static int luaMavsdkGetBat1Temperature(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.bat1.temperature * 0.01);
+    lua_pushnumber(L, mavlinkTelem.bat1.temperature * 0.01f);
 	return 1;
 }
 
 static int luaMavsdkGetBat1Voltage(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.bat1.voltage * 0.001);
+    lua_pushnumber(L, mavlinkTelem.bat1.voltage * 0.001f);
 	return 1;
 }
 
 static int luaMavsdkGetBat1Current(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.bat1.current * 0.01);
+    lua_pushnumber(L, mavlinkTelem.bat1.current * 0.01f);
 	return 1;
 }
 
@@ -517,25 +654,25 @@ static int luaMavsdkGetBat2ChargeConsumed(lua_State *L)
 
 static int luaMavsdkGetBat2EnergyConsumed(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.bat2.energy_consumed * 100.0);
+    lua_pushnumber(L, mavlinkTelem.bat2.energy_consumed * 100.0f);
 	return 1;
 }
 
 static int luaMavsdkGetBat2Temperature(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.bat2.temperature * 0.01);
+    lua_pushnumber(L, mavlinkTelem.bat2.temperature * 0.01f);
 	return 1;
 }
 
 static int luaMavsdkGetBat2Voltage(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.bat2.voltage * 0.001);
+    lua_pushnumber(L, mavlinkTelem.bat2.voltage * 0.001f);
 	return 1;
 }
 
 static int luaMavsdkGetBat2Current(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.bat2.current * 0.01);
+    lua_pushnumber(L, mavlinkTelem.bat2.current * 0.01f);
 	return 1;
 }
 
@@ -552,6 +689,20 @@ static int luaMavsdkGetBat2CellCount(lua_State *L)
 }
 
 
+static int luaMavsdkIsBatAvailable(lua_State *L)
+{
+    bool flag = mavlinkTelem.bat_instancemask & 0x01;
+    lua_pushboolean(L, flag);
+    return 1;
+}
+
+static int luaMavsdkIsBat2Available(lua_State *L)
+{
+    bool flag = mavlinkTelem.bat_instancemask & 0x02;
+    lua_pushboolean(L, flag);
+    return 1;
+}
+
 static int luaMavsdkGetBatCount(lua_State *L)
 {
 	uint16_t cnt = 0, mask = mavlinkTelem.bat_instancemask;
@@ -562,76 +713,23 @@ static int luaMavsdkGetBatCount(lua_State *L)
 
 
 // -- MAVSDK ARDUPILOT --
-/*
-// should we have the vehicle specific flight modes defined in mavsdk ???
-// could equally well go into the lua script itself, could have advantages
-typedef enum MAVSDK_APCOPTER_FLIGHTMODE {
-   MAVSDK_APCOPTER_FLIGHTMODE_STABILIZE =     0,  // manual airframe angle with manual throttle
-   MAVSDK_APCOPTER_FLIGHTMODE_ACRO =          1,  // manual body-frame angular rate with manual throttle
-   MAVSDK_APCOPTER_FLIGHTMODE_ALT_HOLD =      2,  // manual airframe angle with automatic throttle
-   MAVSDK_APCOPTER_FLIGHTMODE_AUTO =          3,  // fully automatic waypoint control using mission commands
-   MAVSDK_APCOPTER_FLIGHTMODE_GUIDED =        4,  // fully automatic fly to coordinate or fly at velocity/direction using GCS immediate commands
-   MAVSDK_APCOPTER_FLIGHTMODE_LOITER =        5,  // automatic horizontal acceleration with automatic throttle
-   MAVSDK_APCOPTER_FLIGHTMODE_RTL =           6,  // automatic return to launching point
-   MAVSDK_APCOPTER_FLIGHTMODE_CIRCLE =        7,  // automatic circular flight with automatic throttle
-   MAVSDK_APCOPTER_FLIGHTMODE_LAND =          9,  // automatic landing with horizontal position control
-   MAVSDK_APCOPTER_FLIGHTMODE_DRIFT =        11,  // semi-automous position, yaw and throttle control
-   MAVSDK_APCOPTER_FLIGHTMODE_SPORT =        13,  // manual earth-frame angular rate control with manual throttle
-   MAVSDK_APCOPTER_FLIGHTMODE_FLIP =         14,  // automatically flip the vehicle on the roll axis
-   MAVSDK_APCOPTER_FLIGHTMODE_AUTOTUNE =     15,  // automatically tune the vehicle's roll and pitch gains
-   MAVSDK_APCOPTER_FLIGHTMODE_POSHOLD =      16,  // automatic position hold with manual override, with automatic throttle
-   MAVSDK_APCOPTER_FLIGHTMODE_BRAKE =        17,  // full-brake using inertial/GPS system, no pilot input
-   MAVSDK_APCOPTER_FLIGHTMODE_THROW =        18,  // throw to launch mode using inertial/GPS system, no pilot input
-   MAVSDK_APCOPTER_FLIGHTMODE_AVOID_ADSB =   19,  // automatic avoidance of obstacles in the macro scale - e.g. full-sized aircraft
-   MAVSDK_APCOPTER_FLIGHTMODE_GUIDED_NOGPS = 20,  // guided mode but only accepts attitude and altitude
-   MAVSDK_APCOPTER_FLIGHTMODE_SMART_RTL =    21,  // SMART_RTL returns to home by retracing its steps
-   MAVSDK_APCOPTER_FLIGHTMODE_FLOWHOLD  =    22,  // FLOWHOLD holds position with optical flow without rangefinder
-   MAVSDK_APCOPTER_FLIGHTMODE_FOLLOW    =    23,  // follow attempts to follow another vehicle or ground station
-   MAVSDK_APCOPTER_FLIGHTMODE_ZIGZAG    =    24,  // ZIGZAG mode is able to fly in a zigzag manner with predefined point A and point B
-   MAVSDK_APCOPTER_FLIGHTMODE_SYSTEMID  =    25,  // System ID mode produces automated system identification signals in the controllers
-   MAVSDK_APCOPTER_FLIGHTMODE_AUTOROTATE =   26,  // Autonomous autorotation
-} MAVSDK_APCOPTER_FLIGHTMODE;
 
-typedef enum MAVSDK_APPLANE_FLIGHTMODE {
-   MAVSDK_APPLANE_MANUAL        = 0,
-   MAVSDK_APPLANE_CIRCLE        = 1,
-   MAVSDK_APPLANE_STABILIZE     = 2,
-   MAVSDK_APPLANE_TRAINING      = 3,
-   MAVSDK_APPLANE_ACRO          = 4,
-   MAVSDK_APPLANE_FLY_BY_WIRE_A = 5,
-   MAVSDK_APPLANE_FLY_BY_WIRE_B = 6,
-   MAVSDK_APPLANE_CRUISE        = 7,
-   MAVSDK_APPLANE_AUTOTUNE      = 8,
-   MAVSDK_APPLANE_AUTO          = 10,
-   MAVSDK_APPLANE_RTL           = 11,
-   MAVSDK_APPLANE_LOITER        = 12,
-   MAVSDK_APPLANE_TAKEOFF       = 13,
-   MAVSDK_APPLANE_AVOID_ADSB    = 14,
-   MAVSDK_APPLANE_GUIDED        = 15,
-   MAVSDK_APPLANE_INITIALISING  = 16,
-   MAVSDK_APPLANE_QSTABILIZE    = 17,
-   MAVSDK_APPLANE_QHOVER        = 18,
-   MAVSDK_APPLANE_QLOITER       = 19,
-   MAVSDK_APPLANE_QLAND         = 20,
-   MAVSDK_APPLANE_QRTL          = 21,
-   MAVSDK_APPLANE_QAUTOTUNE     = 22,
-   MAVSDK_APPLANE_QACRO         = 23,
-} MAVSDK_APPLANE_FLIGHTMODE; */
+static int luaMavsdkApIsFlying(lua_State *L)
+{
+    lua_pushboolean(L, !mavlinkTelem.autopilot.is_standby);
+    return 1;
+}
+
+static int luaMavsdkApIsFailsafe(lua_State *L)
+{
+    lua_pushboolean(L, mavlinkTelem.autopilot.is_critical);
+    return 1;
+}
 
 static int luaMavsdkApSetFlightMode(lua_State *L)
 {
     int32_t ap_flight_mode = luaL_checkinteger(L, 1);
     mavlinkTelem.apSetFlightMode(ap_flight_mode);
-    return 0;
-}
-
-static int luaMavsdkApGotoPositionAltYaw(lua_State *L)
-{
-    int32_t lat = luaL_checkinteger(L, 1);
-    int32_t lon = luaL_checkinteger(L, 2);
-    float alt = luaL_checknumber(L, 3);
-    float yaw = luaL_checknumber(L, 4);
-    mavlinkTelem.apGotoPositionAltYaw(lat, lon, alt, yaw);
     return 0;
 }
 
@@ -652,6 +750,26 @@ static int luaMavsdkApCopterTakeOff(lua_State *L)
 static int luaMavsdkApLand(lua_State *L)
 {
     mavlinkTelem.apLand();
+    return 0;
+}
+
+static int luaMavsdkApGotoPositionAltYaw(lua_State *L)
+{
+    int32_t lat = luaL_checkinteger(L, 1);
+    int32_t lon = luaL_checkinteger(L, 2);
+    //float alt = luaL_checknumber(L, 3);
+    //float yaw = luaL_checknumber(L, 4);
+    float alt = luaL_optnumber(L, 3, NAN);
+    float yaw = luaL_optnumber(L, 4, NAN);
+    mavlinkTelem.apGotoPositionAltYaw(lat, lon, alt, yaw);
+    return 0;
+}
+
+static int luaMavsdkApSetYawDeg(lua_State *L)
+{
+    float yaw = luaL_checknumber(L, 1);
+    int32_t relative = luaL_optunsigned(L, 2, 0);
+    mavlinkTelem.apSetYaw(yaw, (relative) ? true : false);
     return 0;
 }
 
@@ -718,32 +836,50 @@ const luaL_Reg mavsdkLib[] = {
   { "getAttPitchDeg", luaMavsdkGetAttPitchDeg },
   { "getAttYawDeg", luaMavsdkGetAttYawDeg },
 
-  { "getGpsStatus", luaMavsdkGetGpsStatus }, 		// .fix,.hdop,.sat
-  { "getGpsFix", luaMavsdkGetGpsFix },				// GPS_FIX_TYPE_xxx
-  { "getGpsHDop", luaMavsdkGetGpsHDop },
-  { "getGpsVDop", luaMavsdkGetGpsVDop },
-  { "getGpsSat", luaMavsdkGetGpsSat },
-  { "getGpsLatLonDeg", luaMavsdkGetGpsLatLonDeg },
-  { "getGpsAltitudeAmsl", luaMavsdkGetGpsAltitudeAmsl },
-  { "getGpsSpeed", luaMavsdkGetGpsSpeed },
-  { "getGpsCourseOverGround", luaMavsdkGetGpsCourseOverGround },
+  { "getGpsStatus", luaMavsdkGetGps1Status }, 		// .fix,.hdop,.sat
+  { "getGpsFix", luaMavsdkGetGps1Fix },				// GPS_FIX_TYPE_xxx
+  { "getGpsHDop", luaMavsdkGetGps1HDop },
+  { "getGpsVDop", luaMavsdkGetGps1VDop },
+  { "getGpsSat", luaMavsdkGetGps1Sat },
+  { "getGpsLatLonInt", luaMavsdkGetGps1LatLonInt },
+  { "getGpsAltitudeAmsl", luaMavsdkGetGps1AltitudeAmsl },
+  { "getGpsSpeed", luaMavsdkGetGps1Speed },
+  { "getGpsCourseOverGroundDeg", luaMavsdkGetGps1CourseOverGroundDeg },
 
-  { "getPositionAltitudeRelative", luaMavsdkGetPositionAltitudeRelative },
+  { "getGps2Status", luaMavsdkGetGps2Status },
+  { "getGps2Fix", luaMavsdkGetGps2Fix },
+  { "getGps2HDop", luaMavsdkGetGps2HDop },
+  { "getGps2VDop", luaMavsdkGetGps2VDop },
+  { "getGps2Sat", luaMavsdkGetGps2Sat },
+  { "getGps2LatLonInt", luaMavsdkGetGps2LatLonInt },
+  { "getGps2AltitudeAmsl", luaMavsdkGetGps2AltitudeAmsl },
+  { "getGps2Speed", luaMavsdkGetGps2Speed },
+  { "getGps2CourseOverGroundDeg", luaMavsdkGetGps2CourseOverGroundDeg },
+
+  { "isGpsAvailable", luaMavsdkIsGpsAvailable },
+  { "isGps2Available", luaMavsdkIsGps2Available },
+  { "getGpsCount", luaMavsdkGetGpsCount },
+
+  { "getPositionLatLonInt", luaMavsdkGetPosLatLonInt },
+  { "getPositionAltitudeAmsl", luaMavsdkGetPosAltitudeAmsl },
+  { "getPositionAltitudeRelative", luaMavsdkGetPosAltitudeRelative },
+  { "getPositionHeadingDeg", luaMavsdkGetPosHeadingDeg },
+  { "getPositionSpeedNED", luaMavsdkGetPosSpeedNED },
 
   { "getVfrAirSpeed", luaMavsdkGetVfrAirSpeed },
   { "getVfrGroundSpeed", luaMavsdkGetVfrGroundSpeed },
   { "getVfrAltitudeMsl", luaMavsdkGetVfrAltitudeMsl },
   { "getVfrClimbRate", luaMavsdkGetVfrClimbRate },
-  { "getVfrHeading", luaMavsdkGetVfrHeading },
+  { "getVfrHeadingDeg", luaMavsdkGetVfrHeadingDeg },
   { "getVfrThrottle", luaMavsdkGetVfrThrottle },
 
-  { "getBat1ChargeConsumed", luaMavsdkGetBat1ChargeConsumed },
-  { "getBat1EnergyConsumed", luaMavsdkGetBat1EnergyConsumed },
-  { "getBat1Temperature", luaMavsdkGetBat1Temperature },
-  { "getBat1Voltage", luaMavsdkGetBat1Voltage },
-  { "getBat1Current", luaMavsdkGetBat1Current },
-  { "getBat1Remaining", luaMavsdkGetBat1Remaining },
-  { "getBat1CellCount", luaMavsdkGetBat1CellCount },
+  { "getBatChargeConsumed", luaMavsdkGetBat1ChargeConsumed },
+  { "getBatEnergyConsumed", luaMavsdkGetBat1EnergyConsumed },
+  { "getBatTemperature", luaMavsdkGetBat1Temperature },
+  { "getBatVoltage", luaMavsdkGetBat1Voltage },
+  { "getBatCurrent", luaMavsdkGetBat1Current },
+  { "getBatRemaining", luaMavsdkGetBat1Remaining },
+  { "getBatCellCount", luaMavsdkGetBat1CellCount },
 
   { "getBat2ChargeConsumed", luaMavsdkGetBat2ChargeConsumed },
   { "getBat2EnergyConsumed", luaMavsdkGetBat2EnergyConsumed },
@@ -753,13 +889,18 @@ const luaL_Reg mavsdkLib[] = {
   { "getBat2Remaining", luaMavsdkGetBat2Remaining },
   { "getBat2CellCount", luaMavsdkGetBat2CellCount },
 
+  { "isBatAvailable", luaMavsdkIsBatAvailable },
+  { "isBat2Available", luaMavsdkIsBat2Available },
   { "getBatCount", luaMavsdkGetBatCount },
 
+  { "apIsFlying", luaMavsdkApIsFlying },
+  { "apIsFailsafe", luaMavsdkApIsFailsafe },
   { "apSetFlightMode", luaMavsdkApSetFlightMode },
-  { "apGotoPositionAltYaw", luaMavsdkApGotoPositionAltYaw },
   { "apArm", luaMavsdkApArm },
   { "apCopterTakeOff", luaMavsdkApCopterTakeOff },
   { "apLand", luaMavsdkApLand },
+  { "apGotoPositionAltYaw", luaMavsdkApGotoPositionAltYaw },
+  { "apSetYawDeg", luaMavsdkApSetYawDeg },
   { "apCopterFlyClick", luaMavsdkApCopterFlyClick },
   { "apCopterFlyHold", luaMavsdkApCopterFlyHold },
   { "apCopterFlyPause", luaMavsdkApCopterFlyPause },
@@ -775,6 +916,72 @@ const luaR_value_entry mavsdkConstants[] = {
   { "VEHICLECLASS_ROVER", MAVSDK_VEHICLECLASS_ROVER },
   { "VEHICLECLASS_BOAT", MAVSDK_VEHICLECLASS_BOAT },
   { "VEHICLECLASS_SUB", MAVSDK_VEHICLECLASS_SUB },
+#endif
+  { nullptr, 0 }  /* sentinel */
+};
+
+
+
+
+
+
+
+/*
+// should we have the vehicle specific flight modes defined in mavsdk ???
+// could equally well go into the lua script itself, could have advantages
+typedef enum MAVSDK_APCOPTER_FLIGHTMODE {
+   MAVSDK_APCOPTER_FLIGHTMODE_STABILIZE =     0,  // manual airframe angle with manual throttle
+   MAVSDK_APCOPTER_FLIGHTMODE_ACRO =          1,  // manual body-frame angular rate with manual throttle
+   MAVSDK_APCOPTER_FLIGHTMODE_ALT_HOLD =      2,  // manual airframe angle with automatic throttle
+   MAVSDK_APCOPTER_FLIGHTMODE_AUTO =          3,  // fully automatic waypoint control using mission commands
+   MAVSDK_APCOPTER_FLIGHTMODE_GUIDED =        4,  // fully automatic fly to coordinate or fly at velocity/direction using GCS immediate commands
+   MAVSDK_APCOPTER_FLIGHTMODE_LOITER =        5,  // automatic horizontal acceleration with automatic throttle
+   MAVSDK_APCOPTER_FLIGHTMODE_RTL =           6,  // automatic return to launching point
+   MAVSDK_APCOPTER_FLIGHTMODE_CIRCLE =        7,  // automatic circular flight with automatic throttle
+   MAVSDK_APCOPTER_FLIGHTMODE_LAND =          9,  // automatic landing with horizontal position control
+   MAVSDK_APCOPTER_FLIGHTMODE_DRIFT =        11,  // semi-automous position, yaw and throttle control
+   MAVSDK_APCOPTER_FLIGHTMODE_SPORT =        13,  // manual earth-frame angular rate control with manual throttle
+   MAVSDK_APCOPTER_FLIGHTMODE_FLIP =         14,  // automatically flip the vehicle on the roll axis
+   MAVSDK_APCOPTER_FLIGHTMODE_AUTOTUNE =     15,  // automatically tune the vehicle's roll and pitch gains
+   MAVSDK_APCOPTER_FLIGHTMODE_POSHOLD =      16,  // automatic position hold with manual override, with automatic throttle
+   MAVSDK_APCOPTER_FLIGHTMODE_BRAKE =        17,  // full-brake using inertial/GPS system, no pilot input
+   MAVSDK_APCOPTER_FLIGHTMODE_THROW =        18,  // throw to launch mode using inertial/GPS system, no pilot input
+   MAVSDK_APCOPTER_FLIGHTMODE_AVOID_ADSB =   19,  // automatic avoidance of obstacles in the macro scale - e.g. full-sized aircraft
+   MAVSDK_APCOPTER_FLIGHTMODE_GUIDED_NOGPS = 20,  // guided mode but only accepts attitude and altitude
+   MAVSDK_APCOPTER_FLIGHTMODE_SMART_RTL =    21,  // SMART_RTL returns to home by retracing its steps
+   MAVSDK_APCOPTER_FLIGHTMODE_FLOWHOLD  =    22,  // FLOWHOLD holds position with optical flow without rangefinder
+   MAVSDK_APCOPTER_FLIGHTMODE_FOLLOW    =    23,  // follow attempts to follow another vehicle or ground station
+   MAVSDK_APCOPTER_FLIGHTMODE_ZIGZAG    =    24,  // ZIGZAG mode is able to fly in a zigzag manner with predefined point A and point B
+   MAVSDK_APCOPTER_FLIGHTMODE_SYSTEMID  =    25,  // System ID mode produces automated system identification signals in the controllers
+   MAVSDK_APCOPTER_FLIGHTMODE_AUTOROTATE =   26,  // Autonomous autorotation
+} MAVSDK_APCOPTER_FLIGHTMODE;
+
+typedef enum MAVSDK_APPLANE_FLIGHTMODE {
+   MAVSDK_APPLANE_MANUAL        = 0,
+   MAVSDK_APPLANE_CIRCLE        = 1,
+   MAVSDK_APPLANE_STABILIZE     = 2,
+   MAVSDK_APPLANE_TRAINING      = 3,
+   MAVSDK_APPLANE_ACRO          = 4,
+   MAVSDK_APPLANE_FLY_BY_WIRE_A = 5,
+   MAVSDK_APPLANE_FLY_BY_WIRE_B = 6,
+   MAVSDK_APPLANE_CRUISE        = 7,
+   MAVSDK_APPLANE_AUTOTUNE      = 8,
+   MAVSDK_APPLANE_AUTO          = 10,
+   MAVSDK_APPLANE_RTL           = 11,
+   MAVSDK_APPLANE_LOITER        = 12,
+   MAVSDK_APPLANE_TAKEOFF       = 13,
+   MAVSDK_APPLANE_AVOID_ADSB    = 14,
+   MAVSDK_APPLANE_GUIDED        = 15,
+   MAVSDK_APPLANE_INITIALISING  = 16,
+   MAVSDK_APPLANE_QSTABILIZE    = 17,
+   MAVSDK_APPLANE_QHOVER        = 18,
+   MAVSDK_APPLANE_QLOITER       = 19,
+   MAVSDK_APPLANE_QLAND         = 20,
+   MAVSDK_APPLANE_QRTL          = 21,
+   MAVSDK_APPLANE_QAUTOTUNE     = 22,
+   MAVSDK_APPLANE_QACRO         = 23,
+} MAVSDK_APPLANE_FLIGHTMODE; */
+
 /*
   { "APCOPTER_FLIGHTMODE_STABILIZE", MAVSDK_APCOPTER_FLIGHTMODE_STABILIZE },
   { "APCOPTER_FLIGHTMODE_ACRO", MAVSDK_APCOPTER_FLIGHTMODE_ACRO },
@@ -824,7 +1031,3 @@ const luaR_value_entry mavsdkConstants[] = {
   { "APPLANE_FLIGHTMODE_QRTL", MAVSDK_APPLANE_QRTL },
   { "APPLANE_FLIGHTMODE_QAUTOTUNE", MAVSDK_APPLANE_QAUTOTUNE },
   { "APPLANE_FLIGHTMODE_QACRO", MAVSDK_APPLANE_QACRO }, */
-#endif
-  { nullptr, 0 }  /* sentinel */
-};
-
