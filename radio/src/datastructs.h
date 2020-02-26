@@ -621,6 +621,12 @@ PACK(struct ModelData {
   CUSTOM_SCREENS_DATA
 
   char modelRegistrationID[PXX2_LEN_REGISTRATION_ID];
+//OW
+#if defined(PCBHORUS)
+  uint8_t mavlinkEnabled:1;
+  uint8_t mavlinkConfig:3;
+#endif
+//OWEND
 });
 
 /*
@@ -936,7 +942,10 @@ static inline void check_struct()
   CHKSIZE(ModelData, 5301);
 #elif defined(PCBHORUS)
   CHKSIZE(RadioData, 881);
-  CHKSIZE(ModelData, 9736);
+//OW
+//  CHKSIZE(ModelData, 9736);
+  CHKSIZE(ModelData, 9736+1);
+//OWEND
 #endif
 
 #undef CHKSIZE

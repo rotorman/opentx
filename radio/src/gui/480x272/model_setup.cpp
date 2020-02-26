@@ -21,10 +21,6 @@
 #include "opentx.h"
 #include "storage/modelslist.h"
 
-//OW
-extern MavlinkData g_mavlink;
-//OWEND
-
 uint8_t g_moduleIdx;
 
 enum MenuModelSetupItems {
@@ -1319,12 +1315,12 @@ bool menuModelSetup(event_t event)
 
       case ITEM_MODEL_SETUP_MAVLINK_ENABLE: {
         lcdDrawText(MENUS_MARGIN_LEFT + INDENT_WIDTH, y, "Enable");
-        g_mavlink.enabled = editCheckBox(g_mavlink.enabled, MODEL_SETUP_2ND_COLUMN, y, attr, event);
+        g_model.mavlinkEnabled = editCheckBox(g_model.mavlinkEnabled, MODEL_SETUP_2ND_COLUMN, y, attr, event);
       } break;
 
       case ITEM_MODEL_SETUP_MAVLINK_CONFIGURATION: {
         lcdDrawText(MENUS_MARGIN_LEFT + INDENT_WIDTH, y, "Config");
-        g_mavlink.config = editChoice(MODEL_SETUP_2ND_COLUMN, y, "\006""57600\0""115200", g_mavlink.config, 0, 1, attr, event);
+        g_model.mavlinkConfig = editChoice(MODEL_SETUP_2ND_COLUMN, y, "\006""57600\0""115200", g_model.mavlinkConfig, 0, 1, attr, event);
       } break;
 //OWEND
 

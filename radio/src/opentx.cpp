@@ -21,10 +21,6 @@
 #include <io/frsky_firmware_update.h>
 #include "opentx.h"
 
-//OW
-MavlinkData g_mavlink = { .enabled = 0, .config = 0 };
-//OWEND
-
 RadioData  g_eeGeneral;
 ModelData  g_model;
 
