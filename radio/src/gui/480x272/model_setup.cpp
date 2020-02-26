@@ -641,10 +641,10 @@ bool menuModelSetup(event_t event)
            IF_ACCESS_MODULE_RF(EXTERNAL_MODULE, 0),   // Receiver 1
            IF_ACCESS_MODULE_RF(EXTERNAL_MODULE, 0),   // Receiver 2
            IF_ACCESS_MODULE_RF(EXTERNAL_MODULE, 0),   // Receiver 3
-
-         TRAINER_ROWS,
 //OW
-         LABEL(Mavlink),
+//         TRAINER_ROWS
+         TRAINER_ROWS,
+         LABEL(MAVLink),
            0,
            0
 //OWEND

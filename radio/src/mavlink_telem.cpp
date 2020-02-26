@@ -896,10 +896,11 @@ void MavlinkTelem::handleMessage(void)
 
 
 // -- Wakeup call from OpenTx --
-
+// this is the single and main entry point
 void MavlinkTelem::wakeup()
 {
 #if defined(MAVLINK_TELEM)
+    if (!g_model.mavlinkEnabled) return; //TODO: we also want to disable/enable the serial!
 
     // look for incoming messages, also do statistics
 	uint32_t available = mavlinkTelemAvailable();
