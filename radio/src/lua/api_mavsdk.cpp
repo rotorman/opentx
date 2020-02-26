@@ -204,6 +204,13 @@ static int luaMavsdkCameraTakePhoto(lua_State *L)
 
 // -- MAVSDK GENERAL --
 
+static int luaMavsdkMavTelemIsEnabled(lua_State *L)
+{
+    bool flag = g_model.mavlinkEnabled;
+    lua_pushboolean(L, flag);
+    return 1;
+}
+
 static int luaMavsdkIsReceiving(lua_State *L)
 {
     bool flag = mavlinkTelem.isReceiving();
@@ -820,6 +827,8 @@ static int luaMavsdkGetStatusText(lua_State *L)
 
 const luaL_Reg mavsdkLib[] = {
 #if defined(MAVLINK_TELEM)
+  { "mavtelemIsEnabled", luaMavsdkMavTelemIsEnabled },
+
   { "isReceiving", luaMavsdkIsReceiving },			 // bool
   { "getAutopilotType", luaMavsdkGetAutopilotType }, // MAV_AUTOPILOT_xxx
   { "getVehicleType", luaMavsdkGetVehicleType },	 // MAV_TYPE_xxx

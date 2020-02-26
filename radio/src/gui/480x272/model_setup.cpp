@@ -644,7 +644,7 @@ bool menuModelSetup(event_t event)
 //OW
 //         TRAINER_ROWS
          TRAINER_ROWS,
-         LABEL(MAVLink),
+         LABEL(Mavlink),
            0,
            0
 //OWEND
@@ -1310,7 +1310,7 @@ bool menuModelSetup(event_t event)
 
 //OW
       case ITEM_MODEL_SETUP_MAVLINK_LABEL:
-        lcdDrawText(MENUS_MARGIN_LEFT, y, "Mavlink");
+        lcdDrawText(MENUS_MARGIN_LEFT, y, "MAVLink");
         break;
 
       case ITEM_MODEL_SETUP_MAVLINK_ENABLE: {
