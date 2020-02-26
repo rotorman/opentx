@@ -21,6 +21,10 @@
 #include "opentx.h"
 #include "storage/modelslist.h"
 
+//OW
+extern MavlinkData g_mavlink;
+//OWEND
+
 uint8_t g_moduleIdx;
 
 enum MenuModelSetupItems {
@@ -123,6 +127,11 @@ enum MenuModelSetupItems {
 #endif
   ITEM_MODEL_SETUP_TRAINER_CHANNELS,
   ITEM_MODEL_SETUP_TRAINER_PPM_PARAMS,
+//OW
+  ITEM_MODEL_SETUP_MAVLINK_LABEL,
+  ITEM_MODEL_SETUP_MAVLINK_ENABLE,
+  ITEM_MODEL_SETUP_MAVLINK_CONFIGURATION,
+//OWEND
   ITEM_MODEL_SETUP_MAX
 };
 
@@ -637,7 +646,12 @@ bool menuModelSetup(event_t event)
            IF_ACCESS_MODULE_RF(EXTERNAL_MODULE, 0),   // Receiver 2
            IF_ACCESS_MODULE_RF(EXTERNAL_MODULE, 0),   // Receiver 3
 
-         TRAINER_ROWS
+         TRAINER_ROWS,
+//OW
+         LABEL(Mavlink),
+           0,
+           0
+//OWEND
        });
 
   if (event == EVT_ENTRY || event == EVT_ENTRY_UP) {
@@ -1297,6 +1311,22 @@ bool menuModelSetup(event_t event)
           }
         }
         break;
+
+//OW
+      case ITEM_MODEL_SETUP_MAVLINK_LABEL:
+        lcdDrawText(MENUS_MARGIN_LEFT, y, "Mavlink");
+        break;
+
+      case ITEM_MODEL_SETUP_MAVLINK_ENABLE: {
+        lcdDrawText(MENUS_MARGIN_LEFT + INDENT_WIDTH, y, "Enable");
+        g_mavlink.enabled = editCheckBox(g_mavlink.enabled, MODEL_SETUP_2ND_COLUMN, y, attr, event);
+      } break;
+
+      case ITEM_MODEL_SETUP_MAVLINK_CONFIGURATION: {
+        lcdDrawText(MENUS_MARGIN_LEFT + INDENT_WIDTH, y, "Config");
+        g_mavlink.config = editChoice(MODEL_SETUP_2ND_COLUMN, y, "\006""57600\0""115200", g_mavlink.config, 0, 1, attr, event);
+      } break;
+//OWEND
 
 #if defined(PXX2)
       case ITEM_MODEL_SETUP_REGISTRATION_ID:

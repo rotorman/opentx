@@ -116,7 +116,6 @@ void MavlinkTelem::do_requests(void)
 }
 
 
-
 // -- MAVLink stuff --
 
 bool MavlinkTelem::isInVersionV2(void)
