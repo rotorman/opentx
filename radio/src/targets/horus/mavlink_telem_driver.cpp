@@ -67,12 +67,13 @@ void mavlinkTelemUsartStop(void)
 }
 
 
-void mavlinkTelemInit(void)
+void mavlinkTelemInit(uint32_t baudrate)
 {
   mavlinkTelemUsartStop();
   mavlinkTelemRxFifo.clear();
   mavlinkTelemTxFifo.clear();
-  mavlinkTelemUsartSetup(MAVLINK_TELEM_BAUDRATE);
+//  mavlinkTelemUsartSetup(MAVLINK_TELEM_BAUDRATE);
+  mavlinkTelemUsartSetup(baudrate);
 }
 
 

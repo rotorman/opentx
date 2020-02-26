@@ -364,6 +364,10 @@ class MavlinkTelem
     mavlink_message_t _msg_out;
     uint16_t _txcount = 0;
     uint8_t _txbuf[512]; //only needs to hold one message, thus by construction large enough
+
+    //uart stuff
+    bool _interface_enabled = false;
+    uint8_t _interface_config = UINT8_MAX;
 };
 
 

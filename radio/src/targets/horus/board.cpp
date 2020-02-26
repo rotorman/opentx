@@ -167,7 +167,7 @@ void boardInit()
 
 //OW
 #if defined(MAVLINK_TELEM)
-  mavlinkTelemInit();
+//  mavlinkTelemInit();
 #endif
 //OWEND
 

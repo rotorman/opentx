@@ -900,7 +900,20 @@ void MavlinkTelem::handleMessage(void)
 void MavlinkTelem::wakeup()
 {
 #if defined(MAVLINK_TELEM)
-    if (!g_model.mavlinkEnabled) return; //TODO: we also want to disable/enable the serial!
+    // TODO: we want to have a configuration enum
+    if ((_interface_enabled != g_model.mavlinkEnabled) || (_interface_config != g_model.mavlinkConfig)) { // a change occurred
+        mavlinkTelemDeInit();
+        _interface_enabled = g_model.mavlinkEnabled;
+        _interface_config = g_model.mavlinkConfig;
+        if (_interface_enabled) {
+            switch (_interface_config) {
+            case 0: mavlinkTelemInit(57600); break;
+            case 1: mavlinkTelemInit(115200); break;
+            default: mavlinkTelemInit(57600); // should never happen
+            }
+        }
+    }
+    if (!_interface_enabled) return;
 
     // look for incoming messages, also do statistics
 	uint32_t available = mavlinkTelemAvailable();
