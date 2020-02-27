@@ -45,10 +45,6 @@
 //  general exception are the mavsdk caller/setter functions, which use native units and deg whenever possible
 
 
-void mavlinkLogInit(void);
-void mavlinkLogClose(void);
-
-
 class MavlinkTelem
 {
   public:

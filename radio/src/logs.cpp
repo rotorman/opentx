@@ -40,10 +40,6 @@ void writeHeader();
 void logsInit()
 {
   memset(&g_oLogFile, 0, sizeof(g_oLogFile));
-//OW
-  //we play it simple, whenever this log needs to be inited, we also init the mavlink log
-  mavlinkLogInit();
-//OWEND
 }
 
 const char * logsOpen()

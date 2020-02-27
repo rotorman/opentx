@@ -626,7 +626,7 @@ PACK(struct ModelData {
   uint8_t mavlinkEnabled:1;
   uint8_t mavlinkConfig:3;
   uint8_t mavlinkMimicSensors:1;
-  uint8_t mavlinkLogging:1;
+  uint8_t mavlinkLogging:1; // not currently used
 #endif
 //OWEND
 });

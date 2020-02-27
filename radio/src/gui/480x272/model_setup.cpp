@@ -128,10 +128,13 @@ enum MenuModelSetupItems {
   ITEM_MODEL_SETUP_MAVLINK_ENABLE,
   ITEM_MODEL_SETUP_MAVLINK_CONFIGURATION,
   ITEM_MODEL_SETUP_MAVLINK_MIMICSENSORS,
-  ITEM_MODEL_SETUP_MAVLINK_LOGGING,
 //OWEND
   ITEM_MODEL_SETUP_MAX
 };
+
+//OW
+#define MAVLINK_ROWS    LABEL(Mavlink), 0, 0, 0
+//OWEND
 
 #define MODEL_SETUP_2ND_COLUMN         200
 #define MODEL_SETUP_3RD_COLUMN         270
@@ -646,11 +649,7 @@ bool menuModelSetup(event_t event)
 //OW
 //         TRAINER_ROWS
          TRAINER_ROWS,
-         LABEL(Mavlink),
-           0,
-           0,
-           0,
-           0
+         MAVLINK_ROWS
 //OWEND
        });
 
@@ -1330,11 +1329,6 @@ bool menuModelSetup(event_t event)
       case ITEM_MODEL_SETUP_MAVLINK_MIMICSENSORS: {
         lcdDrawText(MENUS_MARGIN_LEFT + INDENT_WIDTH, y, "Sensors");
         g_model.mavlinkMimicSensors = editCheckBox(g_model.mavlinkMimicSensors, MODEL_SETUP_2ND_COLUMN, y, attr, event);
-      } break;
-
-      case ITEM_MODEL_SETUP_MAVLINK_LOGGING: {
-        lcdDrawText(MENUS_MARGIN_LEFT + INDENT_WIDTH, y, "Logging");
-        g_model.mavlinkLogging = editCheckBox(g_model.mavlinkLogging, MODEL_SETUP_2ND_COLUMN, y, attr, event);
       } break;
 //OWEND
 
