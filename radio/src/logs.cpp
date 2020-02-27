@@ -40,6 +40,10 @@ void writeHeader();
 void logsInit()
 {
   memset(&g_oLogFile, 0, sizeof(g_oLogFile));
+//OW
+  //we play it simple, whenever this log needs to be inited, we also init the mavlink log
+  mavlinkLogInit();
+//OWEND
 }
 
 const char * logsOpen()
@@ -123,6 +127,10 @@ void logsClose()
     }
     lastLogTime = 0;
   }
+//OW
+  //we play it simple, whenever this log needs to be closed, we also close the mavlink log
+  mavlinkLogClose();
+//OWEND
 }
 
 

@@ -44,6 +44,11 @@
 //  except of where noted functions/structs use units of the MAVLink message
 //  general exception are the mavsdk caller/setter functions, which use native units and deg whenever possible
 
+
+void mavlinkLogInit(void);
+void mavlinkLogClose(void);
+
+
 class MavlinkTelem
 {
   public:
