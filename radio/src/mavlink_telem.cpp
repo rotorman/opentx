@@ -1066,7 +1066,7 @@ void MavlinkTelem::wakeup()
 	// receiving timeouts
 	if (_is_receiving) {
 		_is_receiving--;
-		if (!_is_receiving) _reset();
+		if (!_is_receiving) _reset(); //this also resets is_receiving of all other components
 	}
 	if (radio.is_receiving) {
 	    radio.is_receiving--;
@@ -1289,6 +1289,7 @@ void MavlinkTelem::_resetCamera(void)
 void MavlinkTelem::_resetRadio(void)
 {
     radio.is_receiving = 0;
+
     radio.rssi = UINT8_MAX;
     radio.remrssi = UINT8_MAX;
     radio.noise = 0;
