@@ -632,7 +632,6 @@ void bluetoothDisable();
 // MAVLINK_TELEM driver
 //XX#if defined(MAVLINK_TELEM)
 #if defined(RADIO_T16) && defined(PCBX10)
-#define MAVLINK_TELEM_BAUDRATE			57600
 #define MAVLINK_TELEM_TX_FIFO_SIZE		512
 #define MAVLINK_TELEM_RX_FIFO_SIZE		512
 void mavlinkTelemInit(uint32_t baudrate);

@@ -199,6 +199,7 @@ void MavlinkTelem::generateCmdDoSetMode(uint8_t tsystem, uint8_t tcomponent, MAV
     _generateCmdLong(tsystem, tcomponent, MAV_CMD_DO_SET_MODE, base_mode, custom_mode);
 }
 
+
 // ATTENTION: yaw is in RAD !  ArduPilot doesn't support acceleration
 void MavlinkTelem::generateSetPositionTargetGlobalInt(
         uint8_t tsystem, uint8_t tcomponent,
@@ -261,6 +262,7 @@ void MavlinkTelem::generateCmdDoMountConfigure(uint8_t tsystem, uint8_t tcompone
     _generateCmdLong(tsystem, tcomponent, MAV_CMD_DO_MOUNT_CONFIGURE, mode, 0,0,0,0,0,0);
 }
 
+
 // angles are in DEG
 // ATTENTION: if a mount has no pan control, then this will also yaw the copter in guided mode overwriting _fixed_yaw
 void MavlinkTelem::generateCmdDoMountControl(uint8_t tsystem, uint8_t tcomponent, float pitch_deg, float yaw_deg)
@@ -279,6 +281,7 @@ void MavlinkTelem::apSetFlightMode(uint32_t ap_flight_mode)
     SETTASK(TASK_AUTOPILOT, TASK_SENDCMD_SET_MODE);
 }
 
+//alt and yaw can be NAN if they should be ignored
 void MavlinkTelem::apGotoPositionAltYawDeg(int32_t lat, int32_t lon, float alt, float yaw)
 {
     _t_coordinate_frame = MAV_FRAME_GLOBAL_RELATIVE_ALT_INT;
@@ -288,11 +291,6 @@ void MavlinkTelem::apGotoPositionAltYawDeg(int32_t lat, int32_t lon, float alt, 
                    POSITION_TARGET_TYPEMASK_YAW_RATE_IGNORE;
     if (isnan(alt)) { _t_type_mask |= POSITION_TARGET_TYPEMASK_Z_IGNORE; alt = 0.0f; }
     if (isnan(yaw)) { _t_type_mask |= POSITION_TARGET_TYPEMASK_YAW_IGNORE; yaw = 0.0f; }
-/*
-    _t_type_mask = (1 << 3)|(1 << 4)|(1 << 5);  //ignore vel
-    _t_type_mask |= (1 << 6)|(1 << 7)|(1 << 8); //ignore acc
-    _t_type_mask |= (1 << 11);                  //ignore yaw rate
-*/
     _t_lat = lat; _t_lon = lon; _t_alt = alt; _t_yaw_rad = yaw * FDEGTORAD;
     _t_vx = _t_vy = _t_vz = 0.0f; _t_yaw_rad_rate = 0.0f;
     SETTASK(TASK_AUTOPILOT, TASK_SENDMSG_SET_POSITION_TARGET_GLOBAL_INT);

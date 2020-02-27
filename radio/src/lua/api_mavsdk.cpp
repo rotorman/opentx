@@ -363,7 +363,8 @@ static int luaMavsdkGetAttYawDeg(lua_State *L)
 
 static int luaMavsdkGetGps1Status(lua_State *L)
 {
-/*	lua_createtable(L, 0, 4);
+/* what method is better ??
+    lua_createtable(L, 0, 4);
 	lua_pushtablenumber(L, "fix", mavlinkTelem.gps_fix);
 	lua_pushtablenumber(L, "hdop", mavlinkTelem.gps_hdop * 0.01);
 	lua_pushtablenumber(L, "vdop", mavlinkTelem.gps_vdop * 0.01);
@@ -397,17 +398,17 @@ static int luaMavsdkGetGps1VDop(lua_State *L)
 
 static int luaMavsdkGetGps1Sat(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.gps1.sat); //UINT8_MAX if not known
+    lua_pushnumber(L, mavlinkTelem.gps1.sat); // UINT8_MAX if not known, but we don't do a nil here
 	return 1;
 }
 
-/*static int luaMavsdkGetGps1LatLonDeg(lua_State *L)
+static int luaMavsdkGetGps1LatLonDeg(lua_State *L) // I believe Lua numbers are double, so should be OK
 {
 	lua_newtable(L);
     lua_pushtablenumber(L, "lat", mavlinkTelem.gps1.lat * 1.0E-7);
     lua_pushtablenumber(L, "lon", mavlinkTelem.gps1.lon * 1.0E-7);
 	return 1;
-}*/
+}
 
 static int luaMavsdkGetGps1LatLonInt(lua_State *L)
 {
@@ -417,7 +418,7 @@ static int luaMavsdkGetGps1LatLonInt(lua_State *L)
     return 1;
 }
 
-static int luaMavsdkGetGps1AltitudeAmsl(lua_State *L)
+static int luaMavsdkGetGps1AltitudeMsl(lua_State *L)
 {
     lua_pushnumber(L, mavlinkTelem.gps1.alt_mm * 0.001f);
 	return 1;
@@ -478,13 +479,13 @@ static int luaMavsdkGetGps2Sat(lua_State *L)
     return 1;
 }
 
-/*static int luaMavsdkGetGps2LatLonDeg(lua_State *L)
+static int luaMavsdkGetGps2LatLonDeg(lua_State *L) // I believe Lua numbers are double, so should be OK
 {
     lua_newtable(L);
     lua_pushtablenumber(L, "lat", mavlinkTelem.gps2.lat * 1.0E-7);
     lua_pushtablenumber(L, "lon", mavlinkTelem.gps2.lon * 1.0E-7);
     return 1;
-}*/
+}
 
 static int luaMavsdkGetGps2LatLonInt(lua_State *L)
 {
@@ -494,7 +495,7 @@ static int luaMavsdkGetGps2LatLonInt(lua_State *L)
     return 1;
 }
 
-static int luaMavsdkGetGps2AltitudeAmsl(lua_State *L)
+static int luaMavsdkGetGps2AltitudeMsl(lua_State *L)
 {
     lua_pushnumber(L, mavlinkTelem.gps2.alt_mm * 0.001f);
     return 1;
@@ -546,13 +547,13 @@ static int luaMavsdkGetGpsCount(lua_State *L)
 
 // -- MAVSDK POSITION --
 
-/*static int luaMavsdkGetPosLatLonDeg(lua_State *L)
+static int luaMavsdkGetPosLatLonDeg(lua_State *L) // I believe Lua numbers are double, so should be OK
 {
     lua_newtable(L);
     lua_pushtablenumber(L, "lat", mavlinkTelem.gposition.lat * 1.0E-7);
     lua_pushtablenumber(L, "lon", mavlinkTelem.gposition.lon * 1.0E-7);
     return 1;
-}*/
+}
 
 static int luaMavsdkGetPosLatLonInt(lua_State *L)
 {
@@ -562,7 +563,7 @@ static int luaMavsdkGetPosLatLonInt(lua_State *L)
     return 1;
 }
 
-static int luaMavsdkGetPosAltitudeAmsl(lua_State *L)
+static int luaMavsdkGetPosAltitudeMsl(lua_State *L)
 {
     lua_pushnumber(L, mavlinkTelem.gposition.alt_mm * 0.001f);
     return 1;
@@ -580,7 +581,7 @@ static int luaMavsdkGetPosHeadingDeg(lua_State *L)
     return 1;
 }
 
-static int luaMavsdkGetPosSpeedNED(lua_State *L)
+static int luaMavsdkGetPosSpeedNed(lua_State *L)
 {
     lua_newtable(L);
     lua_pushtablenumber(L, "vx", mavlinkTelem.gposition.vx_cmps * 0.01f);
@@ -951,7 +952,7 @@ const luaL_Reg mavsdkLib[] = {
   { "getGpsVDop", luaMavsdkGetGps1VDop },
   { "getGpsSat", luaMavsdkGetGps1Sat },
   { "getGpsLatLonInt", luaMavsdkGetGps1LatLonInt },
-  { "getGpsAltitudeAmsl", luaMavsdkGetGps1AltitudeAmsl },
+  { "getGpsAltitudeMsl", luaMavsdkGetGps1AltitudeMsl },
   { "getGpsSpeed", luaMavsdkGetGps1Speed },
   { "getGpsCourseOverGroundDeg", luaMavsdkGetGps1CourseOverGroundDeg },
 
@@ -961,7 +962,7 @@ const luaL_Reg mavsdkLib[] = {
   { "getGps2VDop", luaMavsdkGetGps2VDop },
   { "getGps2Sat", luaMavsdkGetGps2Sat },
   { "getGps2LatLonInt", luaMavsdkGetGps2LatLonInt },
-  { "getGps2AltitudeAmsl", luaMavsdkGetGps2AltitudeAmsl },
+  { "getGps2AltitudeMsl", luaMavsdkGetGps2AltitudeMsl },
   { "getGps2Speed", luaMavsdkGetGps2Speed },
   { "getGps2CourseOverGroundDeg", luaMavsdkGetGps2CourseOverGroundDeg },
 
@@ -970,10 +971,10 @@ const luaL_Reg mavsdkLib[] = {
   { "getGpsCount", luaMavsdkGetGpsCount },
 
   { "getPositionLatLonInt", luaMavsdkGetPosLatLonInt },
-  { "getPositionAltitudeAmsl", luaMavsdkGetPosAltitudeAmsl },
+  { "getPositionAltitudeMsl", luaMavsdkGetPosAltitudeMsl },
   { "getPositionAltitudeRelative", luaMavsdkGetPosAltitudeRelative },
   { "getPositionHeadingDeg", luaMavsdkGetPosHeadingDeg },
-  { "getPositionSpeedNED", luaMavsdkGetPosSpeedNED },
+  { "getPositionSpeedNed", luaMavsdkGetPosSpeedNed },
 
   { "getVfrAirSpeed", luaMavsdkGetVfrAirSpeed },
   { "getVfrGroundSpeed", luaMavsdkGetVfrGroundSpeed },
