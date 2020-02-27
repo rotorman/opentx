@@ -841,8 +841,8 @@ static int luaMavsdkApGotoPositionAltYawDeg(lua_State *L)
     int32_t lon = luaL_checkinteger(L, 2);
     float alt = luaL_checknumber(L, 3);
     float yaw = luaL_checknumber(L, 4);
-//    float alt = luaL_optnumber(L, 3, NAN);
-//    float yaw = luaL_optnumber(L, 4, NAN);
+//XX    float alt = luaL_optnumber(L, 3, NAN);
+//XX    float yaw = luaL_optnumber(L, 4, NAN);
     mavlinkTelem.apGotoPositionAltYawDeg(lat, lon, alt, yaw);
     return 0;
 }

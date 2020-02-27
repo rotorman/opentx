@@ -143,19 +143,32 @@ void MavlinkTelem::setOutVersionV1(void)
 
 // -- Generate MAVLink messages --
 
+void MavlinkTelem::_generateCmdLong(
+        uint8_t tsystem, uint8_t tcomponent, uint16_t cmd,
+        float p1, float p2, float p3, float p4, float p5, float p6, float p7)
+{
+    setOutVersionV2();
+    mavlink_msg_command_long_pack(
+            _my_sysid, _my_compid, &_msg_out,
+            tsystem, tcomponent, cmd, 0, p1, p2, p3, p4, p5, p6, p7
+            );
+    _txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+}
+
+
 void MavlinkTelem::generateHeartbeat(uint8_t base_mode, uint32_t custom_mode, uint8_t system_status)
 {
 	setOutVersionV2();
 	mavlink_msg_heartbeat_pack(
 		  _my_sysid, _my_compid, &_msg_out,
           MAV_TYPE_GCS, MAV_AUTOPILOT_INVALID, base_mode, custom_mode, system_status
-		  //MAV_TYPE_GIMBAL, MAV_AUTOPILOT_INVALID, base_mode, custom_mode, system_status
 		  );
 	_txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
 }
 
 
-void MavlinkTelem::generateRequestDataStream(uint8_t tsystem, uint8_t tcomponent, uint8_t data_stream, uint16_t rate, uint8_t startstop)
+void MavlinkTelem::generateRequestDataStream(
+        uint8_t tsystem, uint8_t tcomponent, uint8_t data_stream, uint16_t rate, uint8_t startstop)
 {
 	setOutVersionV2();
 	mavlink_msg_request_data_stream_pack(
@@ -176,15 +189,6 @@ void MavlinkTelem::generateParamRequestList(uint8_t tsystem, uint8_t tcomponent)
 	_txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
 }
 
-void MavlinkTelem::_generateCmdLong(uint8_t tsystem, uint8_t tcomponent, uint16_t cmd, float p1, float p2, float p3, float p4, float p5, float p6, float p7)
-{
-    setOutVersionV2();
-    mavlink_msg_command_long_pack(
-            _my_sysid, _my_compid, &_msg_out,
-            tsystem, tcomponent, cmd, 0, p1, p2, p3, p4, p5, p6, p7
-            );
-    _txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
-}
 
 //for ArduPilot:
 //  base_mode must have MAV_MODE_FLAG_CUSTOM_MODE_ENABLED bit set,
@@ -196,7 +200,10 @@ void MavlinkTelem::generateCmdDoSetMode(uint8_t tsystem, uint8_t tcomponent, MAV
 }
 
 // ATTENTION: yaw is in RAD !  ArduPilot doesn't support acceleration
-void MavlinkTelem::generateSetPositionTargetGlobalInt(uint8_t tsystem, uint8_t tcomponent, uint8_t coordinate_frame, uint16_t type_mask, int32_t lat, int32_t lon, float alt, float vx, float vy, float vz, float yaw_rad, float yaw_rad_rate)
+void MavlinkTelem::generateSetPositionTargetGlobalInt(
+        uint8_t tsystem, uint8_t tcomponent,
+        uint8_t coordinate_frame, uint16_t type_mask,
+        int32_t lat, int32_t lon, float alt, float vx, float vy, float vz, float yaw_rad, float yaw_rad_rate)
 {
     setOutVersionV2();
     mavlink_msg_set_position_target_global_int_pack(
@@ -257,7 +264,8 @@ void MavlinkTelem::generateCmdDoMountConfigure(uint8_t tsystem, uint8_t tcompone
 // angles are in DEG
 void MavlinkTelem::generateCmdDoMountControl(uint8_t tsystem, uint8_t tcomponent, float pitch_deg, float yaw_deg)
 {
-    _generateCmdLong(tsystem, tcomponent, MAV_CMD_DO_MOUNT_CONTROL, pitch_deg, 0.0, yaw_deg, 0,0,0, MAV_MOUNT_MODE_MAVLINK_TARGETING);
+    _generateCmdLong(tsystem, tcomponent, MAV_CMD_DO_MOUNT_CONTROL,
+            pitch_deg, 0.0, yaw_deg, 0,0,0, MAV_MOUNT_MODE_MAVLINK_TARGETING);
 }
 
 
@@ -274,7 +282,7 @@ void MavlinkTelem::apGotoPositionAltYawDeg(int32_t lat, int32_t lon, float alt, 
 {
     _t_coordinate_frame = MAV_FRAME_GLOBAL_RELATIVE_ALT_INT;
     //_t_type_mask = 0x09F8;
-/*
+/*//XX
     _t_type_mask = POSITION_TARGET_TYPEMASK_VX_IGNORE | POSITION_TARGET_TYPEMASK_VY_IGNORE | POSITION_TARGET_TYPEMASK_VZ_IGNORE |
                    POSITION_TARGET_TYPEMASK_AX_IGNORE | POSITION_TARGET_TYPEMASK_AY_IGNORE | POSITION_TARGET_TYPEMASK_AZ_IGNORE |
                    POSITION_TARGET_TYPEMASK_YAW_RATE_IGNORE;
@@ -376,7 +384,8 @@ void MavlinkTelem::doTask(void)
         }
         if (_task[TASK_AUTOPILOT] & TASK_SENDMSG_SET_POSITION_TARGET_GLOBAL_INT) {
             RESETTASK(TASK_AUTOPILOT,TASK_SENDMSG_SET_POSITION_TARGET_GLOBAL_INT);
-            generateSetPositionTargetGlobalInt(_sysid, autopilot.compid, _t_coordinate_frame, _t_type_mask, _t_lat, _t_lon, _t_alt, _t_vx, _t_vy, _t_vz, _t_yaw_rad, _t_yaw_rad_rate);
+            generateSetPositionTargetGlobalInt(_sysid, autopilot.compid, _t_coordinate_frame, _t_type_mask,
+                    _t_lat, _t_lon, _t_alt, _t_vx, _t_vy, _t_vz, _t_yaw_rad, _t_yaw_rad_rate);
             return; //do only one per loop
         }
         if (_task[TASK_AUTOPILOT] & TASK_SENDCMD_CONDITION_YAW) {
