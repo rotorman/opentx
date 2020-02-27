@@ -703,13 +703,14 @@ void MavlinkTelem::handleMessageAutopilot(void)
         gps1.vel_cmps = payload.vel;
         gps1.cog_cdeg = payload.cog;
         gps_instancemask &= 0x01;
-        setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, GPS_ALT_FIRST_ID, 0, 10, (int32_t)(payload.alt), UNIT_METERS, 3);
-        if (payload.vel != UINT16_MAX) {
-        	setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, GPS_SPEED_FIRST_ID, 0, 11, (int32_t)(payload.vel), UNIT_METERS, 2);
+        if (g_model.mavlinkMimicSensors) {
+            setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, GPS_ALT_FIRST_ID, 0, 10, (int32_t)(payload.alt), UNIT_METERS, 3);
+            if (payload.vel != UINT16_MAX)
+                setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, GPS_SPEED_FIRST_ID, 0, 11, (int32_t)(payload.vel), UNIT_METERS, 2);
+            // payload.cog //uint16 cdeg
+            // { GPS_COURS_FIRST_ID, GPS_COURS_LAST_ID, 0, ZSTR_HDG, UNIT_DEGREE, 2 },
+            // { GPS_LONG_LATI_FIRST_ID, GPS_LONG_LATI_LAST_ID, 0, ZSTR_GPS, UNIT_GPS, 0 },
         }
-        // payload.cog //uint16 cdeg
-        // { GPS_COURS_FIRST_ID, GPS_COURS_LAST_ID, 0, ZSTR_HDG, UNIT_DEGREE, 2 },
-        // { GPS_LONG_LATI_FIRST_ID, GPS_LONG_LATI_LAST_ID, 0, ZSTR_GPS, UNIT_GPS, 0 },
 		}break;
 
     case MAVLINK_MSG_ID_GPS2_RAW: {
@@ -749,10 +750,12 @@ void MavlinkTelem::handleMessageAutopilot(void)
     	vfr.climbrate_mps = payload.climb;
     	vfr.heading_deg = payload.heading;
     	vfr.thro_pct = payload.throttle;
-        setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, ALT_FIRST_ID, 0, 13, (int32_t)(payload.alt * 100.0f), UNIT_METERS, 2);
-        setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, VARIO_FIRST_ID, 0, 14, (int32_t)(payload.climb * 100.0f), UNIT_METERS_PER_SECOND, 2);
-        setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, AIR_SPEED_FIRST_ID, 0, 15, (int32_t)(payload.airspeed * 100.0f), UNIT_METERS_PER_SECOND, 2);
-        setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, GPS_COURS_FIRST_ID, 0, 16, (int32_t)payload.heading * 10, UNIT_DEGREE, 1);
+        if (g_model.mavlinkMimicSensors) {
+            setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, ALT_FIRST_ID, 0, 13, (int32_t)(payload.alt * 100.0f), UNIT_METERS, 2);
+            setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, VARIO_FIRST_ID, 0, 14, (int32_t)(payload.climb * 100.0f), UNIT_METERS_PER_SECOND, 2);
+            setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, AIR_SPEED_FIRST_ID, 0, 15, (int32_t)(payload.airspeed * 100.0f), UNIT_METERS_PER_SECOND, 2);
+            setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, GPS_COURS_FIRST_ID, 0, 16, (int32_t)payload.heading * 10, UNIT_DEGREE, 1);
+        }
 		}break;
 
 /* let's use BATTERY_STATUS, is nearly the same thing
@@ -799,15 +802,16 @@ void MavlinkTelem::handleMessageAutopilot(void)
     		bat2.cellcount = cellcount;
         }
         if (payload.id < 8) bat_instancemask &= (1 << payload.id);
-
-        setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, BATT_ID, 0, 17, voltage/100, UNIT_VOLTS, 1);
-        setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, VFAS_FIRST_ID, 0, 18, voltage/10, UNIT_VOLTS, 2);
-    	int32_t current_battery = payload.current_battery / 10; //int16_t  cA
-        setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, CURR_FIRST_ID, 0, 19, current_battery, UNIT_AMPS, 1);
-        //  { CELLS_FIRST_ID, CELLS_LAST_ID, 0, ZSTR_CELLS, UNIT_CELLS, 2 },
-        // { RBOX_BATT1_FIRST_ID, RBOX_BATT1_LAST_ID, 0, ZSTR_BATT1_VOLTAGE, UNIT_VOLTS, 3 },
-        // { RBOX_BATT1_FIRST_ID, RBOX_BATT1_LAST_ID, 1, ZSTR_BATT1_CURRENT, UNIT_AMPS, 2 },
-        // { RBOX_CNSP_FIRST_ID, RBOX_CNSP_LAST_ID, 0, ZSTR_BATT1_CONSUMPTION, UNIT_MAH, 0 },
+        if (g_model.mavlinkMimicSensors) {
+            setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, BATT_ID, 0, 17, voltage/100, UNIT_VOLTS, 1);
+            setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, VFAS_FIRST_ID, 0, 18, voltage/10, UNIT_VOLTS, 2);
+            int32_t current_battery = payload.current_battery / 10; //int16_t  cA
+            setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, CURR_FIRST_ID, 0, 19, current_battery, UNIT_AMPS, 1);
+            //  { CELLS_FIRST_ID, CELLS_LAST_ID, 0, ZSTR_CELLS, UNIT_CELLS, 2 },
+            // { RBOX_BATT1_FIRST_ID, RBOX_BATT1_LAST_ID, 0, ZSTR_BATT1_VOLTAGE, UNIT_VOLTS, 3 },
+            // { RBOX_BATT1_FIRST_ID, RBOX_BATT1_LAST_ID, 1, ZSTR_BATT1_CURRENT, UNIT_AMPS, 2 },
+            // { RBOX_CNSP_FIRST_ID, RBOX_CNSP_LAST_ID, 0, ZSTR_BATT1_CONSUMPTION, UNIT_MAH, 0 },
+        }
     	}break;
 
     case MAVLINK_MSG_ID_STATUSTEXT: {
@@ -888,11 +892,13 @@ void MavlinkTelem::handleMessage(void)
     	radio.noise = payload.noise;
     	radio.remnoise = payload.remnoise;
         radio.is_receiving = MAVLINK_TELEM_RADIO_RECEIVING_TIMEOUT;
-        int32_t r = (payload.rssi == UINT8_MAX) ? 0 : payload.rssi;
-        setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, RSSI_ID, 0, 1, r, UNIT_DB, 0);
-    	//#if defined(MULTIMODULE)
-    	//{ TX_RSSI_ID, TX_RSSI_ID, 0, ZSTR_TX_RSSI   , UNIT_DB , 0 },
-    	//{ TX_LQI_ID , TX_LQI_ID,  0, ZSTR_TX_QUALITY, UNIT_RAW, 0 },
+        if (g_model.mavlinkMimicSensors) {
+            int32_t r = (payload.rssi == UINT8_MAX) ? 0 : payload.rssi;
+            setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, RSSI_ID, 0, 1, r, UNIT_DB, 0);
+            //#if defined(MULTIMODULE)
+            //{ TX_RSSI_ID, TX_RSSI_ID, 0, ZSTR_TX_RSSI   , UNIT_DB , 0 },
+            //{ TX_LQI_ID , TX_LQI_ID,  0, ZSTR_TX_QUALITY, UNIT_RAW, 0 },
+        }
     	return;
    	}
 
@@ -948,7 +954,7 @@ void MavlinkTelem::wakeup()
         	handleMessage();
 			msg_rx_count++;
 			_msg_rx_persec_cnt++;
-            telemetryStreaming = 2*TELEMETRY_TIMEOUT10ms; // 2 seconds
+			if (g_model.mavlinkMimicSensors) telemetryStreaming = 2*TELEMETRY_TIMEOUT10ms; // 2 seconds
 	    }
 	}
 
@@ -979,11 +985,32 @@ void MavlinkTelem::wakeup()
 
     // send out any pending messages
 	if (_txcount) {
-		if (mavlinkTelemPutBuf(_txbuf, _txcount)) _txcount = 0;
+		if (mavlinkTelemPutBuf(_txbuf, _txcount)) {
+/* not good
+	        if (g_model.mavlinkLogging && sdMounted()) {
+                struct gtm utm;
+	            gettime(&utm);
+	            f_printf(&g_mavlinkFile, "\r\n%4d-%02d-%02d,%02d:%02d:%02d.%02d0:", utm.tm_year+TM_YEAR_BASE, utm.tm_mon+1, utm.tm_mday, utm.tm_hour, utm.tm_min, utm.tm_sec, g_ms100);
+	            //just print the header for now
+	            if ((_txbuf[0] == 0xFD) && (_txcount >= 12)) {
+	                for(uint16_t i=0; i<10; i++) f_printf(&g_mavlinkFile, " %02X", _txbuf[i]);
+	                uint32_t msgid = (uint32_t)_txbuf[7] + ((uint32_t)_txbuf[8] << 8) + ((uint32_t)_txbuf[9] << 16);
+	                f_printf(&g_mavlinkFile, " %u", msgid);
+	            }
+                if ((_txbuf[0] == 0xFE) && (_txcount >= 8)) {
+                    for(uint16_t i=0; i<6; i++) f_printf(&g_mavlinkFile, " %02X", _txbuf[i]);
+                    f_printf(&g_mavlinkFile, " %u", _txbuf[5]);
+                }
+
+	        }
+*/
+            _txcount = 0;
+		}
 	}
 
 #endif
 }
+
 
 
 // -- Miscellaneous --
