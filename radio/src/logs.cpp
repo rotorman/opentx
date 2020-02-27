@@ -123,10 +123,6 @@ void logsClose()
     }
     lastLogTime = 0;
   }
-//OW
-  //we play it simple, whenever this log needs to be closed, we also close the mavlink log
-  mavlinkLogClose();
-//OWEND
 }
 
 
