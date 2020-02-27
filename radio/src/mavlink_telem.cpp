@@ -31,6 +31,11 @@
 MavlinkTelem mavlinkTelem;
 
 
+#define FPI         3.141592654f
+#define FDEGTORAD   (FPI/180.0f)
+#define FRADTODEG   (180.0f/FPI)
+
+
 // -- TASK handlers --
 
 void MavlinkTelem::push_task(uint8_t idx, uint32_t task)
@@ -190,20 +195,15 @@ void MavlinkTelem::generateCmdDoSetMode(uint8_t tsystem, uint8_t tcomponent, MAV
     _generateCmdLong(tsystem, tcomponent, MAV_CMD_DO_SET_MODE, base_mode, custom_mode);
 }
 
-//for ArduPilot:
-//  doesn't support acceleration
-//  position:  type_mask = 0x0DF8
-//  position & velocity: type_mask = 0x0DC0
-//  velocity: type_mask = 0x0DC7
-void MavlinkTelem::generateSetPositionTargetGlobalInt(uint8_t tsystem, uint8_t tcomponent, uint8_t coordinate_frame, uint16_t type_mask, int32_t lat, int32_t lon, float alt, float vx, float vy, float vz, float yaw, float yaw_rate)
+// ATTENTION: yaw is in RAD !  ArduPilot doesn't support acceleration
+void MavlinkTelem::generateSetPositionTargetGlobalInt(uint8_t tsystem, uint8_t tcomponent, uint8_t coordinate_frame, uint16_t type_mask, int32_t lat, int32_t lon, float alt, float vx, float vy, float vz, float yaw_rad, float yaw_rad_rate)
 {
     setOutVersionV2();
     mavlink_msg_set_position_target_global_int_pack(
             _my_sysid, _my_compid, &_msg_out,
-            0, //uint32_t time_boot_ms
-            tsystem, tcomponent,
-            coordinate_frame, type_mask,
-            lat, lon, alt, vx, vy, vz, 0.0f, 0.0f, 0.0f, yaw, yaw_rate
+            0, //uint32_t time_boot_ms,
+            tsystem, tcomponent, coordinate_frame, type_mask,
+            lat, lon, alt, vx, vy, vz, 0.0f, 0.0f, 0.0f, yaw_rad, yaw_rad_rate
             );
     _txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
 }
@@ -254,9 +254,10 @@ void MavlinkTelem::generateCmdDoMountConfigure(uint8_t tsystem, uint8_t tcompone
     _generateCmdLong(tsystem, tcomponent, MAV_CMD_DO_MOUNT_CONFIGURE, mode, 0,0,0,0,0,0);
 }
 
-void MavlinkTelem::generateCmdDoMountControl(uint8_t tsystem, uint8_t tcomponent, float pitch, float yaw)
+// angles are in DEG
+void MavlinkTelem::generateCmdDoMountControl(uint8_t tsystem, uint8_t tcomponent, float pitch_deg, float yaw_deg)
 {
-    _generateCmdLong(tsystem, tcomponent, MAV_CMD_DO_MOUNT_CONTROL, pitch, 0.0, yaw, 0,0,0, MAV_MOUNT_MODE_MAVLINK_TARGETING);
+    _generateCmdLong(tsystem, tcomponent, MAV_CMD_DO_MOUNT_CONTROL, pitch_deg, 0.0, yaw_deg, 0,0,0, MAV_MOUNT_MODE_MAVLINK_TARGETING);
 }
 
 
@@ -269,33 +270,40 @@ void MavlinkTelem::apSetFlightMode(uint32_t ap_flight_mode)
     SETTASK(TASK_AUTOPILOT, TASK_SENDCMD_SET_MODE);
 }
 
-//note, we can enter negative yaw here, sign determines direction
-void MavlinkTelem::apSetYaw(float yaw, bool relative)
-{
-    if (relative) {
-        _tsy_yaw_relative = 1.0f;
-        if (yaw < 0.0f){ _tsy_yaw_dir = -1.0f; yaw = -yaw; } else{ _tsy_yaw_dir = 1.0f; }
-    } else {
-        _tsy_yaw_relative = 0.0f;
-        _tsy_yaw_dir = 0.0f;
-    }
-    float res = fmodf(yaw, 360.0f); //yaw must be in range [0..360]
-    if (res < 0.0f) res += 360.0f;
-    _tsy_yaw = res;
-    SETTASK(TASK_AUTOPILOT, TASK_SENDCMD_CONDITION_YAW);
-}
-
-void MavlinkTelem::apGotoPositionAltYaw(int32_t lat, int32_t lon, float alt, float yaw)
+void MavlinkTelem::apGotoPositionAltYawDeg(int32_t lat, int32_t lon, float alt, float yaw)
 {
     _t_coordinate_frame = MAV_FRAME_GLOBAL_RELATIVE_ALT_INT;
-    //_t_type_mask = 0x0DF8;
+    //_t_type_mask = 0x09F8;
+/*
     _t_type_mask = POSITION_TARGET_TYPEMASK_VX_IGNORE | POSITION_TARGET_TYPEMASK_VY_IGNORE | POSITION_TARGET_TYPEMASK_VZ_IGNORE |
                    POSITION_TARGET_TYPEMASK_AX_IGNORE | POSITION_TARGET_TYPEMASK_AY_IGNORE | POSITION_TARGET_TYPEMASK_AZ_IGNORE |
                    POSITION_TARGET_TYPEMASK_YAW_RATE_IGNORE;
     if (isnan(alt)) _t_type_mask |= POSITION_TARGET_TYPEMASK_Z_IGNORE;
-    if (isnan(yaw)) _t_type_mask |= POSITION_TARGET_TYPEMASK_YAW_IGNORE;
-    _t_lat = lat; _t_lon = lon; _t_alt = alt; _t_vx = _t_vy = _t_vz = 0.0f; _t_yaw = yaw; _t_yaw_rate = 0.0f;
+    if (isnan(yaw)) _t_type_mask |= POSITION_TARGET_TYPEMASK_YAW_IGNORE; */
+
+    _t_type_mask = (1 << 3)|(1 << 4)|(1 << 5);  //ignore vel
+    _t_type_mask |= (1 << 6)|(1 << 7)|(1 << 8); //ignore acc
+    _t_type_mask |= (1 << 11);                  //ignore yaw rate
+
+    _t_lat = lat; _t_lon = lon; _t_alt = alt; _t_yaw_rad = yaw * FDEGTORAD;
+    _t_vx = _t_vy = _t_vz = 0.0f; _t_yaw_rad_rate = 0.0f;
     SETTASK(TASK_AUTOPILOT, TASK_SENDMSG_SET_POSITION_TARGET_GLOBAL_INT);
+}
+
+//note, we can enter negative yaw here, sign determines direction
+void MavlinkTelem::apSetYawDeg(float yaw, bool relative)
+{
+    if (relative) {
+        _tsy_relative = 1.0f;
+        if (yaw < 0.0f){ _tsy_dir = -1.0f; yaw = -yaw; } else{ _tsy_dir = 1.0f; }
+    } else {
+        _tsy_relative = 0.0f;
+        _tsy_dir = 0.0f;
+    }
+    float res = fmodf(yaw, 360.0f); //yaw must be in range [0..360]
+    if (res < 0.0f) res += 360.0f;
+    _tsy_yaw_deg = res;
+    SETTASK(TASK_AUTOPILOT, TASK_SENDCMD_CONDITION_YAW);
 }
 
 
@@ -368,12 +376,12 @@ void MavlinkTelem::doTask(void)
         }
         if (_task[TASK_AUTOPILOT] & TASK_SENDMSG_SET_POSITION_TARGET_GLOBAL_INT) {
             RESETTASK(TASK_AUTOPILOT,TASK_SENDMSG_SET_POSITION_TARGET_GLOBAL_INT);
-            generateSetPositionTargetGlobalInt(_sysid, autopilot.compid, _t_coordinate_frame, _t_type_mask, _t_lat, _t_lon, _t_alt, _t_vx, _t_vy, _t_vz, _t_yaw, _t_yaw_rate);
+            generateSetPositionTargetGlobalInt(_sysid, autopilot.compid, _t_coordinate_frame, _t_type_mask, _t_lat, _t_lon, _t_alt, _t_vx, _t_vy, _t_vz, _t_yaw_rad, _t_yaw_rad_rate);
             return; //do only one per loop
         }
         if (_task[TASK_AUTOPILOT] & TASK_SENDCMD_CONDITION_YAW) {
             RESETTASK(TASK_AUTOPILOT,TASK_SENDCMD_CONDITION_YAW);
-            _generateCmdLong(_sysid, autopilot.compid, _tsy_yaw, 0.0f, _tsy_yaw_dir, _tsy_yaw_relative);
+            _generateCmdLong(_sysid, autopilot.compid, _tsy_yaw_deg, 0.0f, _tsy_dir, _tsy_relative);
             return; //do only one per loop
         }
 
@@ -430,7 +438,7 @@ void MavlinkTelem::doTask(void)
         }
         if (_task[TASK_AP] & TASK_ARDUPILOT_COPTER_TAKEOFF) { //MAV_CMD_NAV_TAKEOFF
             RESETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_TAKEOFF);
-            _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_NAV_TAKEOFF, 0,0, 0.0f, 0,0,0, _t_takeoff_alt); //must_navigate = true
+            _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_NAV_TAKEOFF, 0,0, 0.0f, 0,0,0, _t_takeoff_alt_m); //must_navigate = true
             return; //do only one per loop
         }
         if (_task[TASK_AP] & TASK_ARDUPILOT_LAND) { //MAV_CMD_NAV_LAND
@@ -445,7 +453,7 @@ void MavlinkTelem::doTask(void)
         }
         if (_task[TASK_AP] & TASK_ARDUPILOT_COPTER_FLYHOLD) {
             RESETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_FLYHOLD);
-            _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_SOLO_BTN_FLY_HOLD, _t_takeoff_alt);
+            _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_SOLO_BTN_FLY_HOLD, _t_takeoff_alt_m);
             return; //do only one per loop
         }
         if (_task[TASK_AP] & TASK_ARDUPILOT_COPTER_FLYPAUSE) {
@@ -511,12 +519,12 @@ void MavlinkTelem::doTask(void)
 	    // gimbal tasks
 		if (_task[TASK_GIMBAL] & TASK_SENDCMD_DO_MOUNT_CONFIGURE) {
 	        RESETTASK(TASK_GIMBAL, TASK_SENDCMD_DO_MOUNT_CONFIGURE);
-	        generateCmdDoMountConfigure(_sysid, autopilot.compid, _t_gimbal_domountconfigure_mode);
+	        generateCmdDoMountConfigure(_sysid, autopilot.compid, _t_gimbal_mode);
 	        return; //do only one per loop
 		}
 		if (_task[TASK_GIMBAL] & TASK_SENDCMD_DO_MOUNT_CONTROL) {
 	        RESETTASK(TASK_GIMBAL, TASK_SENDCMD_DO_MOUNT_CONTROL);
-	        generateCmdDoMountControl(_sysid, autopilot.compid, _t_gimbal_domountcontrol_pitch, _t_gimbal_domountcontrol_yaw);
+	        generateCmdDoMountControl(_sysid, autopilot.compid, _t_gimbal_pitch_deg, _t_gimbal_yaw_deg);
 	        return; //do only one per loop
 		}
 	}
@@ -566,7 +574,7 @@ void MavlinkTelem::handleMessageCamera(void)
 		mavlink_camera_capture_status_t payload;
 		mavlink_msg_camera_capture_status_decode(&_msg, &payload);
 		cameraStatus.recording_time_ms = payload.recording_time_ms;
-		cameraStatus.available_capacity = payload.available_capacity;
+		cameraStatus.available_capacity_MiB = payload.available_capacity;
 		cameraStatus.video_on = (payload.video_status > 0);
 		cameraStatus.photo_on = (payload.image_status > 0); //0: idle, 1: capture in progress, 2: interval set but idle, 3: interval set and capture in progress
         cameraInfo.status_received = true;
@@ -577,11 +585,11 @@ void MavlinkTelem::handleMessageCamera(void)
 		mavlink_storage_information_t payload;
 		mavlink_msg_storage_information_decode(&_msg, &payload);
         if (payload.status == STORAGE_STATUS_READY) {
-			cameraInfo.total_capacity = payload.total_capacity;
-			cameraStatus.available_capacity = payload.available_capacity;
+			cameraInfo.total_capacity_MiB = payload.total_capacity;
+			cameraStatus.available_capacity_MiB = payload.available_capacity;
 		} else {
-			cameraInfo.total_capacity = NAN;
-			cameraStatus.available_capacity = NAN;
+			cameraInfo.total_capacity_MiB = NAN;
+			cameraStatus.available_capacity_MiB = NAN;
 		}
         clear_request(TASK_CAMERA, TASK_SENDREQUEST_STORAGE_INFORMATION);
 		}break;
@@ -597,8 +605,8 @@ void MavlinkTelem::handleMessageCamera(void)
     			has_voltage = true;
     		}
     	}
-  		cameraStatus.battery_voltage = (has_voltage) ? 0.001f * (float)voltage : NAN;
-    	cameraStatus.battery_remainingpct = payload.battery_remaining; // -1 if not known
+  		cameraStatus.battery_voltage_V = (has_voltage) ? 0.001f * (float)voltage : NAN;
+    	cameraStatus.battery_remaining_pct = payload.battery_remaining; // -1 if not known
 		}break;
 
 	}
@@ -610,9 +618,6 @@ void MavlinkTelem::handleMessageCamera(void)
 void MavlinkTelem::handleMessageGimbal(void)
 {
 	switch (_msg.msgid) {
-
-	#define FPI 3.141592654f
-	#define FDEGTORAD (FPI/180.0f)
 
 	case MAVLINK_MSG_ID_HEARTBEAT: {
 		mavlink_heartbeat_t payload;
@@ -629,23 +634,23 @@ void MavlinkTelem::handleMessageGimbal(void)
     case MAVLINK_MSG_ID_ATTITUDE: {
     	mavlink_attitude_t payload;
         mavlink_msg_attitude_decode(&_msg, &payload);
-        gimbalAtt.roll = payload.roll;
-        gimbalAtt.pitch = payload.pitch;
-        gimbalAtt.yaw_relative = payload.yaw;
-        gimbalAtt.yaw_absolute = gimbalAtt.yaw_relative + att.yaw;
-        if (gimbalAtt.yaw_absolute > FPI) gimbalAtt.yaw_absolute -= FPI;
-        if (gimbalAtt.yaw_absolute < -FPI) gimbalAtt.yaw_absolute += FPI;
+        gimbalAtt.roll_deg = payload.roll * FRADTODEG;
+        gimbalAtt.pitch_deg = payload.pitch * FRADTODEG;
+        gimbalAtt.yaw_deg_relative = payload.yaw * FRADTODEG;
+        gimbalAtt.yaw_deg_absolute = gimbalAtt.yaw_deg_relative + att.yaw_rad * FRADTODEG;
+        if (gimbalAtt.yaw_deg_absolute > 180.0f) gimbalAtt.yaw_deg_absolute -= 360.0f;
+        if (gimbalAtt.yaw_deg_absolute < -180.0f) gimbalAtt.yaw_deg_absolute += 360.0f;
 		}break;
 
     case MAVLINK_MSG_ID_MOUNT_STATUS: {
     	mavlink_mount_status_t payload;
         mavlink_msg_mount_status_decode(&_msg, &payload);
-        gimbalAtt.roll = ((float)payload.pointing_b * 0.01f)*FDEGTORAD;
-        gimbalAtt.pitch = ((float)payload.pointing_a * 0.01f)*FDEGTORAD;
-        gimbalAtt.yaw_relative = ((float)payload.pointing_c * 0.01f)*FDEGTORAD;
-        gimbalAtt.yaw_absolute = gimbalAtt.yaw_relative + att.yaw;
-        if (gimbalAtt.yaw_absolute > FPI) gimbalAtt.yaw_absolute -= FPI;
-        if (gimbalAtt.yaw_absolute < -FPI) gimbalAtt.yaw_absolute += FPI;
+        gimbalAtt.roll_deg = ((float)payload.pointing_b * 0.01f);
+        gimbalAtt.pitch_deg = ((float)payload.pointing_a * 0.01f);
+        gimbalAtt.yaw_deg_relative = ((float)payload.pointing_c * 0.01f);
+        gimbalAtt.yaw_deg_absolute = gimbalAtt.yaw_deg_relative + att.yaw_rad * FRADTODEG;
+        if (gimbalAtt.yaw_deg_absolute > 180.0f) gimbalAtt.yaw_deg_absolute -= 360.0f;
+        if (gimbalAtt.yaw_deg_absolute < -180.0f) gimbalAtt.yaw_deg_absolute += 360.0f;
 		}break;
 	}
 }
@@ -671,9 +676,9 @@ void MavlinkTelem::handleMessageAutopilot(void)
     case MAVLINK_MSG_ID_ATTITUDE: {
     	mavlink_attitude_t payload;
         mavlink_msg_attitude_decode(&_msg, &payload);
-        att.roll = payload.roll;
-        att.pitch = payload.pitch;
-        att.yaw = payload.yaw;
+        att.roll_rad = payload.roll;
+        att.pitch_rad = payload.pitch;
+        att.yaw_rad = payload.yaw;
 		}break;
 
     case MAVLINK_MSG_ID_GPS_RAW_INT: {
@@ -685,9 +690,9 @@ void MavlinkTelem::handleMessageAutopilot(void)
         gps1.vdop = payload.epv;
         gps1.lat = payload.lat;
         gps1.lon = payload.lon;
-        gps1.alt = payload.alt;
-        gps1.vel = payload.vel;
-        gps1.cog = payload.cog;
+        gps1.alt_mm = payload.alt;
+        gps1.vel_cmps = payload.vel;
+        gps1.cog_cdeg = payload.cog;
         gps_instancemask &= 0x01;
         setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, GPS_ALT_FIRST_ID, 0, 10, (int32_t)(payload.alt), UNIT_METERS, 3);
         if (payload.vel != UINT16_MAX) {
@@ -707,39 +712,39 @@ void MavlinkTelem::handleMessageAutopilot(void)
         gps2.vdop = payload.epv;
         gps2.lat = payload.lat;
         gps2.lon = payload.lon;
-        gps2.alt = payload.alt;
-        gps2.vel = payload.vel;
-        gps2.cog = payload.cog;
+        gps2.alt_mm = payload.alt;
+        gps2.vel_cmps = payload.vel;
+        gps2.cog_cdeg = payload.cog;
         gps_instancemask &= 0x02;
+        }break;
+
+    case MAVLINK_MSG_ID_GLOBAL_POSITION_INT: {
+        mavlink_global_position_int_t payload;
+        mavlink_msg_global_position_int_decode(&_msg, &payload);
+        gposition.lat = payload.lat;
+        gposition.lon = payload.lon;
+        gposition.alt_mm = payload.alt;
+        gposition.relative_alt_mm = payload.relative_alt;
+        gposition.vx_cmps = payload.vx;
+        gposition.vy_cmps = payload.vy;
+        gposition.vz_cmps = payload.vz;
+        gposition.hdg_cdeg = payload.hdg;
         }break;
 
     case MAVLINK_MSG_ID_VFR_HUD: {
     	mavlink_vfr_hud_t payload;
         mavlink_msg_vfr_hud_decode(&_msg, &payload);
-    	vfr.airspd = payload.airspeed;
-    	vfr.groundspd = payload.groundspeed;
-    	vfr.alt = payload.alt;
-    	vfr.climbrate = payload.climb;
-    	vfr.heading = payload.heading;
-    	vfr.thro = payload.throttle;
+    	vfr.airspd_mps = payload.airspeed;
+    	vfr.groundspd_mps = payload.groundspeed;
+    	vfr.alt_m = payload.alt;
+    	vfr.climbrate_mps = payload.climb;
+    	vfr.heading_deg = payload.heading;
+    	vfr.thro_pct = payload.throttle;
         setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, ALT_FIRST_ID, 0, 13, (int32_t)(payload.alt * 100.0f), UNIT_METERS, 2);
         setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, VARIO_FIRST_ID, 0, 14, (int32_t)(payload.climb * 100.0f), UNIT_METERS_PER_SECOND, 2);
         setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, AIR_SPEED_FIRST_ID, 0, 15, (int32_t)(payload.airspeed * 100.0f), UNIT_METERS_PER_SECOND, 2);
         setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, GPS_COURS_FIRST_ID, 0, 16, (int32_t)payload.heading * 10, UNIT_DEGREE, 1);
 		}break;
-
-    case MAVLINK_MSG_ID_GLOBAL_POSITION_INT: {
-    	mavlink_global_position_int_t payload;
-    	mavlink_msg_global_position_int_decode(&_msg, &payload);
-        gposition.lat = payload.lat;
-        gposition.lon = payload.lon;
-        gposition.alt = payload.alt;
-        gposition.relative_alt = payload.relative_alt;
-        gposition.vx = payload.vx;
-        gposition.vy = payload.vy;
-        gposition.vz = payload.vz;
-        gposition.hdg = payload.hdg;
-    	}break;
 
 /* let's use BATTERY_STATUS, is nearly the same thing
     case MAVLINK_MSG_ID_SYS_STATUS: {
@@ -765,23 +770,23 @@ void MavlinkTelem::handleMessageAutopilot(void)
     	}
     	if (!validcellcount) cellcount = -1;
         if (payload.id == 0) {
-    		bat1.charge_consumed = payload.current_consumed; // mAh, -1 if not known
-    		bat1.energy_consumed = payload.energy_consumed; // 0.1 kJ, -1 if not known
-    		bat1.temperature = payload.temperature; // centi-degrees C°, INT16_MAX if not known
-    		bat1.voltage = voltage; // mV
-    		bat1.current = payload.current_battery; // 10*mA, -1 if not known
+    		bat1.charge_consumed_mAh = payload.current_consumed; // mAh, -1 if not known
+    		bat1.energy_consumed_hJ = payload.energy_consumed; // 0.1 kJ, -1 if not known
+    		bat1.temperature_cC = payload.temperature; // centi-degrees C°, INT16_MAX if not known
+    		bat1.voltage_mV = voltage; // mV
+    		bat1.current_cA = payload.current_battery; // 10*mA, -1 if not known
     		//bat1.function = payload.battery_function;
     		//bat1.type = payload.type;
-    		bat1.remainingpct = payload.battery_remaining; //(0%: 0, 100%: 100), -1 if not knwon
+    		bat1.remaining_pct = payload.battery_remaining; //(0%: 0, 100%: 100), -1 if not knwon
     		bat1.cellcount = cellcount;
         }
         if (payload.id == 1) {
-    		bat2.charge_consumed = payload.current_consumed; // mAh, -1 if not known
-    		bat2.energy_consumed = payload.energy_consumed; // 0.1 kJ, -1 if not known
-    		bat2.temperature = payload.temperature; // centi-degrees C°, INT16_MAX if not known
-    		bat2.voltage = voltage; // mV
-    		bat2.current = payload.current_battery; // 10*mA, -1 if not known
-    		bat2.remainingpct = payload.battery_remaining; //(0%: 0, 100%: 100), -1 if not knwon
+    		bat2.charge_consumed_mAh = payload.current_consumed; // mAh, -1 if not known
+    		bat2.energy_consumed_hJ = payload.energy_consumed; // 0.1 kJ, -1 if not known
+    		bat2.temperature_cC = payload.temperature; // centi-degrees C°, INT16_MAX if not known
+    		bat2.voltage_mV = voltage; // mV
+    		bat2.current_cA = payload.current_battery; // 10*mA, -1 if not known
+    		bat2.remaining_pct = payload.battery_remaining; //(0%: 0, 100%: 100), -1 if not knwon
     		bat2.cellcount = cellcount;
         }
         if (payload.id < 8) bat_instancemask &= (1 << payload.id);
@@ -1012,9 +1017,9 @@ void MavlinkTelem::_resetAutopilot(void)
     autopilot.requests_triggered = 0;
     autopilot.requests_tlast = 0;
 
-	att.roll = 0.0f;
-	att.pitch = 0.0f;
-	att.yaw = 0.0f;
+	att.roll_rad = 0.0f;
+	att.pitch_rad = 0.0f;
+	att.yaw_rad = 0.0f;
 
     gps1.fix = GPS_FIX_TYPE_NO_GPS;
     gps1.sat = UINT8_MAX;
@@ -1022,9 +1027,9 @@ void MavlinkTelem::_resetAutopilot(void)
     gps1.vdop = UINT16_MAX;
     gps1.lat = 0;
     gps1.lon = 0;
-    gps1.alt = 0;
-    gps1.vel = UINT16_MAX;
-    gps1.cog = UINT16_MAX;
+    gps1.alt_mm = 0;
+    gps1.vel_cmps = UINT16_MAX;
+    gps1.cog_cdeg = UINT16_MAX;
 
     gps2.fix = GPS_FIX_TYPE_NO_GPS;
     gps2.sat = UINT8_MAX;
@@ -1032,35 +1037,42 @@ void MavlinkTelem::_resetAutopilot(void)
     gps2.vdop = UINT16_MAX;
     gps2.lat = 0;
     gps2.lon = 0;
-    gps2.alt = 0;
-    gps2.vel = UINT16_MAX;
-    gps2.cog = UINT16_MAX;
+    gps2.alt_mm = 0;
+    gps2.vel_cmps = UINT16_MAX;
+    gps2.cog_cdeg = UINT16_MAX;
 
     gps_instancemask = 0;
 
- 	gposition.relative_alt = 0;
+    gposition.lat = 0;
+    gposition.lon = 0;
+    gposition.alt_mm = 0;
+    gposition.relative_alt_mm = 0;
+    gposition.vx_cmps = 0;
+    gposition.vy_cmps = 0;
+    gposition.vz_cmps = 0;
+    gposition.hdg_cdeg = UINT16_MAX;
 
-	vfr.airspd = 0.0f;
-	vfr.groundspd = 0.0f;
-	vfr.alt = 0.0f;
-	vfr.climbrate = 0.0f;
-	vfr.heading = 0;
-	vfr.thro = 0;
+	vfr.airspd_mps = 0.0f;
+	vfr.groundspd_mps = 0.0f;
+	vfr.alt_m = 0.0f;
+	vfr.climbrate_mps = 0.0f;
+	vfr.heading_deg = 0;
+	vfr.thro_pct = 0;
 
-	bat1.charge_consumed = -1;
-	bat1.energy_consumed = -1;
-	bat1.temperature = INT16_MAX;
-	bat1.voltage = 0;
-	bat1.current = -1;
-	bat1.remainingpct = -1;
+	bat1.charge_consumed_mAh = -1;
+	bat1.energy_consumed_hJ = -1;
+	bat1.temperature_cC = INT16_MAX;
+	bat1.voltage_mV = 0;
+	bat1.current_cA = -1;
+	bat1.remaining_pct = -1;
 	bat1.cellcount = -1;
 
-	bat2.charge_consumed = -1;
-	bat2.energy_consumed = -1;
-	bat2.temperature = INT16_MAX;
-	bat2.voltage = 0;
-	bat2.current = -1;
-	bat2.remainingpct = -1;
+	bat2.charge_consumed_mAh = -1;
+	bat2.energy_consumed_hJ = -1;
+	bat2.temperature_cC = INT16_MAX;
+	bat2.voltage_mV = 0;
+	bat2.current_cA = -1;
+	bat2.remaining_pct = -1;
 	bat2.cellcount = -1;
 
     bat_instancemask = 0;
@@ -1084,10 +1096,10 @@ void MavlinkTelem::_resetGimbal(void)
     gimbal.requests_triggered = 0;
     gimbal.requests_tlast = 0;
 
-    gimbalAtt.roll = 0.0f;
-    gimbalAtt.pitch = 0.0f;
-    gimbalAtt.yaw_relative = 0.0f;
-    gimbalAtt.yaw_absolute = 0.0f;
+    gimbalAtt.roll_deg = 0.0f;
+    gimbalAtt.pitch_deg = 0.0f;
+    gimbalAtt.yaw_deg_relative = 0.0f;
+    gimbalAtt.yaw_deg_absolute = 0.0f;
 }
 
 
@@ -1112,7 +1124,7 @@ void MavlinkTelem::_resetCamera(void)
 	cameraInfo.has_video = false;
 	cameraInfo.has_photo = false;
 	cameraInfo.has_modes = false;
-	cameraInfo.total_capacity = NAN;
+	cameraInfo.total_capacity_MiB = NAN;
 	cameraInfo.info_received = false;
 	cameraInfo.settings_received = false;
 	cameraInfo.status_received = false;
@@ -1120,10 +1132,10 @@ void MavlinkTelem::_resetCamera(void)
 	cameraStatus.mode = 0;
 	cameraStatus.video_on = false;
 	cameraStatus.photo_on = false;
-	cameraStatus.available_capacity = NAN;
+	cameraStatus.available_capacity_MiB = NAN;
 	cameraStatus.recording_time_ms = UINT32_MAX;
-	cameraStatus.battery_voltage = NAN;
-	cameraStatus.battery_remainingpct = -1;
+	cameraStatus.battery_voltage_V = NAN;
+	cameraStatus.battery_remaining_pct = -1;
 
 	cameraStatus.initialized = false;
 }

@@ -40,6 +40,10 @@
 #define MAVLINK_TELEM_RADIO_RECEIVING_TIMEOUT	300 // 3 secs
 
 
+//COMMENT:
+//  except of where noted functions/structs use units of the MAVLink message
+//  general exception are the mavsdk caller/setter functions, which use native units and deg whenever possible
+
 class MavlinkTelem
 {
   public:
@@ -59,7 +63,7 @@ class MavlinkTelem
     void _generateCmdLong(uint8_t tsystem, uint8_t tcomponent, uint16_t cmd, float p1=0.0f, float p2=0.0f, float p3=0.0f, float p4=0.0f, float p5=0.0f, float p6=0.0f, float p7=0.0f);
     //to autopilot
     void generateCmdDoSetMode(uint8_t tsystem, uint8_t tcomponent, MAV_MODE base_mode, uint32_t custom_mode);
-    void generateSetPositionTargetGlobalInt(uint8_t tsystem, uint8_t tcomponent, uint8_t coordinate_frame, uint16_t type_mask, int32_t lat, int32_t lon, float alt, float vx, float vy, float vz, float yaw, float yaw_rate);
+    void generateSetPositionTargetGlobalInt(uint8_t tsystem, uint8_t tcomponent, uint8_t coordinate_frame, uint16_t type_mask, int32_t lat, int32_t lon, float alt, float vx, float vy, float vz, float yaw_rad, float yaw_rad_rate);
     //to camera
     void generateRequestCameraInformation(uint8_t tsystem, uint8_t tcomponent);
     void generateRequestCameraSettings(uint8_t tsystem, uint8_t tcomponent);
@@ -71,7 +75,7 @@ class MavlinkTelem
     void generateCmdVideoStopCapture(uint8_t tsystem, uint8_t tcomponent);
     //to gimbal
     void generateCmdDoMountConfigure(uint8_t tsystem, uint8_t tcomponent, uint8_t mode);
-    void generateCmdDoMountControl(uint8_t tsystem, uint8_t tcomponent, float pitch, float yaw);
+    void generateCmdDoMountControl(uint8_t tsystem, uint8_t tcomponent, float pitch_deg, float yaw_deg);
 
     bool isSystemIdValid(void) { return (_sysid > 0); }
 
@@ -135,22 +139,22 @@ class MavlinkTelem
 
     // MAVSDK AUTOPILOT
     struct Att {
-    	float roll; // rad
-    	float pitch; // rad
-    	float yaw; // rad
+    	float roll_rad; // rad
+    	float pitch_rad; // rad
+    	float yaw_rad; // rad
     };
     struct Att att;
 
     struct Gps {
     	uint8_t fix;
-    	uint8_t sat;
-    	uint16_t hdop;
-    	uint16_t vdop;
+    	uint8_t sat; // UINT8_MAX if unknown
+    	uint16_t hdop; // UINT16_MAX if unknown
+    	uint16_t vdop; // UINT16_MAX if unknown
     	int32_t lat; // (WGS84), in degrees * 1E7*/
     	int32_t lon; // (WGS84), in degrees * 1E7*/
-    	int32_t alt; // (AMSL, NOT WGS84), in meters * 1000
-    	uint16_t vel; // m/s * 100
-    	uint16_t cog; // degrees * 100, 0.0..359.99 degrees
+    	int32_t alt_mm; // (AMSL, NOT WGS84), in meters * 1000
+    	uint16_t vel_cmps; // m/s * 100, UINT16_MAX if unknown
+    	uint16_t cog_cdeg; // degrees * 100, 0.0..359.99 degrees, UINT16_MAX if unknown
     };
     struct Gps gps1;
     struct Gps gps2;
@@ -159,32 +163,32 @@ class MavlinkTelem
     struct GlobalPositionInt {
         int32_t lat; // in degrees * 1E7*/
         int32_t lon; // in degrees * 1E7*/
-        int32_t alt; // (MSL), in meters * 1000
-    	int32_t relative_alt; // in meters * 1000
-        int16_t vx; // (Latitude, positive north), in cm/s
-        int16_t vy; // (Longitude, positive east), in cm/s
-        int16_t vz; // (Altitude, positive down), in cm/s
-        int16_t hdg; // degrees * 100, 0.0..359.99 degrees, UINT16_NAX if unknown
+        int32_t alt_mm; // (MSL), in mm
+    	int32_t relative_alt_mm; // in mm
+        int16_t vx_cmps; // (Latitude, positive north), in cm/s
+        int16_t vy_cmps; // (Longitude, positive east), in cm/s
+        int16_t vz_cmps; // (Altitude, positive down), in cm/s
+        uint16_t hdg_cdeg; // degrees * 100, 0.0..359.99 degrees, UINT16_MAX if unknown
     };
     struct GlobalPositionInt gposition;
 
     struct Vfr {
-    	 float airspd; // m/s
-    	 float groundspd; // m/s
-    	 float alt; // (MSL), m     ?? is this really MSL ?? it can't I think, appears to be above home
-    	 float climbrate; // m/s
-    	 int16_t heading; // degrees (0..360, 0=north)
-    	 uint16_t thro; // percent, 0 to 100
+    	 float airspd_mps; // m/s
+    	 float groundspd_mps; // m/s
+    	 float alt_m; // (MSL), m     ?? is this really MSL ?? it can't I think, appears to be above home
+    	 float climbrate_mps; // m/s
+    	 int16_t heading_deg; // degrees (0..360, 0=north)
+    	 uint16_t thro_pct; // percent, 0 to 100
     };
     struct Vfr vfr;
 
     struct Bat {
-    	int32_t charge_consumed; // mAh, -1 if not known
-    	int32_t energy_consumed; // 0.1 kJ, -1 if not known
-    	int16_t temperature; // centi-degrees C°, INT16_MAX if not known
-    	uint32_t voltage; // mV
-    	int16_t current; // 10*mA, -1 if not known
-    	int8_t remainingpct; //(0%: 0, 100%: 100), -1 if not known
+    	int32_t charge_consumed_mAh; // mAh, -1 if not known
+    	int32_t energy_consumed_hJ; // 0.1 kJ, -1 if not known
+    	int16_t temperature_cC; // centi-degrees C°, INT16_MAX if not known
+    	uint32_t voltage_mV; // mV
+    	int16_t current_cA; // 10*mA, -1 if not known
+    	int8_t remaining_pct; //(0%: 0, 100%: 100), -1 if not known
     	int8_t cellcount; //-1 if not known
     };
     struct Bat bat1;
@@ -200,19 +204,19 @@ class MavlinkTelem
     uint8_t _t_coordinate_frame;
     uint16_t _t_type_mask;
     int32_t _t_lat, _t_lon;
-    float _t_alt, _t_vx, _t_vy, _t_vz, _t_yaw, _t_yaw_rate;
-    void apGotoPositionAltYaw(int32_t lat, int32_t lon, float alt, float yaw);
+    float _t_alt, _t_vx, _t_vy, _t_vz, _t_yaw_rad, _t_yaw_rad_rate;
+    void apGotoPositionAltYawDeg(int32_t lat, int32_t lon, float alt, float yaw);
 
-    float _tsy_yaw, _tsy_yaw_dir, _tsy_yaw_relative;
-    void apSetYaw(float yaw, bool relative); //note, we can enter negative yaw here, sign determines direction
+    float _tsy_yaw_deg, _tsy_dir, _tsy_relative;
+    void apSetYawDeg(float yaw, bool relative); //note, we can enter negative yaw here, sign determines direction
 
-    float _t_takeoff_alt;
+    float _t_takeoff_alt_m;
     void apRequestBanner(void) { SETTASK(TASK_AP, TASK_ARDUPILOT_REQUESTBANNER); }
     void apArm(bool arm) { SETTASK(TASK_AP, (arm) ? TASK_ARDUPILOT_ARM : TASK_ARDUPILOT_DISARM); }
-    void apCopterTakeOff(float alt) { _t_takeoff_alt = alt; SETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_TAKEOFF); }
+    void apCopterTakeOff(float alt) { _t_takeoff_alt_m = alt; SETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_TAKEOFF); }
     void apLand(void) { SETTASK(TASK_AP, TASK_ARDUPILOT_LAND); }
     void apCopterFlyClick(void) { SETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_FLYCLICK); }
-    void apCopterFlyHold(float alt) { _t_takeoff_alt = alt; SETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_FLYHOLD); }
+    void apCopterFlyHold(float alt) { _t_takeoff_alt_m = alt; SETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_FLYHOLD); }
     void apCopterFlyPause(void) { SETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_FLYPAUSE); }
 
     // MAVSDK CAMERA
@@ -223,7 +227,7 @@ class MavlinkTelem
 		bool has_video;
 		bool has_photo;
 		bool has_modes;
-    	float total_capacity; // NAN if not known
+    	float total_capacity_MiB; // NAN if not known
 		bool info_received; // this is to get all info at startup
 		bool settings_received; // this is to get all info at startup
 		bool status_received; // this is to get all info at startup
@@ -234,10 +238,10 @@ class MavlinkTelem
     	uint8_t mode;
 		bool video_on;
     	bool photo_on;
-    	float available_capacity; // NAN if not known
+    	float available_capacity_MiB; // NAN if not known
     	uint32_t recording_time_ms;
-    	float battery_voltage; // NAN if not known
-    	int8_t battery_remainingpct; //(0%: 0, 100%: 100), -1 if not known
+    	float battery_voltage_V; // NAN if not known
+    	int8_t battery_remaining_pct; //(0%: 0, 100%: 100), -1 if not known
 		bool initialized; // this indicates that all startup info was received
     };
     struct CameraStatus cameraStatus; // Status: variable data
@@ -250,20 +254,20 @@ class MavlinkTelem
 
     // MAVSDK GIMBAL
     struct GimbalAtt {
-    	float roll; // rad
-    	float pitch; // rad
-    	float yaw_relative; // rad
-    	float yaw_absolute; // rad
+    	float roll_deg;
+    	float pitch_deg;
+    	float yaw_deg_relative;
+    	float yaw_deg_absolute;
     };
     struct GimbalAtt gimbalAtt;
 
-    uint8_t _t_gimbal_domountconfigure_mode;
+    uint8_t _t_gimbal_mode;
     void setGimbalTargetingMode(uint8_t mode) {
-        _t_gimbal_domountconfigure_mode = mode; SETTASK(TASK_GIMBAL, TASK_SENDCMD_DO_MOUNT_CONFIGURE);
+        _t_gimbal_mode = mode; SETTASK(TASK_GIMBAL, TASK_SENDCMD_DO_MOUNT_CONFIGURE);
     }
-    float _t_gimbal_domountcontrol_pitch, _t_gimbal_domountcontrol_yaw;
+    float _t_gimbal_pitch_deg, _t_gimbal_yaw_deg;
     void setGimbalPitchYawDeg(float pitch, float yaw) {
-        _t_gimbal_domountcontrol_pitch = pitch; _t_gimbal_domountcontrol_yaw = yaw; SETTASK(TASK_GIMBAL, TASK_SENDCMD_DO_MOUNT_CONTROL);
+        _t_gimbal_pitch_deg = pitch; _t_gimbal_yaw_deg = yaw; SETTASK(TASK_GIMBAL, TASK_SENDCMD_DO_MOUNT_CONTROL);
     }
 
   protected:

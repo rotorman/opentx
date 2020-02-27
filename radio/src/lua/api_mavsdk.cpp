@@ -28,6 +28,11 @@
 #include "thirdparty/Mavlink/c_library_v2/common/mavlink.h"
 
 
+#define FPI         3.141592654f
+#define FDEGTORAD   (FPI/180.0f)
+#define FRADTODEG   (180.0f/FPI)
+
+
 // -- GIMBAL --
 
 static int luaMavsdkGimbalIsReceiving(lua_State *L)
@@ -56,19 +61,19 @@ static int luaMavsdkGimbalGetStatus(lua_State *L)
 
 static int luaMavsdkGimbalGetAttRollDeg(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.gimbalAtt.roll*(180.0f/3.141592654f));
+    lua_pushnumber(L, mavlinkTelem.gimbalAtt.roll_deg);
 	return 1;
 }
 
 static int luaMavsdkGimbalGetAttPitchDeg(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.gimbalAtt.pitch*(180.0f/3.141592654f));
+    lua_pushnumber(L, mavlinkTelem.gimbalAtt.pitch_deg);
 	return 1;
 }
 
 static int luaMavsdkGimbalGetAttYawDeg(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.gimbalAtt.yaw_relative*(180.0f/3.141592654f));
+    lua_pushnumber(L, mavlinkTelem.gimbalAtt.yaw_deg_relative);
 	return 1;
 }
 
@@ -135,8 +140,8 @@ static int luaMavsdkCameraGetInfo(lua_State *L)
 	lua_pushtableboolean(L, "has_video", mavlinkTelem.cameraInfo.has_video);
 	lua_pushtableboolean(L, "has_photo", mavlinkTelem.cameraInfo.has_photo);
 	lua_pushtableboolean(L, "has_modes", mavlinkTelem.cameraInfo.has_modes);
-	if (!isnan(mavlinkTelem.cameraInfo.total_capacity)) {
-		lua_pushtablenumber(L, "total_capacity", mavlinkTelem.cameraInfo.total_capacity);
+	if (!isnan(mavlinkTelem.cameraInfo.total_capacity_MiB)) {
+		lua_pushtablenumber(L, "total_capacity", mavlinkTelem.cameraInfo.total_capacity_MiB);
 	} else {
 		lua_pushtablenil(L, "total_capacity");
 	}
@@ -153,18 +158,18 @@ static int luaMavsdkCameraGetStatus(lua_State *L)
 	lua_pushtableinteger(L, "mode", mavlinkTelem.cameraStatus.mode);
 	lua_pushtableboolean(L, "video_on", mavlinkTelem.cameraStatus.video_on);
 	lua_pushtableboolean(L, "photo_on", mavlinkTelem.cameraStatus.photo_on);
-	if (!isnan(mavlinkTelem.cameraStatus.available_capacity)) {
-		lua_pushtablenumber(L, "available_capacity", mavlinkTelem.cameraStatus.available_capacity);
+	if (!isnan(mavlinkTelem.cameraStatus.available_capacity_MiB)) {
+		lua_pushtablenumber(L, "available_capacity", mavlinkTelem.cameraStatus.available_capacity_MiB);
 	} else {
 		lua_pushtablenil(L, "available_capacity");
 	}
-	if (!isnan(mavlinkTelem.cameraStatus.battery_voltage)) {
-		lua_pushtablenumber(L, "battery_voltage", mavlinkTelem.cameraStatus.battery_voltage);
+	if (!isnan(mavlinkTelem.cameraStatus.battery_voltage_V)) {
+		lua_pushtablenumber(L, "battery_voltage", mavlinkTelem.cameraStatus.battery_voltage_V);
 	} else {
 		lua_pushtablenil(L, "battery_voltage");
 	}
-	if (mavlinkTelem.cameraStatus.battery_remainingpct >= 0) {
-		lua_pushtableinteger(L, "battery_remainingpct", mavlinkTelem.cameraStatus.battery_remainingpct);
+	if (mavlinkTelem.cameraStatus.battery_remaining_pct >= 0) {
+		lua_pushtableinteger(L, "battery_remainingpct", mavlinkTelem.cameraStatus.battery_remaining_pct);
 	} else {
 		lua_pushtablenil(L, "battery_remainingpct");
 	}
@@ -337,19 +342,19 @@ static int luaMavsdkGetRadioRemoteNoise(lua_State *L)
 
 static int luaMavsdkGetAttRollDeg(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.att.roll*(180.0f/3.141592654f));
+    lua_pushnumber(L, mavlinkTelem.att.roll_rad * FRADTODEG);
 	return 1;
 }
 
 static int luaMavsdkGetAttPitchDeg(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.att.pitch*(180.0f/3.141592654f));
+    lua_pushnumber(L, mavlinkTelem.att.pitch_rad * FRADTODEG);
 	return 1;
 }
 
 static int luaMavsdkGetAttYawDeg(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.att.yaw*(180.0f/3.141592654f));
+    lua_pushnumber(L, mavlinkTelem.att.yaw_rad * FRADTODEG);
 	return 1;
 }
 
@@ -392,7 +397,7 @@ static int luaMavsdkGetGps1VDop(lua_State *L)
 
 static int luaMavsdkGetGps1Sat(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.gps1.sat);
+    lua_pushnumber(L, mavlinkTelem.gps1.sat); //UINT8_MAX if not known
 	return 1;
 }
 
@@ -414,19 +419,27 @@ static int luaMavsdkGetGps1LatLonInt(lua_State *L)
 
 static int luaMavsdkGetGps1AltitudeAmsl(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.gps1.alt * 0.001f);
+    lua_pushnumber(L, mavlinkTelem.gps1.alt_mm * 0.001f);
 	return 1;
 }
 
 static int luaMavsdkGetGps1Speed(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.gps1.vel * 0.01f);
+    if (mavlinkTelem.gps1.vel_cmps < UINT16_MAX) {
+        lua_pushnumber(L, mavlinkTelem.gps1.vel_cmps * 0.01f);
+    } else {
+        lua_pushnil(L);
+    }
 	return 1;
 }
 
 static int luaMavsdkGetGps1CourseOverGroundDeg(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.gps1.cog * 0.01f);
+    if (mavlinkTelem.gps1.cog_cdeg < UINT16_MAX) {
+        lua_pushnumber(L, mavlinkTelem.gps1.cog_cdeg * 0.01f);
+    } else {
+        lua_pushnil(L);
+    }
 	return 1;
 }
 
@@ -483,24 +496,32 @@ static int luaMavsdkGetGps2LatLonInt(lua_State *L)
 
 static int luaMavsdkGetGps2AltitudeAmsl(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.gps2.alt * 0.001f);
+    lua_pushnumber(L, mavlinkTelem.gps2.alt_mm * 0.001f);
     return 1;
 }
 
 static int luaMavsdkGetGps2Speed(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.gps2.vel * 0.01f);
+    if (mavlinkTelem.gps2.vel_cmps < UINT16_MAX) {
+        lua_pushnumber(L, mavlinkTelem.gps2.vel_cmps * 0.01f);
+    } else {
+        lua_pushnil(L);
+    }
     return 1;
 }
 
 static int luaMavsdkGetGps2CourseOverGroundDeg(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.gps2.cog * 0.01f);
+    if (mavlinkTelem.gps2.cog_cdeg < UINT16_MAX) {
+        lua_pushnumber(L, mavlinkTelem.gps2.cog_cdeg * 0.01f);
+    } else {
+        lua_pushnil(L);
+    }
     return 1;
 }
 
 
-static int luaMavsdkIsGpsAvailable(lua_State *L)
+static int luaMavsdkIsGps1Available(lua_State *L)
 {
     bool flag = mavlinkTelem.gps_instancemask & 0x01;
     lua_pushboolean(L, flag);
@@ -543,28 +564,28 @@ static int luaMavsdkGetPosLatLonInt(lua_State *L)
 
 static int luaMavsdkGetPosAltitudeAmsl(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.gposition.alt * 0.001f);
+    lua_pushnumber(L, mavlinkTelem.gposition.alt_mm * 0.001f);
     return 1;
 }
 
 static int luaMavsdkGetPosAltitudeRelative(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.gposition.relative_alt * 0.001f);
+    lua_pushnumber(L, mavlinkTelem.gposition.relative_alt_mm * 0.001f);
 	return 1;
 }
 
 static int luaMavsdkGetPosHeadingDeg(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.gposition.hdg * 0.01f);
+    lua_pushnumber(L, mavlinkTelem.gposition.hdg_cdeg * 0.01f);
     return 1;
 }
 
 static int luaMavsdkGetPosSpeedNED(lua_State *L)
 {
     lua_newtable(L);
-    lua_pushtablenumber(L, "vx", mavlinkTelem.gposition.vx * 0.001f);
-    lua_pushtablenumber(L, "vy", mavlinkTelem.gposition.vy * 0.001f);
-    lua_pushtablenumber(L, "vz", mavlinkTelem.gposition.vz * 0.001f);
+    lua_pushtablenumber(L, "vx", mavlinkTelem.gposition.vx_cmps * 0.01f);
+    lua_pushtablenumber(L, "vy", mavlinkTelem.gposition.vy_cmps * 0.01f);
+    lua_pushtablenumber(L, "vz", mavlinkTelem.gposition.vz_cmps * 0.01f);
     return 1;
 }
 
@@ -573,37 +594,37 @@ static int luaMavsdkGetPosSpeedNED(lua_State *L)
 
 static int luaMavsdkGetVfrAirSpeed(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.vfr.airspd);
+    lua_pushnumber(L, mavlinkTelem.vfr.airspd_mps);
 	return 1;
 }
 
 static int luaMavsdkGetVfrGroundSpeed(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.vfr.groundspd);
+    lua_pushnumber(L, mavlinkTelem.vfr.groundspd_mps);
 	return 1;
 }
 
 static int luaMavsdkGetVfrAltitudeMsl(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.vfr.alt);
+    lua_pushnumber(L, mavlinkTelem.vfr.alt_m);
 	return 1;
 }
 
 static int luaMavsdkGetVfrClimbRate(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.vfr.climbrate);
+    lua_pushnumber(L, mavlinkTelem.vfr.climbrate_mps);
 	return 1;
 }
 
 static int luaMavsdkGetVfrHeadingDeg(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.vfr.heading);
+    lua_pushnumber(L, mavlinkTelem.vfr.heading_deg);
 	return 1;
 }
 
 static int luaMavsdkGetVfrThrottle(lua_State *L)
 {
-	lua_pushinteger(L, mavlinkTelem.vfr.thro);
+	lua_pushinteger(L, mavlinkTelem.vfr.thro_pct);
 	return 1;
 }
 
@@ -612,91 +633,139 @@ static int luaMavsdkGetVfrThrottle(lua_State *L)
 
 static int luaMavsdkGetBat1ChargeConsumed(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.bat1.charge_consumed);
+    if (mavlinkTelem.bat1.charge_consumed_mAh >= 0) {
+        lua_pushnumber(L, mavlinkTelem.bat1.charge_consumed_mAh);
+    } else {
+        lua_pushnil(L);
+    }
 	return 1;
 }
 
 static int luaMavsdkGetBat1EnergyConsumed(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.bat1.energy_consumed * 100.0f);
+    if (mavlinkTelem.bat1.energy_consumed_hJ >= 0) {
+        lua_pushnumber(L, mavlinkTelem.bat1.energy_consumed_hJ * 100.0f);
+    } else {
+        lua_pushnil(L);
+    }
 	return 1;
 }
 
 static int luaMavsdkGetBat1Temperature(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.bat1.temperature * 0.01f);
+    if (mavlinkTelem.bat1.temperature_cC < INT16_MAX) {
+        lua_pushnumber(L, mavlinkTelem.bat1.temperature_cC * 0.01f);
+    } else {
+        lua_pushnil(L);
+    }
 	return 1;
 }
 
 static int luaMavsdkGetBat1Voltage(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.bat1.voltage * 0.001f);
+    lua_pushnumber(L, mavlinkTelem.bat1.voltage_mV * 0.001f);
 	return 1;
 }
 
 static int luaMavsdkGetBat1Current(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.bat1.current * 0.01f);
+    if (mavlinkTelem.bat1.current_cA >= 0) {
+        lua_pushnumber(L, mavlinkTelem.bat1.current_cA * 0.01f);
+    } else {
+        lua_pushnil(L);
+    }
 	return 1;
 }
 
 static int luaMavsdkGetBat1Remaining(lua_State *L)
 {
-    lua_pushinteger(L, mavlinkTelem.bat1.remainingpct);
+    if (mavlinkTelem.bat1.remaining_pct >= 0) {
+        lua_pushinteger(L, mavlinkTelem.bat1.remaining_pct);
+    } else {
+        lua_pushnil(L);
+    }
 	return 1;
 }
 
 static int luaMavsdkGetBat1CellCount(lua_State *L)
 {
-    lua_pushinteger(L, mavlinkTelem.bat1.cellcount);
+    if (mavlinkTelem.bat1.cellcount >= 0) {
+        lua_pushinteger(L, mavlinkTelem.bat1.cellcount);
+    } else {
+        lua_pushnil(L);
+    }
 	return 1;
 }
 
 
 static int luaMavsdkGetBat2ChargeConsumed(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.bat2.charge_consumed);
-	return 1;
+    if (mavlinkTelem.bat2.charge_consumed_mAh >= 0) {
+        lua_pushnumber(L, mavlinkTelem.bat2.charge_consumed_mAh);
+    } else {
+        lua_pushnil(L);
+    }
+    return 1;
 }
 
 static int luaMavsdkGetBat2EnergyConsumed(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.bat2.energy_consumed * 100.0f);
-	return 1;
+    if (mavlinkTelem.bat2.energy_consumed_hJ >= 0) {
+        lua_pushnumber(L, mavlinkTelem.bat2.energy_consumed_hJ * 100.0f);
+    } else {
+        lua_pushnil(L);
+    }
+    return 1;
 }
 
 static int luaMavsdkGetBat2Temperature(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.bat2.temperature * 0.01f);
-	return 1;
+    if (mavlinkTelem.bat2.temperature_cC < INT16_MAX) {
+        lua_pushnumber(L, mavlinkTelem.bat2.temperature_cC * 0.01f);
+    } else {
+        lua_pushnil(L);
+    }
+    return 1;
 }
 
 static int luaMavsdkGetBat2Voltage(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.bat2.voltage * 0.001f);
-	return 1;
+    lua_pushnumber(L, mavlinkTelem.bat2.voltage_mV * 0.001f);
+    return 1;
 }
 
 static int luaMavsdkGetBat2Current(lua_State *L)
 {
-    lua_pushnumber(L, mavlinkTelem.bat2.current * 0.01f);
-	return 1;
+    if (mavlinkTelem.bat2.current_cA >= 0) {
+        lua_pushnumber(L, mavlinkTelem.bat2.current_cA * 0.01f);
+    } else {
+        lua_pushnil(L);
+    }
+    return 1;
 }
 
 static int luaMavsdkGetBat2Remaining(lua_State *L)
 {
-    lua_pushinteger(L, mavlinkTelem.bat2.remainingpct);
-	return 1;
+    if (mavlinkTelem.bat2.remaining_pct >= 0) {
+        lua_pushinteger(L, mavlinkTelem.bat2.remaining_pct);
+    } else {
+        lua_pushnil(L);
+    }
+    return 1;
 }
 
 static int luaMavsdkGetBat2CellCount(lua_State *L)
 {
-    lua_pushinteger(L, mavlinkTelem.bat2.cellcount);
-	return 1;
+    if (mavlinkTelem.bat2.cellcount >= 0) {
+        lua_pushinteger(L, mavlinkTelem.bat2.cellcount);
+    } else {
+        lua_pushnil(L);
+    }
+    return 1;
 }
 
 
-static int luaMavsdkIsBatAvailable(lua_State *L)
+static int luaMavsdkIsBat1Available(lua_State *L)
 {
     bool flag = mavlinkTelem.bat_instancemask & 0x01;
     lua_pushboolean(L, flag);
@@ -766,15 +835,15 @@ static int luaMavsdkApLand(lua_State *L)
     return 0;
 }
 
-static int luaMavsdkApGotoPositionAltYaw(lua_State *L)
+static int luaMavsdkApGotoPositionAltYawDeg(lua_State *L)
 {
     int32_t lat = luaL_checkinteger(L, 1);
     int32_t lon = luaL_checkinteger(L, 2);
-    //float alt = luaL_checknumber(L, 3);
-    //float yaw = luaL_checknumber(L, 4);
-    float alt = luaL_optnumber(L, 3, NAN);
-    float yaw = luaL_optnumber(L, 4, NAN);
-    mavlinkTelem.apGotoPositionAltYaw(lat, lon, alt, yaw);
+    float alt = luaL_checknumber(L, 3);
+    float yaw = luaL_checknumber(L, 4);
+//    float alt = luaL_optnumber(L, 3, NAN);
+//    float yaw = luaL_optnumber(L, 4, NAN);
+    mavlinkTelem.apGotoPositionAltYawDeg(lat, lon, alt, yaw);
     return 0;
 }
 
@@ -782,7 +851,7 @@ static int luaMavsdkApSetYawDeg(lua_State *L)
 {
     float yaw = luaL_checknumber(L, 1);
     int32_t relative = luaL_optunsigned(L, 2, 0);
-    mavlinkTelem.apSetYaw(yaw, (relative) ? true : false);
+    mavlinkTelem.apSetYawDeg(yaw, (relative) ? true : false);
     return 0;
 }
 
@@ -889,7 +958,7 @@ const luaL_Reg mavsdkLib[] = {
   { "getGps2Speed", luaMavsdkGetGps2Speed },
   { "getGps2CourseOverGroundDeg", luaMavsdkGetGps2CourseOverGroundDeg },
 
-  { "isGpsAvailable", luaMavsdkIsGpsAvailable },
+  { "isGpsAvailable", luaMavsdkIsGps1Available },
   { "isGps2Available", luaMavsdkIsGps2Available },
   { "getGpsCount", luaMavsdkGetGpsCount },
 
@@ -922,7 +991,7 @@ const luaL_Reg mavsdkLib[] = {
   { "getBat2Remaining", luaMavsdkGetBat2Remaining },
   { "getBat2CellCount", luaMavsdkGetBat2CellCount },
 
-  { "isBatAvailable", luaMavsdkIsBatAvailable },
+  { "isBatAvailable", luaMavsdkIsBat1Available },
   { "isBat2Available", luaMavsdkIsBat2Available },
   { "getBatCount", luaMavsdkGetBatCount },
 
@@ -936,7 +1005,7 @@ const luaL_Reg mavsdkLib[] = {
   { "apArm", luaMavsdkApArm },
   { "apCopterTakeOff", luaMavsdkApCopterTakeOff },
   { "apLand", luaMavsdkApLand },
-  { "apGotoPositionAltYaw", luaMavsdkApGotoPositionAltYaw },
+  { "apGotoPositionAltYawDeg", luaMavsdkApGotoPositionAltYawDeg },
   { "apSetYawDeg", luaMavsdkApSetYawDeg },
   { "apCopterFlyClick", luaMavsdkApCopterFlyClick },
   { "apCopterFlyHold", luaMavsdkApCopterFlyHold },
