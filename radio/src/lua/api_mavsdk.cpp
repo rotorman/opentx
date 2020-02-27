@@ -835,14 +835,21 @@ static int luaMavsdkApLand(lua_State *L)
     return 0;
 }
 
-static int luaMavsdkApGotoPositionAltYawDeg(lua_State *L)
+static int luaMavsdkApGotoPositionAlt(lua_State *L)
 {
     int32_t lat = luaL_checkinteger(L, 1);
     int32_t lon = luaL_checkinteger(L, 2);
     float alt = luaL_checknumber(L, 3);
-    float yaw = luaL_checknumber(L, 4);
-//XX    float alt = luaL_optnumber(L, 3, NAN);
-//XX    float yaw = luaL_optnumber(L, 4, NAN);
+    mavlinkTelem.apGotoPositionAltYawDeg(lat, lon, alt, yaw, NAN);
+    return 0;
+}
+
+static int luaMavsdkApGotoPositionAltYawDeg(lua_State *L)
+{
+    int32_t lat = luaL_checkinteger(L, 1);
+    int32_t lon = luaL_checkinteger(L, 2);
+    float alt = luaL_checknumber(L, 3); //XX float alt = luaL_optnumber(L, 3, NAN);
+    float yaw = luaL_checknumber(L, 4); //XX float yaw = luaL_optnumber(L, 4, NAN);
     mavlinkTelem.apGotoPositionAltYawDeg(lat, lon, alt, yaw);
     return 0;
 }
@@ -1005,6 +1012,7 @@ const luaL_Reg mavsdkLib[] = {
   { "apArm", luaMavsdkApArm },
   { "apCopterTakeOff", luaMavsdkApCopterTakeOff },
   { "apLand", luaMavsdkApLand },
+  { "apGotoPositionAlt", luaMavsdkApGotoPositionAlt },
   { "apGotoPositionAltYawDeg", luaMavsdkApGotoPositionAltYawDeg },
   { "apSetYawDeg", luaMavsdkApSetYawDeg },
   { "apCopterFlyClick", luaMavsdkApCopterFlyClick },
