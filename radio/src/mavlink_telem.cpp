@@ -700,7 +700,7 @@ void MavlinkTelem::handleMessageAutopilot(void)
         gps1.alt_mm = payload.alt;
         gps1.vel_cmps = payload.vel;
         gps1.cog_cdeg = payload.cog;
-        gps_instancemask &= 0x01;
+        gps_instancemask |= 0x01;
         if (g_model.mavlinkMimicSensors) {
             setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, GPS_ALT_FIRST_ID, 0, 10, (int32_t)(payload.alt), UNIT_METERS, 3);
             if (payload.vel != UINT16_MAX)
@@ -723,7 +723,7 @@ void MavlinkTelem::handleMessageAutopilot(void)
         gps2.alt_mm = payload.alt;
         gps2.vel_cmps = payload.vel;
         gps2.cog_cdeg = payload.cog;
-        gps_instancemask &= 0x02;
+        gps_instancemask |= 0x02;
         }break;
 
     case MAVLINK_MSG_ID_GLOBAL_POSITION_INT: {
@@ -799,7 +799,7 @@ void MavlinkTelem::handleMessageAutopilot(void)
     		bat2.remaining_pct = payload.battery_remaining; //(0%: 0, 100%: 100), -1 if not knwon
     		bat2.cellcount = cellcount;
         }
-        if (payload.id < 8) bat_instancemask &= (1 << payload.id);
+        if (payload.id < 8) bat_instancemask |= (1 << payload.id);
         if (g_model.mavlinkMimicSensors) {
             setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, BATT_ID, 0, 17, voltage/100, UNIT_VOLTS, 1);
             setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, VFAS_FIRST_ID, 0, 18, voltage/10, UNIT_VOLTS, 2);
