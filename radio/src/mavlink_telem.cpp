@@ -409,17 +409,17 @@ void MavlinkTelem::doTask(void)
 		}
 		if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_POSITION) {
 	        RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_POSITION);
-	        generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_POSITION, 2, 1);
+	        generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_POSITION, 5, 1); // do fast, 5 Hz
 	        return; //do only one per loop
 		}
 		if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_EXTRA1) {
 	        RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_EXTRA1);
-	        generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_EXTRA1, 4, 1);
+	        generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_EXTRA1, 5, 1); // do fast, 5 Hz
 	        return; //do only one per loop
 		}
 		if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_EXTRA2) {
 	        RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_EXTRA2);
-	        generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_EXTRA2, 4, 1);
+	        generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_EXTRA2, 2, 1);
 	        return; //do only one per loop
 		}
 		if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_EXTRA3) {
@@ -999,30 +999,7 @@ void MavlinkTelem::wakeup()
 }
 
 
-
-// -- Miscellaneous --
-
-// ArduPilot starts with sending heartbeat every 1 sec with FE, TimeSync every 5 sec with FE
-// we then need to request the data stream
-void MavlinkTelem::requestDataStreamFromAutopilot(void)
-{
-	if (autopilottype == MAV_AUTOPILOT_ARDUPILOTMEGA) {
-		push_task(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTENDED_STATUS); // there is no clear_request() yet, so push task
-		push_task(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_POSITION);
-		push_task(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTRA1);
-		push_task(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTRA2);
-		push_task(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTRA3);
-
-		push_task(TASK_AP, TASK_ARDUPILOT_REQUESTBANNER);
-		return;
-	}
-/*
-	// other autopilots
-	SETTASK(TASK_SENDREQUESTDATASTREAM_RAW_SENSORS);
-	SETTASK(TASK_SENDREQUESTDATASTREAM_EXTENDED_STATUS);
-	SETTASK(TASK_SENDREQUESTDATASTREAM_POSITION);*/
-}
-
+// -- Resets --
 
 void MavlinkTelem::_resetAutopilot(void)
 {
@@ -1207,6 +1184,28 @@ void MavlinkTelem::_reset(void)
 	// MAVLINK
 	msgRxFifo.clear();
 	msgFifo_enabled = false;
+}
+
+
+// -- Miscellaneous --
+
+// ArduPilot starts with sending heartbeat every 1 sec with FE, TimeSync every 5 sec with FE
+// we then need to request the data stream
+void MavlinkTelem::requestDataStreamFromAutopilot(void)
+{
+    if (autopilottype == MAV_AUTOPILOT_ARDUPILOTMEGA) {
+        // TODO there are no clear_request() yet, so push tasks
+        push_task(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTENDED_STATUS); // 2Hz sufficient
+        push_task(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_POSITION); // do at 10Hz to get position quickly
+        push_task(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTRA1); // do at 10Hz to get attitude quickly
+        push_task(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTRA2); // 2Hz sufficient
+        push_task(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTRA3); // 2Hz sufficient
+
+        push_task(TASK_AP, TASK_ARDUPILOT_REQUESTBANNER);
+        return;
+    }
+    // other autopilots
+    // TODO
 }
 
 
