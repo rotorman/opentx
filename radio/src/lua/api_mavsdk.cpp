@@ -402,13 +402,13 @@ static int luaMavsdkGetGps1Sat(lua_State *L)
 	return 1;
 }
 
-static int luaMavsdkGetGps1LatLonDeg(lua_State *L) // I believe Lua numbers are double, so should be OK
+/*static int luaMavsdkGetGps1LatLonDeg(lua_State *L) // I believe Lua numbers are double, so should be OK
 {
 	lua_newtable(L);
     lua_pushtablenumber(L, "lat", mavlinkTelem.gps1.lat * 1.0E-7);
     lua_pushtablenumber(L, "lon", mavlinkTelem.gps1.lon * 1.0E-7);
 	return 1;
-}
+}*/
 
 static int luaMavsdkGetGps1LatLonInt(lua_State *L)
 {
@@ -479,13 +479,13 @@ static int luaMavsdkGetGps2Sat(lua_State *L)
     return 1;
 }
 
-static int luaMavsdkGetGps2LatLonDeg(lua_State *L) // I believe Lua numbers are double, so should be OK
+/*static int luaMavsdkGetGps2LatLonDeg(lua_State *L) // I believe Lua numbers are double, so should be OK
 {
     lua_newtable(L);
     lua_pushtablenumber(L, "lat", mavlinkTelem.gps2.lat * 1.0E-7);
     lua_pushtablenumber(L, "lon", mavlinkTelem.gps2.lon * 1.0E-7);
     return 1;
-}
+}*/
 
 static int luaMavsdkGetGps2LatLonInt(lua_State *L)
 {
@@ -547,15 +547,15 @@ static int luaMavsdkGetGpsCount(lua_State *L)
 
 // -- MAVSDK POSITION --
 
-static int luaMavsdkGetPosLatLonDeg(lua_State *L) // I believe Lua numbers are double, so should be OK
+/*static int luaMavsdkGetPositionLatLonDeg(lua_State *L) // I believe Lua numbers are double, so should be OK
 {
     lua_newtable(L);
     lua_pushtablenumber(L, "lat", mavlinkTelem.gposition.lat * 1.0E-7);
     lua_pushtablenumber(L, "lon", mavlinkTelem.gposition.lon * 1.0E-7);
     return 1;
-}
+}*/
 
-static int luaMavsdkGetPosLatLonInt(lua_State *L)
+static int luaMavsdkGetPositionLatLonInt(lua_State *L)
 {
     lua_newtable(L);
     lua_pushtableinteger(L, "lat", mavlinkTelem.gposition.lat);
@@ -563,25 +563,25 @@ static int luaMavsdkGetPosLatLonInt(lua_State *L)
     return 1;
 }
 
-static int luaMavsdkGetPosAltitudeMsl(lua_State *L)
+static int luaMavsdkGetPositionAltitudeMsl(lua_State *L)
 {
     lua_pushnumber(L, mavlinkTelem.gposition.alt_mm * 0.001f);
     return 1;
 }
 
-static int luaMavsdkGetPosAltitudeRelative(lua_State *L)
+static int luaMavsdkGetPositionAltitudeRelative(lua_State *L)
 {
     lua_pushnumber(L, mavlinkTelem.gposition.relative_alt_mm * 0.001f);
 	return 1;
 }
 
-static int luaMavsdkGetPosHeadingDeg(lua_State *L)
+static int luaMavsdkGetPositionHeadingDeg(lua_State *L)
 {
     lua_pushnumber(L, mavlinkTelem.gposition.hdg_cdeg * 0.01f);
     return 1;
 }
 
-static int luaMavsdkGetPosSpeedNed(lua_State *L)
+static int luaMavsdkGetPositionSpeedNed(lua_State *L)
 {
     lua_newtable(L);
     lua_pushtablenumber(L, "vx", mavlinkTelem.gposition.vx_cmps * 0.01f);
@@ -842,23 +842,46 @@ static int luaMavsdkApLand(lua_State *L)
     return 0;
 }
 
-static int luaMavsdkApGotoPositionAlt(lua_State *L)
+static int luaMavsdkApGotoPosIntAltRel(lua_State *L)
 {
     int32_t lat = luaL_checkinteger(L, 1);
     int32_t lon = luaL_checkinteger(L, 2);
     float alt = luaL_checknumber(L, 3);
-    mavlinkTelem.apGotoPositionAltYawDeg(lat, lon, alt, yaw, NAN);
+    mavlinkTelem.apGotoPosAltYawDeg(lat, lon, alt, NAN);
     return 0;
 }
 
-static int luaMavsdkApGotoPositionAltYawDeg(lua_State *L)
+static int luaMavsdkApGotoPosIntAltRelYawDeg(lua_State *L)
 {
     int32_t lat = luaL_checkinteger(L, 1);
     int32_t lon = luaL_checkinteger(L, 2);
     float alt = luaL_checknumber(L, 3); //XX float alt = luaL_optnumber(L, 3, NAN);
     float yaw = luaL_checknumber(L, 4); //XX float yaw = luaL_optnumber(L, 4, NAN);
-    mavlinkTelem.apGotoPositionAltYawDeg(lat, lon, alt, yaw);
+    mavlinkTelem.apGotoPosAltYawDeg(lat, lon, alt, yaw);
     return 0;
+}
+
+static int luaMavsdkApGotoPosIntAltRelVel(lua_State *L)
+{
+    int32_t lat = luaL_checkinteger(L, 1);
+    int32_t lon = luaL_checkinteger(L, 2);
+    float alt = luaL_checknumber(L, 3);
+    float vx = luaL_checknumber(L, 4);
+    float vy = luaL_checknumber(L, 5);
+    float vz = luaL_checknumber(L, 6);
+    mavlinkTelem.apGotoPosAltVel(lat, lon, alt, vx, vy, vz);
+    return 0;
+}
+
+static int luaMavsdkApMoveToPosIntAltRel(lua_State *L)
+{
+    int32_t lat = luaL_checkinteger(L, 1);
+    int32_t lon = luaL_checkinteger(L, 2);
+    float alt = luaL_checknumber(L, 3);
+    float speed = luaL_optnumber(L, 4, 2.0f); // 2.0 m/s default speed
+    bool flag = mavlinkTelem.apMoveToPosAltWithSpeed(lat, lon, alt, speed);
+    lua_pushboolean(L, flag);
+    return 1;
 }
 
 static int luaMavsdkApSetYawDeg(lua_State *L)
@@ -907,7 +930,7 @@ static int luaMavsdkGetStatusText(lua_State *L)
 }
 
 
-
+// I believe the names can't be longer than 32 chars
 const luaL_Reg mavsdkLib[] = {
 #if defined(MAVLINK_TELEM)
   { "mavtelemIsEnabled", luaMavsdkMavTelemIsEnabled },
@@ -976,11 +999,11 @@ const luaL_Reg mavsdkLib[] = {
   { "isGps2Available", luaMavsdkIsGps2Available },
   { "getGpsCount", luaMavsdkGetGpsCount },
 
-  { "getPositionLatLonInt", luaMavsdkGetPosLatLonInt },
-  { "getPositionAltitudeMsl", luaMavsdkGetPosAltitudeMsl },
-  { "getPositionAltitudeRelative", luaMavsdkGetPosAltitudeRelative },
-  { "getPositionHeadingDeg", luaMavsdkGetPosHeadingDeg },
-  { "getPositionSpeedNed", luaMavsdkGetPosSpeedNed },
+  { "getPositionLatLonInt", luaMavsdkGetPositionLatLonInt },
+  { "getPositionAltitudeMsl", luaMavsdkGetPositionAltitudeMsl },
+  { "getPositionAltitudeRelative", luaMavsdkGetPositionAltitudeRelative },
+  { "getPositionHeadingDeg", luaMavsdkGetPositionHeadingDeg },
+  { "getPositionSpeedNed", luaMavsdkGetPositionSpeedNed },
 
   { "getVfrAirSpeed", luaMavsdkGetVfrAirSpeed },
   { "getVfrGroundSpeed", luaMavsdkGetVfrGroundSpeed },
@@ -1014,13 +1037,16 @@ const luaL_Reg mavsdkLib[] = {
 
   { "apIsFlying", luaMavsdkApIsFlying },
   { "apIsFailsafe", luaMavsdkApIsFailsafe },
+  { "apPositionOk", luaMavsdkApPositionOk },
   { "apSetFlightMode", luaMavsdkApSetFlightMode },
   { "apRequestBanner", luaMavsdkApRequestBanner },
   { "apArm", luaMavsdkApArm },
   { "apCopterTakeOff", luaMavsdkApCopterTakeOff },
   { "apLand", luaMavsdkApLand },
-  { "apGotoPositionAlt", luaMavsdkApGotoPositionAlt },
-  { "apGotoPositionAltYawDeg", luaMavsdkApGotoPositionAltYawDeg },
+  { "apGotoPosIntAltRel", luaMavsdkApGotoPosIntAltRel },
+  { "apGotoPosIntAltRelYawDeg", luaMavsdkApGotoPosIntAltRelYawDeg },
+  { "apGotoPosIntAltRelVel", luaMavsdkApGotoPosIntAltRelVel },
+  { "apMoveToPosIntAltRel", luaMavsdkApMoveToPosIntAltRel },
   { "apSetYawDeg", luaMavsdkApSetYawDeg },
   { "apCopterFlyClick", luaMavsdkApCopterFlyClick },
   { "apCopterFlyHold", luaMavsdkApCopterFlyHold },

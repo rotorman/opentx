@@ -200,7 +200,6 @@ void MavlinkTelem::generateCmdDoSetMode(uint8_t tsystem, uint8_t tcomponent, MAV
 }
 
 
-// ATTENTION: yaw is in RAD !  ArduPilot doesn't support acceleration
 void MavlinkTelem::generateSetPositionTargetGlobalInt(
         uint8_t tsystem, uint8_t tcomponent,
         uint8_t coordinate_frame, uint16_t type_mask,
@@ -210,8 +209,9 @@ void MavlinkTelem::generateSetPositionTargetGlobalInt(
     mavlink_msg_set_position_target_global_int_pack(
             _my_sysid, _my_compid, &_msg_out,
             0, //uint32_t time_boot_ms,
-            tsystem, tcomponent, coordinate_frame, type_mask,
-            lat, lon, alt, vx, vy, vz, 0.0f, 0.0f, 0.0f, yaw_rad, yaw_rad_rate
+            tsystem, tcomponent,
+            coordinate_frame, type_mask,
+            lat, lon, alt, vx, vy, vz, 0.0f, 0.0f, 0.0f, yaw_rad, yaw_rad_rate // alt in m, v in m/s, yaw in rad
             );
     _txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
 }
@@ -282,19 +282,66 @@ void MavlinkTelem::apSetFlightMode(uint32_t ap_flight_mode)
 }
 
 //alt and yaw can be NAN if they should be ignored
-void MavlinkTelem::apGotoPositionAltYawDeg(int32_t lat, int32_t lon, float alt, float yaw)
+// this function is not very useful as it really moves very slowly
+void MavlinkTelem::apGotoPosAltYawDeg(int32_t lat, int32_t lon, float alt, float yaw)
 {
     _t_coordinate_frame = MAV_FRAME_GLOBAL_RELATIVE_ALT_INT;
     //_t_type_mask = 0x09F8;
     _t_type_mask = POSITION_TARGET_TYPEMASK_VX_IGNORE | POSITION_TARGET_TYPEMASK_VY_IGNORE | POSITION_TARGET_TYPEMASK_VZ_IGNORE |
                    POSITION_TARGET_TYPEMASK_AX_IGNORE | POSITION_TARGET_TYPEMASK_AY_IGNORE | POSITION_TARGET_TYPEMASK_AZ_IGNORE |
                    POSITION_TARGET_TYPEMASK_YAW_RATE_IGNORE;
-    if (isnan(alt)) { _t_type_mask |= POSITION_TARGET_TYPEMASK_Z_IGNORE; alt = 0.0f; }
+    if (isnan(alt)) { _t_type_mask |= POSITION_TARGET_TYPEMASK_Z_IGNORE; alt = 1.0f; }
     if (isnan(yaw)) { _t_type_mask |= POSITION_TARGET_TYPEMASK_YAW_IGNORE; yaw = 0.0f; }
-    _t_lat = lat; _t_lon = lon; _t_alt = alt; _t_yaw_rad = yaw * FDEGTORAD;
-    _t_vx = _t_vy = _t_vz = 0.0f; _t_yaw_rad_rate = 0.0f;
+    _t_lat = lat; _t_lon = lon;
+    _t_alt = alt; // m
+    _t_vx = _t_vy = _t_vz = 0.0f;
+    _t_yaw_rad = yaw * FDEGTORAD; // rad
+    _t_yaw_rad_rate = 0.0f;
+    // alt in m, v in m/s, yaw in rad
     SETTASK(TASK_AUTOPILOT, TASK_SENDMSG_SET_POSITION_TARGET_GLOBAL_INT);
 }
+
+void MavlinkTelem::apGotoPosAltVel(int32_t lat, int32_t lon, float alt, float vx, float vy, float vz)
+{
+    _t_coordinate_frame = MAV_FRAME_GLOBAL_RELATIVE_ALT_INT;
+    _t_type_mask = POSITION_TARGET_TYPEMASK_AX_IGNORE | POSITION_TARGET_TYPEMASK_AY_IGNORE | POSITION_TARGET_TYPEMASK_AZ_IGNORE |
+                   POSITION_TARGET_TYPEMASK_YAW_IGNORE |
+                   POSITION_TARGET_TYPEMASK_YAW_RATE_IGNORE;
+    _t_lat = lat; _t_lon = lon;
+    _t_alt = alt; // m
+    _t_vx = vx; _t_vy = vy; _t_vz = vz; // m/s
+    _t_yaw_rad = _t_yaw_rad_rate = 0.0f;
+    // alt in m, v in m/s, yaw in rad
+    SETTASK(TASK_AUTOPILOT, TASK_SENDMSG_SET_POSITION_TARGET_GLOBAL_INT);
+}
+
+bool MavlinkTelem::apMoveToPosAltWithSpeed(int32_t lat, int32_t lon, float alt, float speed)
+{
+    // TODO: check if we have a valid position
+    // mimic ArduCopter's position_ok() when it is in armed state
+    bool ok = (ekf.flags & MAVAP_EKF_POS_HORIZ_ABS) && !(ekf.flags & MAVAP_EKF_CONST_POS_MODE);
+    if (!ok) return false;
+
+    //we grab the current location
+    // from this we calculate the normalized direction vector
+    // which is then multiplied by speed to get the velocity vector
+    // we use flat earth approximation
+    //   xScale = cos(rad(lat0 * 1.0e-7))
+    //   x = rad((lon - lon0) * 1.0e-7) * xScale * R
+    //   y = rad((lat - lat0) * 1.0e-7) * R
+    // in order to get xscale and stay within float we are happy with ca 4 digits accuracy
+    float xscale = cosf( (float)( (lat + gposition.lat)/20000 ) * (1.0E-3f * FPI/180.0f) );
+    float dx = (float)( lat - gposition.lat ) * xscale * (0.6371f); //m
+    float dy = (float)( lon - gposition.lon ) * (0.6371f); //m
+    float dz = alt - 0.001f * (float)gposition.relative_alt_mm; //m
+    float dist = sqrtf(dx*dx + dy*dy + dz*dz);
+
+    if (dist == 0.0f ) return false; // if the distance is zero, we can skip it
+
+    apGotoPosAltVel(lat, lon, alt, dx/dist*speed, dy/dist*speed, dz/dist*speed);
+    return true;
+}
+
 
 //note, we can enter negative yaw here, sign determines direction
 void MavlinkTelem::apSetYawDeg(float yaw, bool relative)
@@ -306,9 +353,9 @@ void MavlinkTelem::apSetYawDeg(float yaw, bool relative)
         _tsy_relative = 0.0f;
         _tsy_dir = 0.0f;
     }
-    float res = fmodf(yaw, 360.0f); //yaw must be in range [0..360]
+    float res = fmodf(yaw, 360.0f);
     if (res < 0.0f) res += 360.0f;
-    _tsy_yaw_deg = res;
+    _tsy_yaw_deg = res; // deg, must be in range [0..360]
     SETTASK(TASK_AUTOPILOT, TASK_SENDCMD_CONDITION_YAW);
 }
 
@@ -756,7 +803,7 @@ void MavlinkTelem::handleMessageAutopilot(void)
         }
 		}break;
 
-/* let's use BATTERY_STATUS, is nearly the same thing
+    /* let's use BATTERY_STATUS, is nearly the same thing
     case MAVLINK_MSG_ID_SYS_STATUS: {
     	mavlink_sys_status_t payload;
     	mavlink_msg_sys_status_decode(&_msg, &payload);

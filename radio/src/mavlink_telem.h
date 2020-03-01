@@ -232,7 +232,9 @@ class MavlinkTelem
     uint16_t _t_type_mask;
     int32_t _t_lat, _t_lon;
     float _t_alt, _t_vx, _t_vy, _t_vz, _t_yaw_rad, _t_yaw_rad_rate;
-    void apGotoPositionAltYawDeg(int32_t lat, int32_t lon, float alt, float yaw);
+    void apGotoPosAltYawDeg(int32_t lat, int32_t lon, float alt, float yaw);
+    void apGotoPosAltVel(int32_t lat, int32_t lon, float alt, float vx, float vy, float vz);
+    bool apMoveToPosAltWithSpeed(int32_t lat, int32_t lon, float alt, float speed);
 
     float _tsy_yaw_deg, _tsy_dir, _tsy_relative;
     void apSetYawDeg(float yaw, bool relative); //note, we can enter negative yaw here, sign determines direction
