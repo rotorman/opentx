@@ -803,6 +803,12 @@ static int luaMavsdkApIsFailsafe(lua_State *L)
     return 1;
 }
 
+static int luaMavsdkApPositionOk(lua_State *L)
+{
+    lua_pushboolean(L, mavlinkTelem.apPositionOk());
+    return 1;
+}
+
 static int luaMavsdkApSetFlightMode(lua_State *L)
 {
     int32_t ap_flight_mode = luaL_checkinteger(L, 1);

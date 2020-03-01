@@ -819,6 +819,13 @@ void MavlinkTelem::handleMessageAutopilot(void)
         statustextFifo.push(payload);
         }break;
 
+    case MAVLINK_MSG_ID_EKF_STATUS_REPORT: {
+        mavlink_ekf_status_report_t payload;
+        mavlink_msg_ekf_status_report_decode(&_msg, &payload);
+        //we don't really need the other fields
+        ekf.flags = payload.flags;
+        }break;
+
     };
 }
 
@@ -1094,6 +1101,8 @@ void MavlinkTelem::_resetAutopilot(void)
     bat_instancemask = 0;
 
     statustextFifo.clear();
+
+    ekf.flags = 0;
 }
 
 

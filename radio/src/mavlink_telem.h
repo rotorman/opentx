@@ -198,6 +198,32 @@ class MavlinkTelem
 
     Fifo<mavlink_statustext_t, 4> statustextFifo;
 
+    typedef enum {
+      MAVAP_EKF_ATTITUDE = 1,
+      MAVAP_EKF_VELOCITY_HORIZ = 2,
+      MAVAP_EKF_VELOCITY_VERT = 4,
+      MAVAP_EKF_POS_HORIZ_REL = 8,
+      MAVAP_EKF_POS_HORIZ_ABS = 16,
+      MAVAP_EKF_POS_VERT_ABS = 32,
+      MAVAP_EKF_POS_VERT_AGL = 64,
+      MAVAP_EKF_CONST_POS_MODE = 128,
+      MAVAP_EKF_PRED_POS_HORIZ_REL = 256,
+      MAVAP_EKF_PRED_POS_HORIZ_ABS = 512,
+    } MAVAP_EKFFLAGS;
+
+    struct Ekf {
+        //comment: we don't really need the other fields
+        uint16_t flags;
+    };
+    struct Ekf ekf;
+
+    // AP: not armed -> filt_status.flags.horiz_pos_abs || filt_status.flags.pred_horiz_pos_abs
+    //         armed -> filt_status.flags.horiz_pos_abs && !filt_status.flags.const_pos_mode
+    bool apPositionOk(void) {
+        return (ekf.flags & MAVAP_EKF_POS_HORIZ_ABS)       // this is kind of what AP does for position_ok() when not armed
+                && (ekf.flags & MAVAP_EKF_VELOCITY_HORIZ); // and this is what I'm doing for STorMLink
+    }
+
     uint8_t _t_base_mode;
     uint32_t _t_custom_mode;
     void apSetFlightMode(uint32_t ap_flight_mode);
