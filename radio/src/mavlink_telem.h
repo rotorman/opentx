@@ -58,18 +58,22 @@ class MavlinkTelem
     void setOutVersionV2(void);
     void setOutVersionV1(void);
 
-    void generateHeartbeat(uint8_t base_mode, uint32_t custom_mode, uint8_t system_status);
-    void generateRequestDataStream(uint8_t tsystem, uint8_t tcomponent, uint8_t data_stream, uint16_t rate, uint8_t startstop);
-    void generateParamRequestList(uint8_t tsystem, uint8_t tcomponent);
     void _generateCmdLong(uint8_t tsystem, uint8_t tcomponent, uint16_t cmd, float p1=0.0f, float p2=0.0f, float p3=0.0f, float p4=0.0f, float p5=0.0f, float p6=0.0f, float p7=0.0f);
+    void generateHeartbeat(uint8_t base_mode, uint32_t custom_mode, uint8_t system_status);
+    void generateParamRequestList(uint8_t tsystem, uint8_t tcomponent);
     //to autopilot
+    void generateRequestDataStream(uint8_t tsystem, uint8_t tcomponent, uint8_t data_stream, uint16_t rate_hz, uint8_t startstop);
+    void generateCmdSetMessageInterval(uint8_t tsystem, uint8_t tcomponent, uint8_t msgid, int32_t period_us, uint8_t startstop);
     void generateCmdDoSetMode(uint8_t tsystem, uint8_t tcomponent, MAV_MODE base_mode, uint32_t custom_mode);
     void generateSetPositionTargetGlobalInt(uint8_t tsystem, uint8_t tcomponent, uint8_t coordinate_frame, uint16_t type_mask, int32_t lat, int32_t lon, float alt, float vx, float vy, float vz, float yaw_rad, float yaw_rad_rate);
+    void generateCmdDoChangeSpeed(uint8_t tsystem, uint8_t tcomponent, float speed_mps, uint16_t speed_type, bool relative);
+    void generateCmdNavTakeoff(uint8_t tsystem, uint8_t tcomponent, float alt_m, bool hor_nav_by_pilot);
+    void generateCmdConditionYaw(uint8_t tsystem, uint8_t tcomponent, float yaw_deg, float yaw_deg_rate, int8_t dir, bool rel);
     //to camera
-    void generateRequestCameraInformation(uint8_t tsystem, uint8_t tcomponent);
-    void generateRequestCameraSettings(uint8_t tsystem, uint8_t tcomponent);
-    void generateRequestStorageInformation(uint8_t tsystem, uint8_t tcomponent);
-    void generateRequestCameraCapturesStatus(uint8_t tsystem, uint8_t tcomponent);
+    void generateCmdRequestCameraInformation(uint8_t tsystem, uint8_t tcomponent);
+    void generateCmdRequestCameraSettings(uint8_t tsystem, uint8_t tcomponent);
+    void generateCmdRequestStorageInformation(uint8_t tsystem, uint8_t tcomponent);
+    void generateCmdRequestCameraCapturesStatus(uint8_t tsystem, uint8_t tcomponent);
     void generateCmdSetCameraMode(uint8_t tsystem, uint8_t tcomponent, uint8_t mode);
     void generateCmdImageStartCapture(uint8_t tsystem, uint8_t tcomponent);
     void generateCmdVideoStartCapture(uint8_t tsystem, uint8_t tcomponent);
@@ -254,28 +258,29 @@ class MavlinkTelem
                 && (ekf.flags & MAVAP_EKF_VELOCITY_HORIZ); // and this is what I'm doing for STorMLink
     }
 
-    uint8_t _t_base_mode;
-    uint32_t _t_custom_mode;
-    void apSetFlightMode(uint32_t ap_flight_mode);
+    //some tasks need some additional data
+    uint8_t _tcsm_base_mode; uint32_t _tcsm_custom_mode;
+    uint8_t _t_coordinate_frame; uint16_t _t_type_mask;
+    int32_t _t_lat, _t_lon; float _t_alt, _t_vx, _t_vy, _t_vz, _t_yaw_rad, _t_yaw_rad_rate;
+    float _tccs_speed_mps; uint8_t _tccs_speed_type;
+    float _tcnt_alt_m;
+    float _tccy_yaw_deg; int8_t _tccy_dir; bool _tccy_relative;
+    float _tact_takeoff_alt_m;
+    float _tacf_takeoff_alt_m;
 
-    uint8_t _t_coordinate_frame;
-    uint16_t _t_type_mask;
-    int32_t _t_lat, _t_lon;
-    float _t_alt, _t_vx, _t_vy, _t_vz, _t_yaw_rad, _t_yaw_rad_rate;
+    //convenience task wrapper
+    void apSetFlightMode(uint32_t ap_flight_mode);
     void apGotoPosAltYawDeg(int32_t lat, int32_t lon, float alt, float yaw);
     void apGotoPosAltVel(int32_t lat, int32_t lon, float alt, float vx, float vy, float vz);
-    bool apMoveToPosAltWithSpeed(int32_t lat, int32_t lon, float alt, float speed);
-
-    float _tsy_yaw_deg, _tsy_dir, _tsy_relative;
+    bool apMoveToPosAltWithSpeed(int32_t lat, int32_t lon, float alt, float speed, bool xy=false);
     void apSetYawDeg(float yaw, bool relative); //note, we can enter negative yaw here, sign determines direction
 
-    float _t_takeoff_alt_m;
     void apRequestBanner(void) { SETTASK(TASK_AP, TASK_ARDUPILOT_REQUESTBANNER); }
     void apArm(bool arm) { SETTASK(TASK_AP, (arm) ? TASK_ARDUPILOT_ARM : TASK_ARDUPILOT_DISARM); }
-    void apCopterTakeOff(float alt) { _t_takeoff_alt_m = alt; SETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_TAKEOFF); }
+    void apCopterTakeOff(float alt) { _tact_takeoff_alt_m = alt; SETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_TAKEOFF); }
     void apLand(void) { SETTASK(TASK_AP, TASK_ARDUPILOT_LAND); }
     void apCopterFlyClick(void) { SETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_FLYCLICK); }
-    void apCopterFlyHold(float alt) { _t_takeoff_alt_m = alt; SETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_FLYHOLD); }
+    void apCopterFlyHold(float alt) { _tacf_takeoff_alt_m = alt; SETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_FLYHOLD); }
     void apCopterFlyPause(void) { SETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_FLYPAUSE); }
 
     // MAVSDK CAMERA

@@ -149,6 +149,7 @@ void MavlinkTelem::setOutVersionV1(void)
 
 
 // -- Generate MAVLink messages --
+// these should never be called directly, should only by called by the task handler
 
 void MavlinkTelem::_generateCmdLong(
         uint8_t tsystem, uint8_t tcomponent, uint16_t cmd,
@@ -224,23 +225,43 @@ void MavlinkTelem::generateSetPositionTargetGlobalInt(
     _txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
 }
 
+// speed type 0=Airspeed, 1=Ground Speed, 2=Climb Speed, 3=Descent Speed
+//ArduPilot: ignores param3 =  Throttle, param4 = Relative
+void MavlinkTelem::generateCmdDoChangeSpeed(uint8_t tsystem, uint8_t tcomponent, float speed_mps, uint16_t speed_type, bool relative)
+{
+    _generateCmdLong(tsystem, tcomponent, MAV_CMD_DO_CHANGE_SPEED, speed_type, speed_mps, -1, (relative) ? 1.0f : 0.0f);
+}
 
-void MavlinkTelem::generateRequestCameraInformation(uint8_t tsystem, uint8_t tcomponent)
+//ArduPilot: supports a param3 which is not in the specs, ignores param1,4,5,6
+// param3 = horizontal navigation by pilot acceptable
+void MavlinkTelem::generateCmdNavTakeoff(uint8_t tsystem, uint8_t tcomponent, float alt_m, bool hor_nav_by_pilot)
+{
+    _generateCmdLong(tsystem, tcomponent, MAV_CMD_NAV_TAKEOFF, 0,0, (hor_nav_by_pilot) ? 1.0f : 0.0f, 0,0,0, alt_m);
+}
+
+// yaw must be in range 0..360
+void MavlinkTelem::generateCmdConditionYaw(uint8_t tsystem, uint8_t tcomponent, float yaw_deg, float yaw_deg_rate, int8_t dir, bool rel)
+{
+    _generateCmdLong(tsystem, tcomponent, MAV_CMD_CONDITION_YAW, yaw_deg, yaw_deg_rate, (dir>0)?1.0f:-1.0f, (rel)?1.0f:0.0f);
+}
+
+
+void MavlinkTelem::generateCmdRequestCameraInformation(uint8_t tsystem, uint8_t tcomponent)
 {
     _generateCmdLong(tsystem, tcomponent, MAV_CMD_REQUEST_CAMERA_INFORMATION, 1, 0,0,0,0,0,0);
 }
 
-void MavlinkTelem::generateRequestCameraSettings(uint8_t tsystem, uint8_t tcomponent)
+void MavlinkTelem::generateCmdRequestCameraSettings(uint8_t tsystem, uint8_t tcomponent)
 {
     _generateCmdLong(tsystem, tcomponent, MAV_CMD_REQUEST_CAMERA_SETTINGS, 1, 0,0,0,0,0,0);
 }
 
-void MavlinkTelem::generateRequestStorageInformation(uint8_t tsystem, uint8_t tcomponent)
+void MavlinkTelem::generateCmdRequestStorageInformation(uint8_t tsystem, uint8_t tcomponent)
 {
     _generateCmdLong(tsystem, tcomponent, MAV_CMD_REQUEST_STORAGE_INFORMATION, 0, 1, 0,0,0,0,0);
 }
 
-void MavlinkTelem::generateRequestCameraCapturesStatus(uint8_t tsystem, uint8_t tcomponent)
+void MavlinkTelem::generateCmdRequestCameraCapturesStatus(uint8_t tsystem, uint8_t tcomponent)
 {
     _generateCmdLong(tsystem, tcomponent, MAV_CMD_REQUEST_CAMERA_CAPTURE_STATUS, 1, 0,0,0,0,0,0);
 }
@@ -265,14 +286,13 @@ void MavlinkTelem::generateCmdVideoStopCapture(uint8_t tsystem, uint8_t tcompone
     _generateCmdLong(tsystem, tcomponent, MAV_CMD_VIDEO_STOP_CAPTURE, 0,0,0,0,0,0,0);
 }
 
+
 void MavlinkTelem::generateCmdDoMountConfigure(uint8_t tsystem, uint8_t tcomponent, uint8_t mode)
 {
     _generateCmdLong(tsystem, tcomponent, MAV_CMD_DO_MOUNT_CONFIGURE, mode, 0,0,0,0,0,0);
 }
 
-
-// angles are in DEG
-// ATTENTION: if a mount has no pan control, then this will also yaw the copter in guided mode overwriting _fixed_yaw
+//ArduPilot: if a mount has no pan control, then this will also yaw the copter in guided mode overwriting _fixed_yaw !!
 void MavlinkTelem::generateCmdDoMountControl(uint8_t tsystem, uint8_t tcomponent, float pitch_deg, float yaw_deg)
 {
     _generateCmdLong(tsystem, tcomponent, MAV_CMD_DO_MOUNT_CONTROL,
@@ -284,9 +304,9 @@ void MavlinkTelem::generateCmdDoMountControl(uint8_t tsystem, uint8_t tcomponent
 
 void MavlinkTelem::apSetFlightMode(uint32_t ap_flight_mode)
 {
-    _t_base_mode = MAV_MODE_FLAG_CUSTOM_MODE_ENABLED;
-    _t_custom_mode = ap_flight_mode;
-    SETTASK(TASK_AUTOPILOT, TASK_SENDCMD_SET_MODE);
+    _tcsm_base_mode = MAV_MODE_FLAG_CUSTOM_MODE_ENABLED;
+    _tcsm_custom_mode = ap_flight_mode;
+    SETTASK(TASK_AUTOPILOT, TASK_SENDCMD_DO_SET_MODE);
 }
 
 //alt and yaw can be NAN if they should be ignored
@@ -323,13 +343,12 @@ void MavlinkTelem::apGotoPosAltVel(int32_t lat, int32_t lon, float alt, float vx
     SETTASK(TASK_AUTOPILOT, TASK_SENDMSG_SET_POSITION_TARGET_GLOBAL_INT);
 }
 
-bool MavlinkTelem::apMoveToPosAltWithSpeed(int32_t lat, int32_t lon, float alt, float speed)
+bool MavlinkTelem::apMoveToPosAltWithSpeed(int32_t lat, int32_t lon, float alt, float speed, bool xy)
 {
     // TODO: check if we have a valid position
     // mimic ArduCopter's position_ok() when it is in armed state
     bool ok = (ekf.flags & MAVAP_EKF_POS_HORIZ_ABS) && !(ekf.flags & MAVAP_EKF_CONST_POS_MODE);
     if (!ok) return false;
-
     //we grab the current location
     // from this we calculate the normalized direction vector
     // which is then multiplied by speed to get the velocity vector
@@ -338,15 +357,13 @@ bool MavlinkTelem::apMoveToPosAltWithSpeed(int32_t lat, int32_t lon, float alt, 
     //   x = rad((lon - lon0) * 1.0e-7) * xScale * R
     //   y = rad((lat - lat0) * 1.0e-7) * R
     // in order to get xscale and stay within float we are happy with ca 4 digits accuracy
-    float xscale = cosf( (float)( (lat + gposition.lat)/20000 ) * (1.0E-3f * FPI/180.0f) );
-    float dx = (float)( lat - gposition.lat ) * xscale * (0.6371f); //m
-    float dy = (float)( lon - gposition.lon ) * (0.6371f); //m
-    float dz = alt - 0.001f * (float)gposition.relative_alt_mm; //m
+    float xscale = cosf( (float)((lat + gposition.lat)/20000) * (1.0E-3f * FPI/180.0f) );
+    float dx = (float)( lon - gposition.lon ) * xscale * (0.6371f); //m
+    float dy = (float)( lat - gposition.lat ) * (0.6371f); //m
+    float dz = (xy) ? 0.0f : (alt - 0.001f * (float)gposition.relative_alt_mm); //m
     float dist = sqrtf(dx*dx + dy*dy + dz*dz);
-
     if (dist == 0.0f ) return false; // if the distance is zero, we can skip it
-
-    apGotoPosAltVel(lat, lon, alt, dx/dist*speed, dy/dist*speed, dz/dist*speed);
+    apGotoPosAltVel(lat, lon, alt, (dx/dist)*speed, (dy/dist)*speed, (dz/dist)*speed);
     return true;
 }
 
@@ -355,15 +372,15 @@ bool MavlinkTelem::apMoveToPosAltWithSpeed(int32_t lat, int32_t lon, float alt, 
 void MavlinkTelem::apSetYawDeg(float yaw, bool relative)
 {
     if (relative) {
-        _tsy_relative = 1.0f;
-        if (yaw < 0.0f){ _tsy_dir = -1.0f; yaw = -yaw; } else{ _tsy_dir = 1.0f; }
+        _tccy_relative = 1.0f;
+        if (yaw < 0.0f){ _tccy_dir = -1.0f; yaw = -yaw; } else{ _tccy_dir = 1.0f; }
     } else {
-        _tsy_relative = 0.0f;
-        _tsy_dir = 0.0f;
+        _tccy_relative = 0.0f;
+        _tccy_dir = 0.0f;
     }
     float res = fmodf(yaw, 360.0f);
     if (res < 0.0f) res += 360.0f;
-    _tsy_yaw_deg = res; // deg, must be in range [0..360]
+    _tccy_yaw_deg = res;  // is in deg, must be in range [0..360]
     SETTASK(TASK_AUTOPILOT, TASK_SENDCMD_CONDITION_YAW);
 }
 
@@ -445,9 +462,19 @@ void MavlinkTelem::doTask(void)
                     _t_lat, _t_lon, _t_alt, _t_vx, _t_vy, _t_vz, _t_yaw_rad, _t_yaw_rad_rate);
             return; //do only one per loop
         }
+        if (_task[TASK_AUTOPILOT] & TASK_SENDCMD_DO_CHANGE_SPEED) {
+            RESETTASK(TASK_AUTOPILOT,TASK_SENDCMD_DO_CHANGE_SPEED);
+            generateCmdDoChangeSpeed(_sysid, autopilot.compid, _tccs_speed_mps, _tccs_speed_type, true);
+            return; //do only one per loop
+        }
+        if (_task[TASK_AUTOPILOT] & TASK_SENDCMD_NAV_TAKEOFF) {
+            RESETTASK(TASK_AUTOPILOT,TASK_SENDCMD_NAV_TAKEOFF);
+            generateCmdNavTakeoff(_sysid, autopilot.compid, _tcnt_alt_m, 1);
+            return; //do only one per loop
+        }
         if (_task[TASK_AUTOPILOT] & TASK_SENDCMD_CONDITION_YAW) {
             RESETTASK(TASK_AUTOPILOT,TASK_SENDCMD_CONDITION_YAW);
-            _generateCmdLong(_sysid, autopilot.compid, _tsy_yaw_deg, 0.0f, _tsy_dir, _tsy_relative);
+            generateCmdConditionYaw(_sysid, autopilot.compid, _tccy_yaw_deg, 0.0f, _tccy_dir, _tccy_relative);
             return; //do only one per loop
         }
 
@@ -515,7 +542,7 @@ void MavlinkTelem::doTask(void)
         }
         if (_task[TASK_AP] & TASK_ARDUPILOT_COPTER_TAKEOFF) { //MAV_CMD_NAV_TAKEOFF
             RESETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_TAKEOFF);
-            _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_NAV_TAKEOFF, 0,0, 0.0f, 0,0,0, _t_takeoff_alt_m); //must_navigate = true
+            _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_NAV_TAKEOFF, 0,0, 0.0f, 0,0,0, _tact_takeoff_alt_m); //must_navigate = true
             return; //do only one per loop
         }
         if (_task[TASK_AP] & TASK_ARDUPILOT_LAND) { //MAV_CMD_NAV_LAND
@@ -530,7 +557,7 @@ void MavlinkTelem::doTask(void)
         }
         if (_task[TASK_AP] & TASK_ARDUPILOT_COPTER_FLYHOLD) {
             RESETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_FLYHOLD);
-            _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_SOLO_BTN_FLY_HOLD, _t_takeoff_alt_m);
+            _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_SOLO_BTN_FLY_HOLD, _tacf_takeoff_alt_m);
             return; //do only one per loop
         }
         if (_task[TASK_AP] & TASK_ARDUPILOT_COPTER_FLYPAUSE) {
@@ -542,31 +569,36 @@ void MavlinkTelem::doTask(void)
 	    // camera tasks
 		if (_task[TASK_CAMERA] & TASK_SENDCMD_SET_CAMERA_VIDEO_MODE) {
 	        RESETTASK(TASK_CAMERA, TASK_SENDCMD_SET_CAMERA_VIDEO_MODE);
-	        if (camera.compid) generateCmdSetCameraMode(_sysid, camera.compid, CAMERA_MODE_VIDEO);
+	        if (!camera.compid) return;
+	        generateCmdSetCameraMode(_sysid, camera.compid, CAMERA_MODE_VIDEO);
 	        set_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_SETTINGS, 2);
 	        return; //do only one per loop
 		}
 		if (_task[TASK_CAMERA] & TASK_SENDCMD_SET_CAMERA_PHOTO_MODE) {
 	        RESETTASK(TASK_CAMERA, TASK_SENDCMD_SET_CAMERA_PHOTO_MODE);
-	        if (camera.compid) generateCmdSetCameraMode(_sysid, camera.compid, CAMERA_MODE_IMAGE);
+            if (!camera.compid) return;
+	        generateCmdSetCameraMode(_sysid, camera.compid, CAMERA_MODE_IMAGE);
             set_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_SETTINGS, 2);
 	        return; //do only one per loop
 		}
 		if (_task[TASK_CAMERA] & TASK_SENDCMD_IMAGE_START_CAPTURE) {
 	        RESETTASK(TASK_CAMERA, TASK_SENDCMD_IMAGE_START_CAPTURE);
-	        if (camera.compid) generateCmdImageStartCapture(_sysid, camera.compid);
+            if (!camera.compid) return;
+	        generateCmdImageStartCapture(_sysid, camera.compid);
             set_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS, 2);
 	        return; //do only one per loop
 		}
 		if (_task[TASK_CAMERA] & TASK_SENDCMD_VIDEO_START_CAPTURE) {
 	        RESETTASK(TASK_CAMERA, TASK_SENDCMD_VIDEO_START_CAPTURE);
-	        if (camera.compid) generateCmdVideoStartCapture(_sysid, camera.compid);
+            if (!camera.compid) return;
+	        generateCmdVideoStartCapture(_sysid, camera.compid);
             set_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS, 2);
 	        return; //do only one per loop
 		}
 		if (_task[TASK_CAMERA] & TASK_SENDCMD_VIDEO_STOP_CAPTURE) {
 	        RESETTASK(TASK_CAMERA, TASK_SENDCMD_VIDEO_STOP_CAPTURE);
-	        if (camera.compid) generateCmdVideoStopCapture(_sysid, camera.compid);
+            if (!camera.compid) return;
+	        generateCmdVideoStopCapture(_sysid, camera.compid);
             set_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS, 2);
 	        return; //do only one per loop
 		}
@@ -574,22 +606,22 @@ void MavlinkTelem::doTask(void)
 		// the sequence here defines the startup sequence
 		if (_task[TASK_CAMERA] & TASK_SENDREQUEST_CAMERA_INFORMATION) {
 	        RESETTASK(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_INFORMATION);
-	        if (camera.compid) generateRequestCameraInformation(_sysid, camera.compid);
+	        if (camera.compid) generateCmdRequestCameraInformation(_sysid, camera.compid);
 	        return; //do only one per loop
 		}
 		if (_task[TASK_CAMERA] & TASK_SENDREQUEST_CAMERA_SETTINGS) {
 	        RESETTASK(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_SETTINGS);
-	        if (camera.compid) generateRequestCameraSettings(_sysid, camera.compid);
+	        if (camera.compid) generateCmdRequestCameraSettings(_sysid, camera.compid);
 	        return; //do only one per loop
 		}
 		if (_task[TASK_CAMERA] & TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS) {
 	        RESETTASK(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS);
-	        if (camera.compid) generateRequestCameraCapturesStatus(_sysid, camera.compid);
+	        if (camera.compid) generateCmdRequestCameraCapturesStatus(_sysid, camera.compid);
 	        return; //do only one per loop
 		}
 		if (_task[TASK_CAMERA] & TASK_SENDREQUEST_STORAGE_INFORMATION) {
 	        RESETTASK(TASK_CAMERA, TASK_SENDREQUEST_STORAGE_INFORMATION);
-	        if (camera.compid) generateRequestStorageInformation(_sysid, camera.compid);
+	        if (camera.compid) generateCmdRequestStorageInformation(_sysid, camera.compid);
 	        return; //do only one per loop
 		}
 

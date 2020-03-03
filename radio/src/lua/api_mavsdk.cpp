@@ -891,11 +891,25 @@ static int luaMavsdkApMoveToPosIntAltRel(lua_State *L)
     int32_t lat = luaL_checkinteger(L, 1);
     int32_t lon = luaL_checkinteger(L, 2);
     float alt = luaL_checknumber(L, 3);
-    float speed = luaL_optnumber(L, 4, 2.0f); // 2.0 m/s default speed
+    //float speed = luaL_optnumber(L, 4, 2.0f); // 2.0 m/s default speed
+    float speed = luaL_checknumber(L, 4);
     bool flag = mavlinkTelem.apMoveToPosAltWithSpeed(lat, lon, alt, speed);
     lua_pushboolean(L, flag);
     return 1;
 }
+
+static int luaMavsdkApXYMoveToPosIntAltRel(lua_State *L)
+{
+    int32_t lat = luaL_checkinteger(L, 1);
+    int32_t lon = luaL_checkinteger(L, 2);
+    float alt = luaL_checknumber(L, 3);
+    //float speed = luaL_optnumber(L, 4, 2.0f); // 2.0 m/s default speed
+    float speed = luaL_checknumber(L, 4);
+    bool flag = mavlinkTelem.apMoveToPosAltWithSpeed(lat, lon, alt, speed, true);
+    lua_pushboolean(L, flag);
+    return 1;
+}
+
 
 static int luaMavsdkApSetYawDeg(lua_State *L)
 {
