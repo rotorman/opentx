@@ -42,7 +42,7 @@
 
 //COMMENT:
 //  except of where noted functions/structs use units of the MAVLink message
-//  general exception are the mavsdk caller/setter functions, which use native units and deg whenever possible
+//  the mavsdk caller/setter functions however use native units, and deg whenever possible
 
 
 class MavlinkTelem
@@ -87,7 +87,6 @@ class MavlinkTelem
 
     #define SETTASK(idx,x)      {_task[idx] |= (x);}
     #define RESETTASK(idx,x)    {_task[idx] &=~ (x);}
-    //#define TASK_IS_PENDING     (_task.task > 0)
     #define TASKIDX_MAX  8
     bool TASK_IS_PENDING()      {for(uint16_t i=0; i<TASKIDX_MAX; i++) if (_task[i] > 0) return true; return false;}
 
@@ -103,7 +102,6 @@ class MavlinkTelem
     // 16 is sufficient for a rate of 43 msg/s or 1350 bytes/s, 8 was NOT!
     Fifo<mavlink_message_t, 2> msgRxFifo;  // HUGE! 16* 256 = 5kB
     bool msgFifo_enabled = false;
-    void setTaskParamRequestList(void) { SETTASK(TASK_AUTOPILOT, TASK_SENDMSG_PARAM_REQUEST_LIST); }
 
     // MAVSDK GENERAL
     bool isReceiving(void) { return (_is_receiving > 0); }
@@ -125,24 +123,45 @@ class MavlinkTelem
     struct Comp { // not all fields are relevant for/used by all components
         uint8_t compid;
         uint16_t is_receiving;
+        //heartbeat
         uint8_t system_status;
         uint32_t custom_mode;
 		bool is_armed;
 		bool is_standby;
 		bool is_critical;
         bool prearm_ok;
+        uint8_t updated;
+        //for initializing it
         uint8_t requests_triggered;
-        tmr10ms_t requests_tlast;
+        uint8_t requests_waiting_mask;
+        bool is_initialized;
     };
     struct Comp autopilot;
     struct Comp gimbal;
     struct Comp camera;
+
+    typedef enum {
+      AUTOPILOT_REQUESTWAITING_GPS_RAW_INT          = 0x01,
+      AUTOPILOT_REQUESTWAITING_GLOBAL_POSITION_INT  = 0x02,
+      AUTOPILOT_REQUESTWAITING_ATTITUDE             = 0x04,
+      AUTOPILOT_REQUESTWAITING_VFR_HUD              = 0x08,
+      AUTOPILOT_REQUESTWAITING_BATTERY_STATUS       = 0x10,
+      AUTOPILOT_REQUESTWAITING_ALL                  = 0x1F,
+    } AUTOPILOTREQUESTWAITINGFLAGS;
+
+    typedef enum {
+      CAMERA_REQUESTWAITING_CAMERA_INFORMATION      = 0x01,
+      CAMERA_REQUESTWAITING_CAMERA_SETTINGS         = 0x02,
+      CAMERA_REQUESTWAITING_CAMERA_CAPTURE_STATUS   = 0x04,
+      CAMERA_REQUESTWAITING_ALL                     = 0x07,
+    } CAMERAREQUESTWAITINGFLAGS;
 
     // MAVSDK AUTOPILOT
     struct Att {
     	float roll_rad; // rad
     	float pitch_rad; // rad
     	float yaw_rad; // rad
+        uint8_t updated;
     };
     struct Att att;
 
@@ -156,6 +175,7 @@ class MavlinkTelem
     	int32_t alt_mm; // (AMSL, NOT WGS84), in meters * 1000
     	uint16_t vel_cmps; // m/s * 100, UINT16_MAX if unknown
     	uint16_t cog_cdeg; // degrees * 100, 0.0..359.99 degrees, UINT16_MAX if unknown
+    	uint8_t updated;
     };
     struct Gps gps1;
     struct Gps gps2;
@@ -170,6 +190,7 @@ class MavlinkTelem
         int16_t vy_cmps; // (Longitude, positive east), in cm/s
         int16_t vz_cmps; // (Altitude, positive down), in cm/s
         uint16_t hdg_cdeg; // degrees * 100, 0.0..359.99 degrees, UINT16_MAX if unknown
+        uint8_t updated;
     };
     struct GlobalPositionInt gposition;
 
@@ -180,6 +201,7 @@ class MavlinkTelem
     	 float climbrate_mps; // m/s
     	 int16_t heading_deg; // degrees (0..360, 0=north)
     	 uint16_t thro_pct; // percent, 0 to 100
+         uint8_t updated;
     };
     struct Vfr vfr;
 
@@ -191,12 +213,17 @@ class MavlinkTelem
     	int16_t current_cA; // 10*mA, -1 if not known
     	int8_t remaining_pct; //(0%: 0, 100%: 100), -1 if not known
     	int8_t cellcount; //-1 if not known
+        uint8_t updated;
     };
     struct Bat bat1;
     struct Bat bat2;
     uint8_t bat_instancemask;
 
-    Fifo<mavlink_statustext_t, 4> statustextFifo;
+    struct StatusText {
+        Fifo<mavlink_statustext_t, 4> fifo;
+        uint8_t updated;
+    };
+    struct StatusText statustext;
 
     typedef enum {
       MAVAP_EKF_ATTITUDE = 1,
@@ -214,8 +241,11 @@ class MavlinkTelem
     struct Ekf {
         //comment: we don't really need the other fields
         uint16_t flags;
+        uint8_t updated;
     };
     struct Ekf ekf;
+
+    void setTaskParamRequestList(void) { SETTASK(TASK_AUTOPILOT, TASK_SENDMSG_PARAM_REQUEST_LIST); }
 
     // AP: not armed -> filt_status.flags.horiz_pos_abs || filt_status.flags.pred_horiz_pos_abs
     //         armed -> filt_status.flags.horiz_pos_abs && !filt_status.flags.const_pos_mode
@@ -257,9 +287,6 @@ class MavlinkTelem
 		bool has_photo;
 		bool has_modes;
     	float total_capacity_MiB; // NAN if not known
-		bool info_received; // this is to get all info at startup
-		bool settings_received; // this is to get all info at startup
-		bool status_received; // this is to get all info at startup
     };
     struct CameraInfo cameraInfo;  // Info: static data
 
@@ -271,10 +298,10 @@ class MavlinkTelem
     	uint32_t recording_time_ms;
     	float battery_voltage_V; // NAN if not known
     	int8_t battery_remaining_pct; //(0%: 0, 100%: 100), -1 if not known
-		bool initialized; // this indicates that all startup info was received
     };
     struct CameraStatus cameraStatus; // Status: variable data
 
+    //convenience task wrapper
     void setCameraSetVideoMode(void) { SETTASK(TASK_CAMERA, TASK_SENDCMD_SET_CAMERA_VIDEO_MODE); }
 	void setCameraSetPhotoMode(void) { SETTASK(TASK_CAMERA, TASK_SENDCMD_SET_CAMERA_PHOTO_MODE); }
     void setCameraStartVideo(void) { SETTASK(TASK_CAMERA, TASK_SENDCMD_VIDEO_START_CAPTURE); }
@@ -287,14 +314,18 @@ class MavlinkTelem
     	float pitch_deg;
     	float yaw_deg_relative;
     	float yaw_deg_absolute;
+        uint8_t updated;
     };
     struct GimbalAtt gimbalAtt;
 
+    //some tasks need some additional data
     uint8_t _t_gimbal_mode;
+    float _t_gimbal_pitch_deg, _t_gimbal_yaw_deg;
+
+    //convenience task wrapper
     void setGimbalTargetingMode(uint8_t mode) {
         _t_gimbal_mode = mode; SETTASK(TASK_GIMBAL, TASK_SENDCMD_DO_MOUNT_CONFIGURE);
     }
-    float _t_gimbal_pitch_deg, _t_gimbal_yaw_deg;
     void setGimbalPitchYawDeg(float pitch, float yaw) {
         _t_gimbal_pitch_deg = pitch; _t_gimbal_yaw_deg = yaw; SETTASK(TASK_GIMBAL, TASK_SENDCMD_DO_MOUNT_CONTROL);
     }
@@ -333,10 +364,16 @@ class MavlinkTelem
       TASK_SENDREQUESTDATASTREAM_EXTRA1             = 0x00000020, // group 10
       TASK_SENDREQUESTDATASTREAM_EXTRA2             = 0x00000040, // group 11
       TASK_SENDREQUESTDATASTREAM_EXTRA3             = 0x00000080, // group 12
-      TASK_SENDMSG_PARAM_REQUEST_LIST               = 0x00000100,
-      TASK_SENDCMD_SET_MODE                         = 0x00000200,
-      TASK_SENDMSG_SET_POSITION_TARGET_GLOBAL_INT   = 0x00000400,
-      TASK_SENDCMD_CONDITION_YAW                    = 0x00000800,
+      TASK_SENDCMD_REQUEST_ATTITUDE                 = 0x00000100,
+      TASK_SENDCMD_REQUEST_GLOBAL_POSITION_INT      = 0x00000200,
+
+      TASK_SENDMSG_PARAM_REQUEST_LIST               = 0x00010000,
+      TASK_SENDCMD_DO_SET_MODE                      = 0x00020000,
+      TASK_SENDMSG_SET_POSITION_TARGET_GLOBAL_INT   = 0x00040000,
+      TASK_SENDCMD_CONDITION_YAW                    = 0x00080000,
+      TASK_SENDCMD_DO_CHANGE_SPEED                  = 0x00100000, // groundspeed(), airspeed()
+      TASK_SENDCMD_NAV_WAYPOINT                     = 0x00200000, // simple_goto()
+      TASK_SENDCMD_NAV_TAKEOFF                      = 0x00400000, // simple_takeoff()
       //ap
       TASK_ARDUPILOT_REQUESTBANNER                  = 0x00000001,
       TASK_ARDUPILOT_ARM                            = 0x00000002,
@@ -381,7 +418,7 @@ class MavlinkTelem
 
     #define REQUESTLIST_MAX  32
     struct Request _requestList[REQUESTLIST_MAX];  // 0 in the task field indicates that the slot is free and unused
-    uint32_t _request_waiting[TASKIDX_MAX];
+    uint32_t _request_is_waiting[TASKIDX_MAX];
 
     void push_task(uint8_t idx, uint32_t task);
     void pop_and_set_task(void);

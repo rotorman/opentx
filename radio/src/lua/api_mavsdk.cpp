@@ -42,6 +42,13 @@ static int luaMavsdkGimbalIsReceiving(lua_State *L)
     return 1;
 }
 
+static int luaMavsdkGimbalIsInitialized(lua_State *L)
+{
+    bool flag = (mavlinkTelem.gimbal.is_receiving > 0) && mavlinkTelem.gimbal.is_initialized;
+    lua_pushboolean(L, flag);
+    return 1;
+}
+
 static int luaMavsdkGimbalGetInfo(lua_State *L)
 {
 	lua_newtable(L);
@@ -127,7 +134,7 @@ static int luaMavsdkCameraIsReceiving(lua_State *L)
 
 static int luaMavsdkCameraIsInitialized(lua_State *L)
 {
-    bool flag = (mavlinkTelem.camera.is_receiving > 0) & mavlinkTelem.cameraStatus.initialized;
+    bool flag = (mavlinkTelem.camera.is_receiving > 0) && mavlinkTelem.camera.is_initialized;
     lua_pushboolean(L, flag);
     return 1;
 }
@@ -154,7 +161,6 @@ static int luaMavsdkCameraGetStatus(lua_State *L)
 {
 	lua_newtable(L);
 	lua_pushtableinteger(L, "system_status", mavlinkTelem.camera.system_status);
-	lua_pushtableboolean(L, "initialized", mavlinkTelem.cameraStatus.initialized);
 	lua_pushtableinteger(L, "mode", mavlinkTelem.cameraStatus.mode);
 	lua_pushtableboolean(L, "video_on", mavlinkTelem.cameraStatus.video_on);
 	lua_pushtableboolean(L, "photo_on", mavlinkTelem.cameraStatus.photo_on);
@@ -219,6 +225,13 @@ static int luaMavsdkMavTelemIsEnabled(lua_State *L)
 static int luaMavsdkIsReceiving(lua_State *L)
 {
     bool flag = mavlinkTelem.isReceiving();
+    lua_pushboolean(L, flag);
+    return 1;
+}
+
+static int luaMavsdkIsInitialized(lua_State *L)
+{
+    bool flag = (mavlinkTelem.autopilot.is_receiving > 0) && mavlinkTelem.autopilot.is_initialized;
     lua_pushboolean(L, flag);
     return 1;
 }
@@ -916,14 +929,14 @@ static int luaMavsdkApCopterFlyPause(lua_State *L)
 
 static int luaMavsdkIsStatusTextAvailable(lua_State *L)
 {
-    lua_pushboolean(L, !mavlinkTelem.statustextFifo.isEmpty());
+    lua_pushboolean(L, !mavlinkTelem.statustext.fifo.isEmpty());
     return 1;
 }
 
 static int luaMavsdkGetStatusText(lua_State *L)
 {
     mavlink_statustext_t payload;
-    if (!mavlinkTelem.statustextFifo.pop(payload)) { payload.text[0] = '\0'; payload.severity = 6; }
+    if (!mavlinkTelem.statustext.fifo.pop(payload)) { payload.text[0] = '\0'; payload.severity = 6; }
     lua_pushinteger(L, payload.severity);
     lua_pushstring(L, payload.text);
     return 2;
@@ -934,8 +947,9 @@ static int luaMavsdkGetStatusText(lua_State *L)
 const luaL_Reg mavsdkLib[] = {
 #if defined(MAVLINK_TELEM)
   { "mavtelemIsEnabled", luaMavsdkMavTelemIsEnabled },
-
   { "isReceiving", luaMavsdkIsReceiving },			 // bool
+
+  { "isInitialized", luaMavsdkIsInitialized },       // bool
   { "getAutopilotType", luaMavsdkGetAutopilotType }, // MAV_AUTOPILOT_xxx
   { "getVehicleType", luaMavsdkGetVehicleType },	 // MAV_TYPE_xxx
   { "getFlightMode", luaMavsdkGetFlightMode },		 // MAVSDK_VEHICLECLASS_xxx
@@ -944,6 +958,7 @@ const luaL_Reg mavsdkLib[] = {
   { "isArmed", luaMavsdkIsArmed },
 
   { "gimbalIsReceiving", luaMavsdkGimbalIsReceiving },
+  { "gimbalIsInitialized", luaMavsdkGimbalIsInitialized },
   { "gimbalGetInfo", luaMavsdkGimbalGetInfo },
   { "gimbalGetStatus", luaMavsdkGimbalGetStatus },
   { "gimbalGetAttRollDeg", luaMavsdkGimbalGetAttRollDeg },
@@ -1047,6 +1062,7 @@ const luaL_Reg mavsdkLib[] = {
   { "apGotoPosIntAltRelYawDeg", luaMavsdkApGotoPosIntAltRelYawDeg },
   { "apGotoPosIntAltRelVel", luaMavsdkApGotoPosIntAltRelVel },
   { "apMoveToPosIntAltRel", luaMavsdkApMoveToPosIntAltRel },
+  { "apXYMoveToPosIntAltRel", luaMavsdkApXYMoveToPosIntAltRel },
   { "apSetYawDeg", luaMavsdkApSetYawDeg },
   { "apCopterFlyClick", luaMavsdkApCopterFlyClick },
   { "apCopterFlyHold", luaMavsdkApCopterFlyHold },

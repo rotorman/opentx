@@ -35,8 +35,14 @@ MavlinkTelem mavlinkTelem;
 #define FDEGTORAD   (FPI/180.0f)
 #define FRADTODEG   (180.0f/FPI)
 
+#define INCU8(x)  if ((x) < UINT8_MAX) { (x)++; }
+
 
 // -- TASK handlers --
+// tasks can be set directly with SETTASK()
+// some tasks don't need immediate execution, or need reliable request
+// this is what these handlers are for
+// they push the task to a fifo, and also allow to set number of retries and retry rates
 
 void MavlinkTelem::push_task(uint8_t idx, uint32_t task)
 {
@@ -56,7 +62,7 @@ void MavlinkTelem::set_request(uint8_t idx, uint32_t task, uint8_t retry, tmr10m
 {
     push_task(idx, task);
 
-    _request_waiting[idx] |= task;
+    _request_is_waiting[idx] |= task;
 
     if (retry == 0) return; //well, if there would be another pending we would not kill it
 
@@ -66,7 +72,7 @@ void MavlinkTelem::set_request(uint8_t idx, uint32_t task, uint8_t retry, tmr10m
     for (uint16_t i = 0; i < REQUESTLIST_MAX; i++) {
         // TODO: should we modify the retry & rate of the pending task?
         if ((_requestList[i].idx == idx) && (_requestList[i].task == task)) return; // already pending, we can get out of here
-        if ((empty_i < 0) && !_requestList[i].task) empty_i = i;
+        if ((empty_i < 0) && !_requestList[i].task) empty_i = i; // free slot
     }
 
     // if not already pending, add it
@@ -76,7 +82,7 @@ void MavlinkTelem::set_request(uint8_t idx, uint32_t task, uint8_t retry, tmr10m
     _requestList[empty_i].idx = idx;
     _requestList[empty_i].retry = retry;
     _requestList[empty_i].tlast = get_tmr10ms();
-    _requestList[empty_i].trate = rate; // every ca 1 sec
+    _requestList[empty_i].trate = rate;
 }
 
 
@@ -85,35 +91,36 @@ void MavlinkTelem::clear_request(uint8_t idx, uint32_t task)
     for (uint16_t i = 0; i < REQUESTLIST_MAX; i++) {
         if ((_requestList[i].idx == idx) && (_requestList[i].task == task)) {
             _requestList[i].task = 0;
-            _request_waiting[idx] &=~ task;
+            _request_is_waiting[idx] &=~ task;
         }
     }
 }
 
-//TODO: what happens if a clear never comes?
+//what happens if a clear never comes?
+// well, this is what retry = UINT8_MAX says, right
 
 void MavlinkTelem::do_requests(void)
 {
     tmr10ms_t tnow = get_tmr10ms();
 
-    for (uint16_t i = 0; i < TASKIDX_MAX; i++) _request_waiting[i] = 0;
+    for (uint16_t i = 0; i < TASKIDX_MAX; i++) _request_is_waiting[i] = 0;
 
     for (uint16_t i = 0; i < REQUESTLIST_MAX; i++) {
         if (!_requestList[i].task) continue;
 
-        _request_waiting[_requestList[i].idx] |= _requestList[i].task;
+        _request_is_waiting[_requestList[i].idx] |= _requestList[i].task;
 
         if ((tnow - _requestList[i].tlast) >= _requestList[i].trate) {
             push_task(_requestList[i].idx, _requestList[i].task);
             _requestList[i].tlast = get_tmr10ms();
             if (_requestList[i].retry < UINT8_MAX) {
                 if (_requestList[i].retry) _requestList[i].retry--;
-                if (!_requestList[i].retry) _requestList[i].task = 0;
+                if (!_requestList[i].retry) _requestList[i].task = 0; // clear request
             }
         }
     }
 
-    if ((tnow - _taskFifo_tlast) > 11) { // 110 ms decimation
+    if ((tnow - _taskFifo_tlast) > 6) { // 60 ms decimation
         _taskFifo_tlast = tnow;
         // change this, so that it skips tasks with 0, this would allow an easy means to clear tasks also in the Fifo
         if (!_taskFifo.isEmpty()) pop_and_set_task();
@@ -155,7 +162,6 @@ void MavlinkTelem::_generateCmdLong(
     _txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
 }
 
-
 void MavlinkTelem::generateHeartbeat(uint8_t base_mode, uint32_t custom_mode, uint8_t system_status)
 {
 	setOutVersionV2();
@@ -165,19 +171,6 @@ void MavlinkTelem::generateHeartbeat(uint8_t base_mode, uint32_t custom_mode, ui
 		  );
 	_txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
 }
-
-
-void MavlinkTelem::generateRequestDataStream(
-        uint8_t tsystem, uint8_t tcomponent, uint8_t data_stream, uint16_t rate, uint8_t startstop)
-{
-	setOutVersionV2();
-	mavlink_msg_request_data_stream_pack(
-			_my_sysid, _my_compid, &_msg_out,
-			tsystem, tcomponent, data_stream, rate, startstop
-			);
-	_txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
-}
-
 
 void MavlinkTelem::generateParamRequestList(uint8_t tsystem, uint8_t tcomponent)
 {
@@ -189,8 +182,24 @@ void MavlinkTelem::generateParamRequestList(uint8_t tsystem, uint8_t tcomponent)
 	_txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
 }
 
+void MavlinkTelem::generateRequestDataStream(
+        uint8_t tsystem, uint8_t tcomponent, uint8_t data_stream, uint16_t rate_hz, uint8_t startstop)
+{
+    setOutVersionV2();
+    mavlink_msg_request_data_stream_pack(
+            _my_sysid, _my_compid, &_msg_out,
+            tsystem, tcomponent, data_stream, rate_hz, startstop
+            );
+    _txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+}
 
-//for ArduPilot:
+//ArduPilot: ignores param7
+void MavlinkTelem::generateCmdSetMessageInterval(uint8_t tsystem, uint8_t tcomponent, uint8_t msgid, int32_t period_us, uint8_t startstop)
+{
+  _generateCmdLong(tsystem, tcomponent, MAV_CMD_SET_MESSAGE_INTERVAL, msgid, (startstop) ? period_us : -1.0f);
+}
+
+//ArduPilot:
 //  base_mode must have MAV_MODE_FLAG_CUSTOM_MODE_ENABLED bit set,
 //  custom_mode then determines the mode it will switch to
 //  usage of this cmd is thus very likely very flightstack dependent!!
@@ -198,7 +207,6 @@ void MavlinkTelem::generateCmdDoSetMode(uint8_t tsystem, uint8_t tcomponent, MAV
 {
     _generateCmdLong(tsystem, tcomponent, MAV_CMD_DO_SET_MODE, base_mode, custom_mode);
 }
-
 
 void MavlinkTelem::generateSetPositionTargetGlobalInt(
         uint8_t tsystem, uint8_t tcomponent,
@@ -403,8 +411,12 @@ void MavlinkTelem::doTask(void)
     	}
     }
 
-    if (!cameraStatus.initialized) {
-    	cameraStatus.initialized = (cameraInfo.info_received && cameraInfo.settings_received && cameraInfo.status_received);
+    if (!autopilot.is_initialized) {
+        autopilot.is_initialized = (autopilot.requests_waiting_mask == 0);
+    }
+
+    if (!camera.is_initialized) {
+    	camera.is_initialized = ((camera.requests_waiting_mask & CAMERA_REQUESTWAITING_ALL) == 0);
     }
 
     // do pending requests
@@ -422,9 +434,9 @@ void MavlinkTelem::doTask(void)
 	    }
 
 	    // autopilot tasks
-        if (_task[TASK_AUTOPILOT] & TASK_SENDCMD_SET_MODE) {
-            RESETTASK(TASK_AUTOPILOT,TASK_SENDCMD_SET_MODE);
-            generateCmdDoSetMode(_sysid, autopilot.compid, (MAV_MODE)_t_base_mode, _t_custom_mode);
+        if (_task[TASK_AUTOPILOT] & TASK_SENDCMD_DO_SET_MODE) {
+            RESETTASK(TASK_AUTOPILOT,TASK_SENDCMD_DO_SET_MODE);
+            generateCmdDoSetMode(_sysid, autopilot.compid, (MAV_MODE)_tcsm_base_mode, _tcsm_custom_mode);
             return; //do only one per loop
         }
         if (_task[TASK_AUTOPILOT] & TASK_SENDMSG_SET_POSITION_TARGET_GLOBAL_INT) {
@@ -446,7 +458,7 @@ void MavlinkTelem::doTask(void)
 		}
 		if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_RAW_SENSORS) {
 	        RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_RAW_SENSORS);
-	        generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_RAW_SENSORS, 2, 1);
+//XX	        generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_RAW_SENSORS, 2, 1);
 	        return; //do only one per loop
 		}
 		if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_EXTENDED_STATUS) {
@@ -456,12 +468,12 @@ void MavlinkTelem::doTask(void)
 		}
 		if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_POSITION) {
 	        RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_POSITION);
-	        generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_POSITION, 5, 1); // do fast, 5 Hz
+//XX	        generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_POSITION, 4, 1); // do faster, 4 Hz
 	        return; //do only one per loop
 		}
 		if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_EXTRA1) {
 	        RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_EXTRA1);
-	        generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_EXTRA1, 5, 1); // do fast, 5 Hz
+//XX	        generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_EXTRA1, 4, 1); // do faster, 4 Hz
 	        return; //do only one per loop
 		}
 		if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_EXTRA2) {
@@ -474,6 +486,17 @@ void MavlinkTelem::doTask(void)
 	        generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_EXTRA3, 2, 1);
 	        return; //do only one per loop
 		}
+
+        if (_task[TASK_AUTOPILOT] & TASK_SENDCMD_REQUEST_ATTITUDE) {
+            RESETTASK(TASK_AUTOPILOT,TASK_SENDCMD_REQUEST_ATTITUDE);
+            generateCmdSetMessageInterval(_sysid, autopilot.compid, MAVLINK_MSG_ID_ATTITUDE, 100000, 1);
+            return; //do only one per loop
+        }
+        if (_task[TASK_AUTOPILOT] & TASK_SENDCMD_REQUEST_GLOBAL_POSITION_INT) {
+            RESETTASK(TASK_AUTOPILOT,TASK_SENDCMD_REQUEST_GLOBAL_POSITION_INT);
+            generateCmdSetMessageInterval(_sysid, autopilot.compid, MAVLINK_MSG_ID_GLOBAL_POSITION_INT, 100000, 1);
+            return; //do only one per loop
+        }
 
         if (_task[TASK_AP] & TASK_ARDUPILOT_REQUESTBANNER) { //MAV_CMD_DO_SEND_BANNER
             RESETTASK(TASK_AP, TASK_ARDUPILOT_REQUESTBANNER);
@@ -598,6 +621,7 @@ void MavlinkTelem::handleMessageCamera(void)
 		camera.is_armed = (payload.base_mode & MAV_MODE_FLAG_SAFETY_ARMED) ? true : false;
         camera.is_standby = (payload.system_status <= MAV_STATE_STANDBY) ? true : false;
         camera.is_critical = (payload.system_status >= MAV_STATE_CRITICAL) ? true : false;
+        INCU8(camera.updated);
 		camera.is_receiving = MAVLINK_TELEM_RECEIVING_TIMEOUT;
 		}break;
 
@@ -612,16 +636,16 @@ void MavlinkTelem::handleMessageCamera(void)
 		cameraInfo.has_video = (cameraInfo.flags & CAMERA_CAP_FLAGS_CAPTURE_VIDEO);
 		cameraInfo.has_photo = (cameraInfo.flags & CAMERA_CAP_FLAGS_CAPTURE_IMAGE);
 		cameraInfo.has_modes = (cameraInfo.flags & CAMERA_CAP_FLAGS_HAS_MODES);
-        cameraInfo.info_received = true;
         clear_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_INFORMATION);
+        camera.requests_waiting_mask &=~ CAMERA_REQUESTWAITING_CAMERA_INFORMATION;
 		}break;
 
 	case MAVLINK_MSG_ID_CAMERA_SETTINGS: {
 		mavlink_camera_settings_t payload;
 		mavlink_msg_camera_settings_decode(&_msg, &payload);
 		cameraStatus.mode = (payload.mode_id == CAMERA_MODE_IMAGE) ? CAMERA_MODE_IMAGE : CAMERA_MODE_VIDEO;
-        cameraInfo.settings_received = true;
         clear_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_SETTINGS);
+        camera.requests_waiting_mask &=~ CAMERA_REQUESTWAITING_CAMERA_SETTINGS;
 		}break;
 
 	case MAVLINK_MSG_ID_CAMERA_CAPTURE_STATUS: {
@@ -631,8 +655,8 @@ void MavlinkTelem::handleMessageCamera(void)
 		cameraStatus.available_capacity_MiB = payload.available_capacity;
 		cameraStatus.video_on = (payload.video_status > 0);
 		cameraStatus.photo_on = (payload.image_status > 0); //0: idle, 1: capture in progress, 2: interval set but idle, 3: interval set and capture in progress
-        cameraInfo.status_received = true;
         clear_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS);
+        camera.requests_waiting_mask &=~ CAMERA_REQUESTWAITING_CAMERA_CAPTURE_STATUS;
 		}break;
 
 	case MAVLINK_MSG_ID_STORAGE_INFORMATION: {
@@ -682,6 +706,7 @@ void MavlinkTelem::handleMessageGimbal(void)
         gimbal.is_standby = (payload.system_status <= MAV_STATE_STANDBY) ? true : false;
         gimbal.is_critical = (payload.system_status >= MAV_STATE_CRITICAL) ? true : false;
 		gimbal.prearm_ok = (payload.custom_mode & 0x80000000) ? false : true;
+        INCU8(gimbal.updated);
         gimbal.is_receiving = MAVLINK_TELEM_RECEIVING_TIMEOUT;
 		}break;
 
@@ -694,6 +719,7 @@ void MavlinkTelem::handleMessageGimbal(void)
         gimbalAtt.yaw_deg_absolute = gimbalAtt.yaw_deg_relative + att.yaw_rad * FRADTODEG;
         if (gimbalAtt.yaw_deg_absolute > 180.0f) gimbalAtt.yaw_deg_absolute -= 360.0f;
         if (gimbalAtt.yaw_deg_absolute < -180.0f) gimbalAtt.yaw_deg_absolute += 360.0f;
+        INCU8(gimbalAtt.updated);
 		}break;
 
     case MAVLINK_MSG_ID_MOUNT_STATUS: {
@@ -705,6 +731,7 @@ void MavlinkTelem::handleMessageGimbal(void)
         gimbalAtt.yaw_deg_absolute = gimbalAtt.yaw_deg_relative + att.yaw_rad * FRADTODEG;
         if (gimbalAtt.yaw_deg_absolute > 180.0f) gimbalAtt.yaw_deg_absolute -= 360.0f;
         if (gimbalAtt.yaw_deg_absolute < -180.0f) gimbalAtt.yaw_deg_absolute += 360.0f;
+        INCU8(gimbalAtt.updated);
 		}break;
 	}
 }
@@ -724,6 +751,7 @@ void MavlinkTelem::handleMessageAutopilot(void)
 		autopilot.is_armed = (payload.base_mode & MAV_MODE_FLAG_SAFETY_ARMED) ? true : false;
 		autopilot.is_standby = (payload.system_status <= MAV_STATE_STANDBY) ? true : false;
         autopilot.is_critical = (payload.system_status >= MAV_STATE_CRITICAL) ? true : false;
+        INCU8(autopilot.updated);
 		autopilot.is_receiving = MAVLINK_TELEM_RECEIVING_TIMEOUT;
 		}break;
 
@@ -733,6 +761,9 @@ void MavlinkTelem::handleMessageAutopilot(void)
         att.roll_rad = payload.roll;
         att.pitch_rad = payload.pitch;
         att.yaw_rad = payload.yaw;
+        INCU8(att.updated);
+        clear_request(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTRA1);
+        autopilot.requests_waiting_mask &=~ AUTOPILOT_REQUESTWAITING_ATTITUDE;
 		}break;
 
     case MAVLINK_MSG_ID_GPS_RAW_INT: {
@@ -747,7 +778,10 @@ void MavlinkTelem::handleMessageAutopilot(void)
         gps1.alt_mm = payload.alt;
         gps1.vel_cmps = payload.vel;
         gps1.cog_cdeg = payload.cog;
+        INCU8(gps1.updated);
         gps_instancemask |= 0x01;
+        clear_request(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTENDED_STATUS);
+        autopilot.requests_waiting_mask &=~ AUTOPILOT_REQUESTWAITING_GPS_RAW_INT;
         if (g_model.mavlinkMimicSensors) {
             setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, GPS_ALT_FIRST_ID, 0, 10, (int32_t)(payload.alt), UNIT_METERS, 3);
             if (payload.vel != UINT16_MAX)
@@ -770,6 +804,7 @@ void MavlinkTelem::handleMessageAutopilot(void)
         gps2.alt_mm = payload.alt;
         gps2.vel_cmps = payload.vel;
         gps2.cog_cdeg = payload.cog;
+        INCU8(gps2.updated);
         gps_instancemask |= 0x02;
         }break;
 
@@ -784,6 +819,9 @@ void MavlinkTelem::handleMessageAutopilot(void)
         gposition.vy_cmps = payload.vy;
         gposition.vz_cmps = payload.vz;
         gposition.hdg_cdeg = payload.hdg;
+        INCU8(gposition.updated);
+        clear_request(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_POSITION);
+        autopilot.requests_waiting_mask &=~ AUTOPILOT_REQUESTWAITING_GLOBAL_POSITION_INT;
         }break;
 
     case MAVLINK_MSG_ID_VFR_HUD: {
@@ -795,6 +833,9 @@ void MavlinkTelem::handleMessageAutopilot(void)
     	vfr.climbrate_mps = payload.climb;
     	vfr.heading_deg = payload.heading;
     	vfr.thro_pct = payload.throttle;
+        INCU8(vfr.updated);
+        clear_request(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTRA2);
+        autopilot.requests_waiting_mask &=~ AUTOPILOT_REQUESTWAITING_VFR_HUD;
         if (g_model.mavlinkMimicSensors) {
             setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, ALT_FIRST_ID, 0, 13, (int32_t)(payload.alt * 100.0f), UNIT_METERS, 2);
             setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, VARIO_FIRST_ID, 0, 14, (int32_t)(payload.climb * 100.0f), UNIT_METERS_PER_SECOND, 2);
@@ -836,6 +877,7 @@ void MavlinkTelem::handleMessageAutopilot(void)
     		//bat1.type = payload.type;
     		bat1.remaining_pct = payload.battery_remaining; //(0%: 0, 100%: 100), -1 if not knwon
     		bat1.cellcount = cellcount;
+            INCU8(bat1.updated);
         }
         if (payload.id == 1) {
     		bat2.charge_consumed_mAh = payload.current_consumed; // mAh, -1 if not known
@@ -845,8 +887,11 @@ void MavlinkTelem::handleMessageAutopilot(void)
     		bat2.current_cA = payload.current_battery; // 10*mA, -1 if not known
     		bat2.remaining_pct = payload.battery_remaining; //(0%: 0, 100%: 100), -1 if not knwon
     		bat2.cellcount = cellcount;
+            INCU8(bat2.updated);
         }
         if (payload.id < 8) bat_instancemask |= (1 << payload.id);
+        clear_request(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTRA3);
+        autopilot.requests_waiting_mask &=~ AUTOPILOT_REQUESTWAITING_BATTERY_STATUS;
         if (g_model.mavlinkMimicSensors) {
             setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, BATT_ID, 0, 17, voltage/100, UNIT_VOLTS, 1);
             setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, VFAS_FIRST_ID, 0, 18, voltage/10, UNIT_VOLTS, 2);
@@ -863,7 +908,8 @@ void MavlinkTelem::handleMessageAutopilot(void)
         mavlink_statustext_t payload;
         mavlink_msg_statustext_decode(&_msg, &payload);
         payload.text[49] = '\0'; //terminate it properly, never mind losing the last char
-        statustextFifo.push(payload);
+        statustext.fifo.push(payload);
+        INCU8(statustext.updated);
         }break;
 
     case MAVLINK_MSG_ID_EKF_STATUS_REPORT: {
@@ -871,6 +917,7 @@ void MavlinkTelem::handleMessageAutopilot(void)
         mavlink_msg_ekf_status_report_decode(&_msg, &payload);
         //we don't really need the other fields
         ekf.flags = payload.flags;
+        INCU8(ekf.updated);
         }break;
 
     };
@@ -894,14 +941,11 @@ void MavlinkTelem::handleMessage(void)
                 autopilot.compid = _msg.compid;
     			autopilot.requests_triggered = 1; //we need to postpone it
     		}
-
     	}
         if (!isSystemIdValid()) return;
     }
 
-	if (_msg.msgid != MAVLINK_MSG_ID_RADIO_STATUS) {
-		_is_receiving = MAVLINK_TELEM_RECEIVING_TIMEOUT; //reset receiving timeout
-	}
+    //this is inefficient!! lots of heartbeat decodes
 
     if ((gimbal.compid == 0) && (_msg.msgid == MAVLINK_MSG_ID_HEARTBEAT)) {
 		mavlink_heartbeat_t payload;
@@ -912,6 +956,7 @@ void MavlinkTelem::handleMessage(void)
     	    			((_msg.compid >= MAV_COMP_ID_GIMBAL2) && (_msg.compid <= MAV_COMP_ID_GIMBAL6)))  )   ) {
             _resetGimbal();
     		gimbal.compid = _msg.compid;
+            gimbal.is_initialized = true; //no startup requests, so true
     	}
     }
 
@@ -925,6 +970,10 @@ void MavlinkTelem::handleMessage(void)
     		camera.compid = _msg.compid;
     		camera.requests_triggered = 1; //we schedule it
     	}
+    }
+
+    if (_msg.msgid != MAVLINK_MSG_ID_RADIO_STATUS) {
+        _is_receiving = MAVLINK_TELEM_RECEIVING_TIMEOUT; //reset receiving timeout
     }
 
     // MAVLINK
@@ -1055,18 +1104,22 @@ void MavlinkTelem::_resetAutopilot(void)
 
     autopilot.compid = 0;
     autopilot.is_receiving = 0;
+    autopilot.requests_triggered = 0;
+    autopilot.requests_waiting_mask = AUTOPILOT_REQUESTWAITING_ALL;
+    autopilot.is_initialized = false;
+
     autopilot.system_status = MAV_STATE_UNINIT;
 	autopilot.custom_mode = 0;
     autopilot.is_armed = false;
     autopilot.is_standby = true;
     autopilot.is_critical = false;
     autopilot.prearm_ok = false;
-    autopilot.requests_triggered = 0;
-    autopilot.requests_tlast = 0;
+    autopilot.updated = 0;
 
 	att.roll_rad = 0.0f;
 	att.pitch_rad = 0.0f;
 	att.yaw_rad = 0.0f;
+    att.updated = 0;
 
     gps1.fix = GPS_FIX_TYPE_NO_GPS;
     gps1.sat = UINT8_MAX;
@@ -1077,6 +1130,7 @@ void MavlinkTelem::_resetAutopilot(void)
     gps1.alt_mm = 0;
     gps1.vel_cmps = UINT16_MAX;
     gps1.cog_cdeg = UINT16_MAX;
+    gps1.updated = 0;
 
     gps2.fix = GPS_FIX_TYPE_NO_GPS;
     gps2.sat = UINT8_MAX;
@@ -1087,6 +1141,7 @@ void MavlinkTelem::_resetAutopilot(void)
     gps2.alt_mm = 0;
     gps2.vel_cmps = UINT16_MAX;
     gps2.cog_cdeg = UINT16_MAX;
+    gps2.updated = 0;
 
     gps_instancemask = 0;
 
@@ -1098,6 +1153,7 @@ void MavlinkTelem::_resetAutopilot(void)
     gposition.vy_cmps = 0;
     gposition.vz_cmps = 0;
     gposition.hdg_cdeg = UINT16_MAX;
+    gposition.updated = 0;
 
 	vfr.airspd_mps = 0.0f;
 	vfr.groundspd_mps = 0.0f;
@@ -1105,6 +1161,7 @@ void MavlinkTelem::_resetAutopilot(void)
 	vfr.climbrate_mps = 0.0f;
 	vfr.heading_deg = 0;
 	vfr.thro_pct = 0;
+    vfr.updated = 0;
 
 	bat1.charge_consumed_mAh = -1;
 	bat1.energy_consumed_hJ = -1;
@@ -1113,6 +1170,7 @@ void MavlinkTelem::_resetAutopilot(void)
 	bat1.current_cA = -1;
 	bat1.remaining_pct = -1;
 	bat1.cellcount = -1;
+    bat1.updated = 0;
 
 	bat2.charge_consumed_mAh = -1;
 	bat2.energy_consumed_hJ = -1;
@@ -1121,12 +1179,15 @@ void MavlinkTelem::_resetAutopilot(void)
 	bat2.current_cA = -1;
 	bat2.remaining_pct = -1;
 	bat2.cellcount = -1;
+    bat2.updated = 0;
 
     bat_instancemask = 0;
 
-    statustextFifo.clear();
+    statustext.fifo.clear();
+    statustext.updated =  0;
 
     ekf.flags = 0;
+    ekf.updated = 0;
 }
 
 
@@ -1136,19 +1197,23 @@ void MavlinkTelem::_resetGimbal(void)
 
 	gimbal.compid = 0;
 	gimbal.is_receiving = 0;
+    gimbal.requests_triggered = 0;
+    gimbal.requests_waiting_mask = 0;
+    gimbal.is_initialized = false;
+
 	gimbal.system_status = MAV_STATE_UNINIT;
 	gimbal.custom_mode = 0;
 	gimbal.is_armed = false;
 	gimbal.is_standby = true;
 	gimbal.is_critical = false;
 	gimbal.prearm_ok = false;
-    gimbal.requests_triggered = 0;
-    gimbal.requests_tlast = 0;
+	gimbal.updated = 0;
 
     gimbalAtt.roll_deg = 0.0f;
     gimbalAtt.pitch_deg = 0.0f;
     gimbalAtt.yaw_deg_relative = 0.0f;
     gimbalAtt.yaw_deg_absolute = 0.0f;
+    gimbalAtt.updated = 0;
 }
 
 
@@ -1158,14 +1223,17 @@ void MavlinkTelem::_resetCamera(void)
 
     camera.compid = 0;
     camera.is_receiving = 0;
+    camera.requests_triggered = 0;
+    camera.requests_waiting_mask = CAMERA_REQUESTWAITING_ALL;
+    camera.is_initialized = false;
+
     camera.system_status = MAV_STATE_UNINIT;
 	camera.custom_mode = 0;
     camera.is_armed = false;
     camera.is_standby = true;
     camera.is_critical = false;
     camera.prearm_ok = false;
-    camera.requests_triggered = 0;
-    camera.requests_tlast = 0;
+    camera.updated = 0;
 
 	cameraInfo.vendor_name[0] = 0;
 	cameraInfo.model_name[0] = 0;
@@ -1174,9 +1242,6 @@ void MavlinkTelem::_resetCamera(void)
 	cameraInfo.has_photo = false;
 	cameraInfo.has_modes = false;
 	cameraInfo.total_capacity_MiB = NAN;
-	cameraInfo.info_received = false;
-	cameraInfo.settings_received = false;
-	cameraInfo.status_received = false;
 
 	cameraStatus.mode = 0;
 	cameraStatus.video_on = false;
@@ -1185,8 +1250,6 @@ void MavlinkTelem::_resetCamera(void)
 	cameraStatus.recording_time_ms = UINT32_MAX;
 	cameraStatus.battery_voltage_V = NAN;
 	cameraStatus.battery_remaining_pct = -1;
-
-	cameraStatus.initialized = false;
 }
 
 
@@ -1214,7 +1277,7 @@ void MavlinkTelem::_reset(void)
     _seq_rx_last = -1;
 
     _sysid = 0;
-    autopilottype = MAV_AUTOPILOT_GENERIC;
+    autopilottype = MAV_AUTOPILOT_GENERIC; //TODO: shouldn't these be in _resetAutopilot() ??
 	vehicletype = MAV_TYPE_GENERIC;
 	flightmode = 0;
 
@@ -1238,15 +1301,36 @@ void MavlinkTelem::_reset(void)
 
 // ArduPilot starts with sending heartbeat every 1 sec with FE, TimeSync every 5 sec with FE
 // we then need to request the data stream
+// TODO: we can also request them individually now
 void MavlinkTelem::requestDataStreamFromAutopilot(void)
 {
     if (autopilottype == MAV_AUTOPILOT_ARDUPILOTMEGA) {
-        // TODO there are no clear_request() yet, so push tasks
-        push_task(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTENDED_STATUS); // 2Hz sufficient
-        push_task(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_POSITION); // do at 10Hz to get position quickly
-        push_task(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTRA1); // do at 10Hz to get attitude quickly
-        push_task(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTRA2); // 2Hz sufficient
-        push_task(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTRA3); // 2Hz sufficient
+        // 2Hz sufficient, cleared by MAVLINK_MSG_ID_GPS_RAW_INT
+        // yields: MAVLINK_MSG_ID_GPS_RAW_INT
+        //         MAVLINK_MSG_ID_GPS2_RAW
+        //         MAVLINK_MSG_ID_SYS_STATUS
+        set_request(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTENDED_STATUS, 100, 196);
+
+        // cleared by MAVLINK_MSG_ID_GLOBAL_POSITION_INT
+        // yields: MAVLINK_MSG_ID_GLOBAL_POSITION_INT
+        //set_request(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_POSITION, 100, 198);
+
+        // cleared by MAVLINK_MSG_ID_ATTITUDE
+        // yields: MAVLINK_MSG_ID_ATTITUDE
+        //set_request(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTRA1, 100, 211);
+
+        // 2Hz sufficient, cleared by MAVLINK_MSG_ID_VFR_HUD
+        // yields: MAVLINK_MSG_ID_VFR_HUD
+        set_request(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTRA2, 100, 220);
+
+        // 2Hz sufficient, cleared by MAVLINK_MSG_ID_BATTERY_STATUS
+        // yields: MAVLINK_MSG_ID_BATTERY_STATUS
+        //         MAVLINK_MSG_ID_EKF_STATUS_REPORT
+        set_request(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTRA3, 100, 203);
+
+        // call these at high rates of 10 Hz
+        set_request(TASK_AUTOPILOT, TASK_SENDCMD_REQUEST_ATTITUDE, 100, 205);
+        set_request(TASK_AUTOPILOT, TASK_SENDCMD_REQUEST_GLOBAL_POSITION_INT, 100, 207);
 
         push_task(TASK_AP, TASK_ARDUPILOT_REQUESTBANNER);
         return;
@@ -1254,6 +1338,8 @@ void MavlinkTelem::requestDataStreamFromAutopilot(void)
     // other autopilots
     // TODO
 }
+
+
 
 
 
