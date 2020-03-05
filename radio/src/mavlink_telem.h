@@ -50,6 +50,13 @@ class MavlinkTelem
   public:
 	MavlinkTelem() { _reset(); } // constructor
 
+    typedef enum {
+      CONFIG_UART_A_115200 = 0,
+      CONFIG_UART_A_57600 = 1,
+      CONFIG_UART_A_38400 = 2,
+      CONFIG_UART_A_19200 = 3
+    } CONFIGUARTENUM;
+
     void wakeup();
     void handleMessage(void);
     void doTask(void);

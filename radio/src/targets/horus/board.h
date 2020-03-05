@@ -634,7 +634,7 @@ void bluetoothDisable();
 #if defined(RADIO_T16) && defined(PCBX10)
 #define MAVLINK_TELEM_TX_FIFO_SIZE		512
 #define MAVLINK_TELEM_RX_FIFO_SIZE		512
-void mavlinkTelemInit(uint32_t baudrate);
+void mavlinkTelemInit(const char uart, uint32_t baudrate);
 void mavlinkTelemDeInit(void);
 uint32_t mavlinkTelemAvailable(void);
 uint8_t mavlinkTelemGetc(uint8_t *c);

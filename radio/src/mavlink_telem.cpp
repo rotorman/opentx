@@ -1106,9 +1106,11 @@ void MavlinkTelem::wakeup()
         _interface_config = g_model.mavlinkConfig;
         if (_interface_enabled) {
             switch (_interface_config) {
-            case 0: mavlinkTelemInit(57600); break;
-            case 1: mavlinkTelemInit(115200); break;
-            default: mavlinkTelemInit(57600); // should never happen
+            case CONFIG_UART_A_115200: mavlinkTelemInit('A', 57600); break;
+            case CONFIG_UART_A_57600: mavlinkTelemInit('A', 115200); break;
+            case CONFIG_UART_A_38400: mavlinkTelemInit('A', 38400); break;
+            case CONFIG_UART_A_19200: mavlinkTelemInit('A', 19200); break;
+            default: mavlinkTelemDeInit(); // should never happen
             }
         }
     }

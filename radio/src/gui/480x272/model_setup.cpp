@@ -1323,7 +1323,7 @@ bool menuModelSetup(event_t event)
 
       case ITEM_MODEL_SETUP_MAVLINK_CONFIGURATION: {
         lcdDrawText(MENUS_MARGIN_LEFT + INDENT_WIDTH, y, "Config");
-        g_model.mavlinkConfig = editChoice(MODEL_SETUP_2ND_COLUMN, y, "\006""57600\0""115200", g_model.mavlinkConfig, 0, 1, attr, event);
+        g_model.mavlinkConfig = editChoice(MODEL_SETUP_2ND_COLUMN, y, "\006""57600\0""115200""38400\0""19200\0", g_model.mavlinkConfig, 0, 3, attr, event);
       } break;
 
       case ITEM_MODEL_SETUP_MAVLINK_MIMICSENSORS: {
