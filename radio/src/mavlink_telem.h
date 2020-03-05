@@ -68,7 +68,7 @@ class MavlinkTelem
     void _generateCmdLong(uint8_t tsystem, uint8_t tcomponent, uint16_t cmd, float p1=0.0f, float p2=0.0f, float p3=0.0f, float p4=0.0f, float p5=0.0f, float p6=0.0f, float p7=0.0f);
     void generateHeartbeat(uint8_t base_mode, uint32_t custom_mode, uint8_t system_status);
     void generateParamRequestList(uint8_t tsystem, uint8_t tcomponent);
-    void generateParamRequestRead(uint8_t tsystem, uint8_t tcomponent, char* param_name);
+    void generateParamRequestRead(uint8_t tsystem, uint8_t tcomponent, const char* param_name);
     //to autopilot
     void generateRequestDataStream(uint8_t tsystem, uint8_t tcomponent, uint8_t data_stream, uint16_t rate_hz, uint8_t startstop);
     void generateCmdSetMessageInterval(uint8_t tsystem, uint8_t tcomponent, uint8_t msgid, int32_t period_us, uint8_t startstop);
@@ -262,6 +262,17 @@ class MavlinkTelem
     };
     struct Ekf ekf;
 
+    // this is very flight stack dependent
+    struct Parameters {
+        int16_t number;         //we use -1 to indicate it wasn't obtained
+        int32_t BATT_CAPACITY;  //type int32 //we use -1 to indicate it wasn't obtained
+        int32_t BATT2_CAPACITY; //type int32 //we use -1 to indicate it wasn't obtained
+        float WPNAV_SPEED;      //type = float //we use NAN to indicate it wasn't obtained
+        float WPNAV_ACCEL;      //type = float //we use NAN to indicate it wasn't obtained
+        float WPNAV_ACCEL_Z;    //type = float //we use NAN to indicate it wasn't obtained
+    };
+    struct Parameters param;
+
     // AP: not armed -> filt_status.flags.horiz_pos_abs || filt_status.flags.pred_horiz_pos_abs
     //         armed -> filt_status.flags.horiz_pos_abs && !filt_status.flags.const_pos_mode
     bool apPositionOk(void) { return (ekf.flags & MAVAP_EKF_POS_HORIZ_ABS) && (ekf.flags & MAVAP_EKF_VELOCITY_HORIZ); }
@@ -406,6 +417,12 @@ class MavlinkTelem
       TASK_ARDUPILOT_COPTER_FLYCLICK                = 0x00000020,
       TASK_ARDUPILOT_COPTER_FLYHOLD                 = 0x00000040,
       TASK_ARDUPILOT_COPTER_FLYPAUSE                = 0x00000080,
+
+      TASK_ARDUPILOT_REQUESTPARAM_BATT_CAPACITY     = 0x00010000,
+      TASK_ARDUPILOT_REQUESTPARAM_BATT2_CAPACITY    = 0x00020000,
+      TASK_ARDUPILOT_REQUESTPARAM_WPNAV_SPEED       = 0x00040000,
+      TASK_ARDUPILOT_REQUESTPARAM_WPNAV_ACCEL       = 0x00080000,
+      TASK_ARDUPILOT_REQUESTPARAM_WPNAV_ACCEL_Z     = 0x00100000,
       //camera
       TASK_SENDREQUEST_CAMERA_INFORMATION           = 0x00000001,
       TASK_SENDREQUEST_CAMERA_SETTINGS              = 0x00000002,

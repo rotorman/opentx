@@ -703,11 +703,7 @@ static int luaMavsdkGetBat1Remaining(lua_State *L)
 
 static int luaMavsdkGetBat1CellCount(lua_State *L)
 {
-    if (mavlinkTelem.bat1.cellcount >= 0) {
-        lua_pushinteger(L, mavlinkTelem.bat1.cellcount);
-    } else {
-        lua_pushnil(L);
-    }
+    if (mavlinkTelem.bat1.cellcount < 0) { lua_pushnil(L); } else { lua_pushinteger(L, mavlinkTelem.bat1.cellcount); }
 	return 1;
 }
 
@@ -770,11 +766,7 @@ static int luaMavsdkGetBat2Remaining(lua_State *L)
 
 static int luaMavsdkGetBat2CellCount(lua_State *L)
 {
-    if (mavlinkTelem.bat2.cellcount >= 0) {
-        lua_pushinteger(L, mavlinkTelem.bat2.cellcount);
-    } else {
-        lua_pushnil(L);
-    }
+    if (mavlinkTelem.bat2.cellcount < 0) { lua_pushnil(L); } else { lua_pushinteger(L, mavlinkTelem.bat2.cellcount); }
     return 1;
 }
 
@@ -799,6 +791,19 @@ static int luaMavsdkGetBatCount(lua_State *L)
 	for(uint8_t i = 0; i < 8; i++) { if (mask & 0x01) cnt++; mask >>= 1; }
     lua_pushinteger(L, cnt);
 	return 1;
+}
+
+
+static int luaMavsdkGetBat1Capacity(lua_State *L)
+{
+    if (mavlinkTelem.param.BATT_CAPACITY < 0) { lua_pushnil(L); } else { lua_pushnumber(L, mavlinkTelem.param.BATT_CAPACITY); }
+    return 1;
+}
+
+static int luaMavsdkGetBat2Capacity(lua_State *L)
+{
+    if (mavlinkTelem.param.BATT2_CAPACITY < 0) { lua_pushnil(L); } else { lua_pushnumber(L, mavlinkTelem.param.BATT2_CAPACITY); }
+    return 1;
 }
 
 
@@ -852,6 +857,22 @@ static int luaMavsdkApCopterTakeOff(lua_State *L)
 static int luaMavsdkApLand(lua_State *L)
 {
     mavlinkTelem.apLand();
+    return 0;
+}
+
+static int luaMavsdkApSetGroundSpeed(lua_State *L)
+{
+    float speed = luaL_checknumber(L, 1);
+    mavlinkTelem.apSetGroundSpeed(speed);
+    return 0;
+}
+
+static int luaMavsdkApSimpleGotoPosIntAltRel(lua_State *L)
+{
+    int32_t lat = luaL_checkinteger(L, 1);
+    int32_t lon = luaL_checkinteger(L, 2);
+    float alt = luaL_checknumber(L, 3);
+    mavlinkTelem.apSimpleGotoPosAlt(lat, lon, alt);
     return 0;
 }
 
@@ -1061,6 +1082,9 @@ const luaL_Reg mavsdkLib[] = {
   { "isBat2Available", luaMavsdkIsBat2Available },
   { "getBatCount", luaMavsdkGetBatCount },
 
+  { "getBatCapacity", luaMavsdkGetBat1Capacity },
+  { "getBat2Capacity", luaMavsdkGetBat2Capacity },
+
   { "isStatusTextAvailable", luaMavsdkIsStatusTextAvailable },
   { "getStatusText", luaMavsdkGetStatusText },
 
@@ -1072,6 +1096,8 @@ const luaL_Reg mavsdkLib[] = {
   { "apArm", luaMavsdkApArm },
   { "apCopterTakeOff", luaMavsdkApCopterTakeOff },
   { "apLand", luaMavsdkApLand },
+  { "apSetGroundSpeed", luaMavsdkApSetGroundSpeed },
+  { "apSimpleGotoPosIntAltRel", luaMavsdkApSimpleGotoPosIntAltRel },
   { "apGotoPosIntAltRel", luaMavsdkApGotoPosIntAltRel },
   { "apGotoPosIntAltRelYawDeg", luaMavsdkApGotoPosIntAltRelYawDeg },
   { "apGotoPosIntAltRelVel", luaMavsdkApGotoPosIntAltRelVel },

@@ -183,7 +183,7 @@ void MavlinkTelem::generateParamRequestList(uint8_t tsystem, uint8_t tcomponent)
 	_txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
 }
 
-void MavlinkTelem::generateParamRequestRead(uint8_t tsystem, uint8_t tcomponent, char* param_name)
+void MavlinkTelem::generateParamRequestRead(uint8_t tsystem, uint8_t tcomponent, const char* param_name)
 {
 char param_id[16];
     strncpy(param_id, param_name, 16);
@@ -510,6 +510,32 @@ void MavlinkTelem::doTask(void)
         if (_task[TASK_AP] & TASK_ARDUPILOT_COPTER_FLYPAUSE) {
             RESETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_FLYPAUSE);
             _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_SOLO_BTN_PAUSE_CLICK, 0.0f); //shoot = no
+            return; //do only one per loop
+        }
+
+        if (_task[TASK_AP] & TASK_ARDUPILOT_REQUESTPARAM_BATT_CAPACITY) {
+            RESETTASK(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_BATT_CAPACITY);
+            generateParamRequestRead(_sysid, autopilot.compid, "BATT_CAPACITY");
+            return; //do only one per loop
+        }
+        if (_task[TASK_AP] & TASK_ARDUPILOT_REQUESTPARAM_BATT2_CAPACITY) {
+            RESETTASK(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_BATT2_CAPACITY);
+            generateParamRequestRead(_sysid, autopilot.compid, "BATT2_CAPACITY");
+            return; //do only one per loop
+        }
+        if (_task[TASK_AP] & TASK_ARDUPILOT_REQUESTPARAM_WPNAV_SPEED) {
+            RESETTASK(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_WPNAV_SPEED);
+            generateParamRequestRead(_sysid, autopilot.compid, "WPNAV_SPEED");
+            return; //do only one per loop
+        }
+        if (_task[TASK_AP] & TASK_ARDUPILOT_REQUESTPARAM_WPNAV_ACCEL) {
+            RESETTASK(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_WPNAV_ACCEL);
+            generateParamRequestRead(_sysid, autopilot.compid, "WPNAV_ACCEL");
+            return; //do only one per loop
+        }
+        if (_task[TASK_AP] & TASK_ARDUPILOT_REQUESTPARAM_WPNAV_ACCEL_Z) {
+            RESETTASK(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_WPNAV_ACCEL_Z);
+            generateParamRequestRead(_sysid, autopilot.compid, "WPNAV_ACCEL_Z");
             return; //do only one per loop
         }
 
@@ -998,6 +1024,19 @@ void MavlinkTelem::handleMessageAutopilot(void)
         INCU8(ekf.updated);
         }break;
 
+    case MAVLINK_MSG_ID_PARAM_VALUE: {
+        mavlink_param_value_t payload;
+        mavlink_msg_param_value_decode(&_msg, &payload);
+        if (!strncmp(payload.param_id,"BATT_CAPACITY",16)) {
+            param.BATT_CAPACITY = payload.param_value;
+            clear_request(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_BATT_CAPACITY);
+        }
+        if (!strncmp(payload.param_id,"BATT2_CAPACITY",16)) {
+            param.BATT2_CAPACITY = payload.param_value;
+            clear_request(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_BATT2_CAPACITY);
+        }
+        }break;
+
     };
 }
 
@@ -1268,6 +1307,13 @@ void MavlinkTelem::_resetAutopilot(void)
 
     ekf.flags = 0;
     ekf.updated = 0;
+
+    param.number = -1;
+    param.BATT_CAPACITY = -1;
+    param.BATT2_CAPACITY = -1;
+    param.WPNAV_SPEED = NAN;
+    param.WPNAV_ACCEL = NAN;
+    param.WPNAV_ACCEL_Z = NAN;
 }
 
 
@@ -1413,6 +1459,9 @@ void MavlinkTelem::requestDataStreamFromAutopilot(void)
         set_request(TASK_AUTOPILOT, TASK_SENDCMD_REQUEST_GLOBAL_POSITION_INT, 100, 207);
 
         push_task(TASK_AP, TASK_ARDUPILOT_REQUESTBANNER);
+        set_request(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_BATT_CAPACITY, 10, 225);
+        set_request(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_BATT2_CAPACITY, 10, 227);
+
         return;
     }
     // other autopilots
