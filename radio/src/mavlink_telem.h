@@ -61,13 +61,15 @@ class MavlinkTelem
     void _generateCmdLong(uint8_t tsystem, uint8_t tcomponent, uint16_t cmd, float p1=0.0f, float p2=0.0f, float p3=0.0f, float p4=0.0f, float p5=0.0f, float p6=0.0f, float p7=0.0f);
     void generateHeartbeat(uint8_t base_mode, uint32_t custom_mode, uint8_t system_status);
     void generateParamRequestList(uint8_t tsystem, uint8_t tcomponent);
+    void generateParamRequestRead(uint8_t tsystem, uint8_t tcomponent, char* param_name);
     //to autopilot
     void generateRequestDataStream(uint8_t tsystem, uint8_t tcomponent, uint8_t data_stream, uint16_t rate_hz, uint8_t startstop);
     void generateCmdSetMessageInterval(uint8_t tsystem, uint8_t tcomponent, uint8_t msgid, int32_t period_us, uint8_t startstop);
     void generateCmdDoSetMode(uint8_t tsystem, uint8_t tcomponent, MAV_MODE base_mode, uint32_t custom_mode);
-    void generateSetPositionTargetGlobalInt(uint8_t tsystem, uint8_t tcomponent, uint8_t coordinate_frame, uint16_t type_mask, int32_t lat, int32_t lon, float alt, float vx, float vy, float vz, float yaw_rad, float yaw_rad_rate);
-    void generateCmdDoChangeSpeed(uint8_t tsystem, uint8_t tcomponent, float speed_mps, uint16_t speed_type, bool relative);
     void generateCmdNavTakeoff(uint8_t tsystem, uint8_t tcomponent, float alt_m, bool hor_nav_by_pilot);
+    void generateCmdDoChangeSpeed(uint8_t tsystem, uint8_t tcomponent, float speed_mps, uint16_t speed_type, bool relative);
+    void generateMissionItemInt(uint8_t tsystem, uint8_t tcomponent, uint8_t frame, uint16_t cmd, uint8_t current, int32_t lat, int32_t lon, float alt_m);
+    void generateSetPositionTargetGlobalInt(uint8_t tsystem, uint8_t tcomponent, uint8_t frame, uint16_t type_mask, int32_t lat, int32_t lon, float alt, float vx, float vy, float vz, float yaw_rad, float yaw_rad_rate);
     void generateCmdConditionYaw(uint8_t tsystem, uint8_t tcomponent, float yaw_deg, float yaw_deg_rate, int8_t dir, bool rel);
     //to camera
     void generateCmdRequestCameraInformation(uint8_t tsystem, uint8_t tcomponent);
@@ -107,9 +109,10 @@ class MavlinkTelem
     Fifo<mavlink_message_t, 2> msgRxFifo;  // HUGE! 16* 256 = 5kB
     bool msgFifo_enabled = false;
 
+    const mavlink_status_t* getChannelStatus(void) { return &_status; }
+
     // MAVSDK GENERAL
     bool isReceiving(void) { return (_is_receiving > 0); }
-    const mavlink_status_t* getChannelStatus(void) { return &_status; }
 
     uint8_t autopilottype = MAV_AUTOPILOT_GENERIC;
     uint8_t vehicletype = MAV_TYPE_GENERIC;
@@ -151,6 +154,9 @@ class MavlinkTelem
       AUTOPILOT_REQUESTWAITING_VFR_HUD              = 0x08,
       AUTOPILOT_REQUESTWAITING_BATTERY_STATUS       = 0x10,
       AUTOPILOT_REQUESTWAITING_ALL                  = 0x1F,
+
+      //WPNAV_SPEED, WPNAV_ACCEL, WPNAV_ACCEL_Z
+
     } AUTOPILOTREQUESTWAITINGFLAGS;
 
     typedef enum {
@@ -249,27 +255,32 @@ class MavlinkTelem
     };
     struct Ekf ekf;
 
-    void setTaskParamRequestList(void) { SETTASK(TASK_AUTOPILOT, TASK_SENDMSG_PARAM_REQUEST_LIST); }
-
     // AP: not armed -> filt_status.flags.horiz_pos_abs || filt_status.flags.pred_horiz_pos_abs
     //         armed -> filt_status.flags.horiz_pos_abs && !filt_status.flags.const_pos_mode
-    bool apPositionOk(void) {
-        return (ekf.flags & MAVAP_EKF_POS_HORIZ_ABS)       // this is kind of what AP does for position_ok() when not armed
-                && (ekf.flags & MAVAP_EKF_VELOCITY_HORIZ); // and this is what I'm doing for STorMLink
-    }
+    bool apPositionOk(void) { return (ekf.flags & MAVAP_EKF_POS_HORIZ_ABS) && (ekf.flags & MAVAP_EKF_VELOCITY_HORIZ); }
 
     //some tasks need some additional data
+    char _prr_param_id[16+1];
+
     uint8_t _tcsm_base_mode; uint32_t _tcsm_custom_mode;
+    float _tcnt_alt_m;
+    float _tccs_speed_mps; uint8_t _tccs_speed_type;
+    uint8_t _tmii_frame; uint16_t _tmii_cmd; uint8_t _tmii_current; int32_t _tmii_lat, _tmii_lon; float _tmii_alt_m;
     uint8_t _t_coordinate_frame; uint16_t _t_type_mask;
     int32_t _t_lat, _t_lon; float _t_alt, _t_vx, _t_vy, _t_vz, _t_yaw_rad, _t_yaw_rad_rate;
-    float _tccs_speed_mps; uint8_t _tccs_speed_type;
-    float _tcnt_alt_m;
     float _tccy_yaw_deg; int8_t _tccy_dir; bool _tccy_relative;
     float _tact_takeoff_alt_m;
     float _tacf_takeoff_alt_m;
 
-    //convenience task wrapper
+    //convenience task wrapper for some tasks
+    void setTaskParamRequestList(void) { SETTASK(TASK_AUTOPILOT, TASK_SENDMSG_PARAM_REQUEST_LIST); }
+    void setTaskParamRequestRead(const char* pname) { strncpy(_prr_param_id, pname, 16); SETTASK(TASK_AUTOPILOT, TASK_SENDMSG_PARAM_REQUEST_READ); }
+
     void apSetFlightMode(uint32_t ap_flight_mode);
+
+    void apSetGroundSpeed(float speed);
+    void apSimpleGotoPosAlt(int32_t lat, int32_t lon, float alt);
+
     void apGotoPosAltYawDeg(int32_t lat, int32_t lon, float alt, float yaw);
     void apGotoPosAltVel(int32_t lat, int32_t lon, float alt, float vx, float vy, float vz);
     bool apMoveToPosAltWithSpeed(int32_t lat, int32_t lon, float alt, float speed, bool xy=false);
@@ -371,14 +382,14 @@ class MavlinkTelem
       TASK_SENDREQUESTDATASTREAM_EXTRA3             = 0x00000080, // group 12
       TASK_SENDCMD_REQUEST_ATTITUDE                 = 0x00000100,
       TASK_SENDCMD_REQUEST_GLOBAL_POSITION_INT      = 0x00000200,
-
-      TASK_SENDMSG_PARAM_REQUEST_LIST               = 0x00010000,
-      TASK_SENDCMD_DO_SET_MODE                      = 0x00020000,
-      TASK_SENDMSG_SET_POSITION_TARGET_GLOBAL_INT   = 0x00040000,
-      TASK_SENDCMD_CONDITION_YAW                    = 0x00080000,
-      TASK_SENDCMD_DO_CHANGE_SPEED                  = 0x00100000, // groundspeed(), airspeed()
-      TASK_SENDCMD_NAV_WAYPOINT                     = 0x00200000, // simple_goto()
-      TASK_SENDCMD_NAV_TAKEOFF                      = 0x00400000, // simple_takeoff()
+      TASK_SENDMSG_PARAM_REQUEST_LIST               = 0x00001000,
+      TASK_SENDMSG_PARAM_REQUEST_READ               = 0x00002000,
+      TASK_SENDCMD_DO_SET_MODE                      = 0x00010000,
+      TASK_SENDCMD_NAV_TAKEOFF                      = 0x00020000, // simple_takeoff()
+      TASK_SENDCMD_DO_CHANGE_SPEED                  = 0x00040000, // groundspeed(), airspeed()
+      TASK_SENDMSG_MISSION_ITEM_INT                 = 0x00080000, // simple_goto()
+      TASK_SENDMSG_SET_POSITION_TARGET_GLOBAL_INT   = 0x00100000,
+      TASK_SENDCMD_CONDITION_YAW                    = 0x00200000,
       //ap
       TASK_ARDUPILOT_REQUESTBANNER                  = 0x00000001,
       TASK_ARDUPILOT_ARM                            = 0x00000002,
