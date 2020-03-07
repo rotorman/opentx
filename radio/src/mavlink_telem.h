@@ -408,6 +408,7 @@ class MavlinkTelem
       TASK_SENDCMD_REQUEST_GLOBAL_POSITION_INT      = 0x00000200,
       TASK_SENDMSG_PARAM_REQUEST_LIST               = 0x00001000,
       TASK_SENDMSG_PARAM_REQUEST_READ               = 0x00002000,
+
       TASK_SENDCMD_DO_SET_MODE                      = 0x00010000,
       TASK_SENDCMD_NAV_TAKEOFF                      = 0x00020000, // simple_takeoff()
       TASK_SENDCMD_DO_CHANGE_SPEED                  = 0x00040000, // groundspeed(), airspeed()

@@ -236,6 +236,8 @@ void MavlinkTelem::generateCmdDoChangeSpeed(uint8_t tsystem, uint8_t tcomponent,
 }
 
 //ArduPilot: current = 2 or 3
+// current = 2 is a flag to tell this is a "guided mode" waypoint and not for the mission
+// current = 3 is a flag to tell this is a alt change
 void MavlinkTelem::generateMissionItemInt(uint8_t tsystem, uint8_t tcomponent,
         uint8_t frame, uint16_t cmd, uint8_t current, int32_t lat, int32_t lon, float alt_m)
 {
@@ -665,7 +667,8 @@ void MavlinkTelem::apSetGroundSpeed(float speed)
 
 void MavlinkTelem::apSimpleGotoPosAlt(int32_t lat, int32_t lon, float alt)
 {
-    _tmii_frame = MAV_FRAME_GLOBAL_RELATIVE_ALT_INT;
+//    _tmii_frame = MAV_FRAME_GLOBAL_RELATIVE_ALT_INT; //Ardupilot doesn't seem to take this
+    _tmii_frame = MAV_FRAME_GLOBAL_RELATIVE_ALT;
     _tmii_cmd = MAV_CMD_NAV_WAYPOINT;
     _tmii_current = 2;
     _tmii_lat = lat; _tmii_lon = lon; _tmii_alt_m = alt;
