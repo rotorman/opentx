@@ -998,7 +998,7 @@ void MavlinkTelem::handleMessageAutopilot(void)
     	int8_t cellcount = 0;
     	bool validcellcount = true;
     	for (uint8_t i=0; i<10; i++) {
-    		if (payload.voltages[i] != UINT16_MAX){
+    		if (payload.voltages[i] != UINT16_MAX) {
     			voltage += payload.voltages[i]; //uint16_t mV, UINT16_MAX if not known
     			if (payload.voltages[i] > 5000) validcellcount = false;
     			cellcount++;
@@ -1172,7 +1172,6 @@ void MavlinkTelem::handleMessage(void)
 void MavlinkTelem::wakeup()
 {
 #if defined(MAVLINK_TELEM)
-    // TODO: we want to have a configuration enum
     if ((_interface_enabled != g_model.mavlinkEnabled) || (_interface_config != g_model.mavlinkConfig)) { // a change occurred
         mavlinkTelemDeInit();
         _interface_enabled = g_model.mavlinkEnabled;
