@@ -32,10 +32,10 @@
 
 //OW
 #define MAVLINK_TELEM
-#define OWVERSIONSTR  "olliw-v03rc3"
+#define OWVERSIONSTR  "olliw-v03rc8"
 //OWEND
 
-/*//OW
+/*//OW  backlightOn
 v01 2020-02-17:
 modified files in radio/src/
 
