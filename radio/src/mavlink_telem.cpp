@@ -257,7 +257,7 @@ void MavlinkTelem::generateSetPositionTargetGlobalInt(uint8_t tsystem, uint8_t t
     setOutVersionV2();
     mavlink_msg_set_position_target_global_int_pack(
             _my_sysid, _my_compid, &_msg_out,
-            0, //uint32_t time_boot_ms,
+            get_tmr10ms()*10, //uint32_t time_boot_ms,
             tsystem, tcomponent,
             frame, type_mask,
             lat, lon, alt, vx, vy, vz, 0.0f, 0.0f, 0.0f, yaw_rad, yaw_rad_rate // alt in m, v in m/s, yaw in rad
