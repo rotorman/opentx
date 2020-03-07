@@ -328,6 +328,253 @@ void MavlinkTelem::generateCmdDoMountControl(uint8_t tsystem, uint8_t tcomponent
 
 // -- Main task handler --
 
+void MavlinkTelem::doTaskAutopilot(void)
+{
+    if (!_task[TASK_AUTOPILOT]) return; // no task pending
+
+    if (_task[TASK_AUTOPILOT] & TASK_SENDCMD_DO_CHANGE_SPEED) {
+        RESETTASK(TASK_AUTOPILOT,TASK_SENDCMD_DO_CHANGE_SPEED);
+        generateCmdDoChangeSpeed(_sysid, autopilot.compid, _tccs_speed_mps, _tccs_speed_type, true);
+        return; //do only one per loop
+    }
+    if (_task[TASK_AUTOPILOT] & TASK_SENDMSG_MISSION_ITEM_INT) {
+        RESETTASK(TASK_AUTOPILOT,TASK_SENDMSG_MISSION_ITEM_INT);
+        generateMissionItemInt(_sysid, autopilot.compid, _tmii_frame, _tmii_cmd, _tmii_current,
+                _tmii_lat, _tmii_lon, _tmii_alt_m);
+        return; //do only one per loop
+    }
+    if (_task[TASK_AUTOPILOT] & TASK_SENDMSG_SET_POSITION_TARGET_GLOBAL_INT) {
+        RESETTASK(TASK_AUTOPILOT,TASK_SENDMSG_SET_POSITION_TARGET_GLOBAL_INT);
+        generateSetPositionTargetGlobalInt(_sysid, autopilot.compid, _t_coordinate_frame, _t_type_mask,
+                _t_lat, _t_lon, _t_alt, _t_vx, _t_vy, _t_vz, _t_yaw_rad, _t_yaw_rad_rate);
+        return; //do only one per loop
+    }
+    if (_task[TASK_AUTOPILOT] & TASK_SENDCMD_CONDITION_YAW) {
+        RESETTASK(TASK_AUTOPILOT,TASK_SENDCMD_CONDITION_YAW);
+        generateCmdConditionYaw(_sysid, autopilot.compid, _tccy_yaw_deg, 0.0f, _tccy_dir, _tccy_relative);
+        return; //do only one per loop
+    }
+}
+
+
+void MavlinkTelem::doTaskAutopilotLowPriority(void)
+{
+    if (!_task[TASK_AUTOPILOT] && !_task[TASK_AP]) return; // no task pending
+
+    if (_task[TASK_AUTOPILOT] & TASK_SENDCMD_DO_SET_MODE) {
+        RESETTASK(TASK_AUTOPILOT,TASK_SENDCMD_DO_SET_MODE);
+        generateCmdDoSetMode(_sysid, autopilot.compid, (MAV_MODE)_tcsm_base_mode, _tcsm_custom_mode);
+        return; //do only one per loop
+    }
+    if (_task[TASK_AUTOPILOT] & TASK_SENDCMD_NAV_TAKEOFF) {
+        RESETTASK(TASK_AUTOPILOT,TASK_SENDCMD_NAV_TAKEOFF);
+        generateCmdNavTakeoff(_sysid, autopilot.compid, _tcnt_alt_m, 1);
+        return; //do only one per loop
+    }
+    if (_task[TASK_AUTOPILOT] & TASK_SENDMSG_PARAM_REQUEST_LIST) {
+        RESETTASK(TASK_AUTOPILOT,TASK_SENDMSG_PARAM_REQUEST_LIST);
+        generateParamRequestList(_sysid, autopilot.compid);
+        return; //do only one per loop
+    }
+
+    if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_RAW_SENSORS) {
+        RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_RAW_SENSORS);
+//XX            generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_RAW_SENSORS, 2, 1);
+        return; //do only one per loop
+    }
+    if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_EXTENDED_STATUS) {
+        RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_EXTENDED_STATUS);
+        generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_EXTENDED_STATUS, 2, 1);
+        return; //do only one per loop
+    }
+    if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_POSITION) {
+        RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_POSITION);
+//XX            generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_POSITION, 4, 1); // do faster, 4 Hz
+        return; //do only one per loop
+    }
+    if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_EXTRA1) {
+        RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_EXTRA1);
+//XX            generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_EXTRA1, 4, 1); // do faster, 4 Hz
+        return; //do only one per loop
+    }
+    if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_EXTRA2) {
+        RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_EXTRA2);
+        generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_EXTRA2, 2, 1);
+        return; //do only one per loop
+    }
+    if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_EXTRA3) {
+        RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_EXTRA3);
+        generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_EXTRA3, 2, 1);
+        return; //do only one per loop
+    }
+
+    if (_task[TASK_AUTOPILOT] & TASK_SENDCMD_REQUEST_ATTITUDE) {
+        RESETTASK(TASK_AUTOPILOT,TASK_SENDCMD_REQUEST_ATTITUDE);
+        generateCmdSetMessageInterval(_sysid, autopilot.compid, MAVLINK_MSG_ID_ATTITUDE, 100000, 1);
+        return; //do only one per loop
+    }
+    if (_task[TASK_AUTOPILOT] & TASK_SENDCMD_REQUEST_GLOBAL_POSITION_INT) {
+        RESETTASK(TASK_AUTOPILOT,TASK_SENDCMD_REQUEST_GLOBAL_POSITION_INT);
+        generateCmdSetMessageInterval(_sysid, autopilot.compid, MAVLINK_MSG_ID_GLOBAL_POSITION_INT, 100000, 1);
+        return; //do only one per loop
+    }
+
+    if (_task[TASK_AP] & TASK_ARDUPILOT_ARM) { //MAV_CMD_COMPONENT_ARM_DISARM
+        RESETTASK(TASK_AP, TASK_ARDUPILOT_ARM);
+        _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_COMPONENT_ARM_DISARM, 1.0f);
+        return; //do only one per loop
+    }
+    if (_task[TASK_AP] & TASK_ARDUPILOT_DISARM) { //MAV_CMD_COMPONENT_ARM_DISARM
+        RESETTASK(TASK_AP, TASK_ARDUPILOT_DISARM);
+        _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_COMPONENT_ARM_DISARM, 0.0f);
+        return; //do only one per loop
+    }
+    if (_task[TASK_AP] & TASK_ARDUPILOT_COPTER_TAKEOFF) { //MAV_CMD_NAV_TAKEOFF
+        RESETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_TAKEOFF);
+        _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_NAV_TAKEOFF, 0,0, 0.0f, 0,0,0, _tact_takeoff_alt_m); //must_navigate = true
+        return; //do only one per loop
+    }
+    if (_task[TASK_AP] & TASK_ARDUPILOT_LAND) { //MAV_CMD_NAV_LAND
+        RESETTASK(TASK_AP, TASK_ARDUPILOT_LAND);
+        _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_NAV_LAND);
+        return; //do only one per loop
+    }
+    if (_task[TASK_AP] & TASK_ARDUPILOT_COPTER_FLYCLICK) {
+        RESETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_FLYCLICK);
+        _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_SOLO_BTN_FLY_CLICK);
+        return; //do only one per loop
+    }
+    if (_task[TASK_AP] & TASK_ARDUPILOT_COPTER_FLYHOLD) {
+        RESETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_FLYHOLD);
+        _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_SOLO_BTN_FLY_HOLD, _tacf_takeoff_alt_m);
+        return; //do only one per loop
+    }
+    if (_task[TASK_AP] & TASK_ARDUPILOT_COPTER_FLYPAUSE) {
+        RESETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_FLYPAUSE);
+        _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_SOLO_BTN_PAUSE_CLICK, 0.0f); //shoot = no
+        return; //do only one per loop
+    }
+
+    if (_task[TASK_AP] & TASK_ARDUPILOT_REQUESTBANNER) { //MAV_CMD_DO_SEND_BANNER
+        RESETTASK(TASK_AP, TASK_ARDUPILOT_REQUESTBANNER);
+        _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_DO_SEND_BANNER);
+        return; //do only one per loop
+    }
+    if (_task[TASK_AP] & TASK_ARDUPILOT_REQUESTPARAM_BATT_CAPACITY) {
+        RESETTASK(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_BATT_CAPACITY);
+        generateParamRequestRead(_sysid, autopilot.compid, "BATT_CAPACITY");
+        return; //do only one per loop
+    }
+    if (_task[TASK_AP] & TASK_ARDUPILOT_REQUESTPARAM_BATT2_CAPACITY) {
+        RESETTASK(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_BATT2_CAPACITY);
+        generateParamRequestRead(_sysid, autopilot.compid, "BATT2_CAPACITY");
+        return; //do only one per loop
+    }
+    if (_task[TASK_AP] & TASK_ARDUPILOT_REQUESTPARAM_WPNAV_SPEED) {
+        RESETTASK(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_WPNAV_SPEED);
+        generateParamRequestRead(_sysid, autopilot.compid, "WPNAV_SPEED");
+        return; //do only one per loop
+    }
+    if (_task[TASK_AP] & TASK_ARDUPILOT_REQUESTPARAM_WPNAV_ACCEL) {
+        RESETTASK(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_WPNAV_ACCEL);
+        generateParamRequestRead(_sysid, autopilot.compid, "WPNAV_ACCEL");
+        return; //do only one per loop
+    }
+    if (_task[TASK_AP] & TASK_ARDUPILOT_REQUESTPARAM_WPNAV_ACCEL_Z) {
+        RESETTASK(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_WPNAV_ACCEL_Z);
+        generateParamRequestRead(_sysid, autopilot.compid, "WPNAV_ACCEL_Z");
+        return; //do only one per loop
+    }
+}
+
+
+void MavlinkTelem::doTaskCamera(void)
+{
+    if (!_task[TASK_CAMERA]) return; // no task pending
+
+    if (!camera.compid) { _task[TASK_CAMERA] = 0; return; }
+
+    if (_task[TASK_CAMERA] & TASK_SENDCMD_IMAGE_START_CAPTURE) {
+        RESETTASK(TASK_CAMERA, TASK_SENDCMD_IMAGE_START_CAPTURE);
+        generateCmdImageStartCapture(_sysid, camera.compid);
+        set_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS, 2);
+        return; //do only one per loop
+    }
+    if (_task[TASK_CAMERA] & TASK_SENDCMD_VIDEO_START_CAPTURE) {
+        RESETTASK(TASK_CAMERA, TASK_SENDCMD_VIDEO_START_CAPTURE);
+        generateCmdVideoStartCapture(_sysid, camera.compid);
+        set_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS, 2);
+        return; //do only one per loop
+    }
+    if (_task[TASK_CAMERA] & TASK_SENDCMD_VIDEO_STOP_CAPTURE) {
+        RESETTASK(TASK_CAMERA, TASK_SENDCMD_VIDEO_STOP_CAPTURE);
+        generateCmdVideoStopCapture(_sysid, camera.compid);
+        set_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS, 2);
+        return; //do only one per loop
+    }
+}
+
+
+void MavlinkTelem::doTaskCameraLowPriority(void)
+{
+    if (!_task[TASK_CAMERA]) return; // no task pending
+
+    if (_task[TASK_CAMERA] & TASK_SENDCMD_SET_CAMERA_VIDEO_MODE) {
+        RESETTASK(TASK_CAMERA, TASK_SENDCMD_SET_CAMERA_VIDEO_MODE);
+        generateCmdSetCameraMode(_sysid, camera.compid, CAMERA_MODE_VIDEO);
+        set_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_SETTINGS, 2);
+        return; //do only one per loop
+    }
+    if (_task[TASK_CAMERA] & TASK_SENDCMD_SET_CAMERA_PHOTO_MODE) {
+        RESETTASK(TASK_CAMERA, TASK_SENDCMD_SET_CAMERA_PHOTO_MODE);
+        generateCmdSetCameraMode(_sysid, camera.compid, CAMERA_MODE_IMAGE);
+        set_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_SETTINGS, 2);
+        return; //do only one per loop
+    }
+
+    // the sequence here defines the startup sequence
+    if (_task[TASK_CAMERA] & TASK_SENDREQUEST_CAMERA_INFORMATION) {
+        RESETTASK(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_INFORMATION);
+        generateCmdRequestCameraInformation(_sysid, camera.compid);
+        return; //do only one per loop
+    }
+    if (_task[TASK_CAMERA] & TASK_SENDREQUEST_CAMERA_SETTINGS) {
+        RESETTASK(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_SETTINGS);
+        generateCmdRequestCameraSettings(_sysid, camera.compid);
+        return; //do only one per loop
+    }
+    if (_task[TASK_CAMERA] & TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS) {
+        RESETTASK(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS);
+        generateCmdRequestCameraCapturesStatus(_sysid, camera.compid);
+        return; //do only one per loop
+    }
+    if (_task[TASK_CAMERA] & TASK_SENDREQUEST_STORAGE_INFORMATION) {
+        RESETTASK(TASK_CAMERA, TASK_SENDREQUEST_STORAGE_INFORMATION);
+        generateCmdRequestStorageInformation(_sysid, camera.compid);
+        return; //do only one per loop
+    }
+}
+
+
+void MavlinkTelem::doTaskGimbal(void)
+{
+    if (!_task[TASK_GIMBAL]) return; // no task pending
+
+    if (!gimbal.compid) { _task[TASK_GIMBAL] = 0; return; }
+
+    if (_task[TASK_GIMBAL] & TASK_SENDCMD_DO_MOUNT_CONFIGURE) {
+        RESETTASK(TASK_GIMBAL, TASK_SENDCMD_DO_MOUNT_CONFIGURE);
+        generateCmdDoMountConfigure(_sysid, autopilot.compid, _t_gimbal_mode);
+        return; //do only one per loop
+    }
+    if (_task[TASK_GIMBAL] & TASK_SENDCMD_DO_MOUNT_CONTROL) {
+        RESETTASK(TASK_GIMBAL, TASK_SENDCMD_DO_MOUNT_CONTROL);
+        generateCmdDoMountControl(_sysid, autopilot.compid, _t_gimbal_pitch_deg, _t_gimbal_yaw_deg);
+        return; //do only one per loop
+    }
+}
+
+
 void MavlinkTelem::doTask(void)
 {
 	tmr10ms_t tnow = get_tmr10ms();
@@ -391,224 +638,11 @@ void MavlinkTelem::doTask(void)
 	        return; //do only one per loop
 	    }
 
-	    // autopilot tasks
-        if (_task[TASK_AUTOPILOT] & TASK_SENDCMD_DO_SET_MODE) {
-            RESETTASK(TASK_AUTOPILOT,TASK_SENDCMD_DO_SET_MODE);
-            generateCmdDoSetMode(_sysid, autopilot.compid, (MAV_MODE)_tcsm_base_mode, _tcsm_custom_mode);
-            return; //do only one per loop
-        }
-        if (_task[TASK_AUTOPILOT] & TASK_SENDCMD_DO_CHANGE_SPEED) {
-            RESETTASK(TASK_AUTOPILOT,TASK_SENDCMD_DO_CHANGE_SPEED);
-            generateCmdDoChangeSpeed(_sysid, autopilot.compid, _tccs_speed_mps, _tccs_speed_type, true);
-            return; //do only one per loop
-        }
-        if (_task[TASK_AUTOPILOT] & TASK_SENDMSG_MISSION_ITEM_INT) {
-            RESETTASK(TASK_AUTOPILOT,TASK_SENDMSG_MISSION_ITEM_INT);
-            generateMissionItemInt(_sysid, autopilot.compid, _tmii_frame, _tmii_cmd, _tmii_current,
-                    _tmii_lat, _tmii_lon, _tmii_alt_m);
-            return; //do only one per loop
-        }
-        if (_task[TASK_AUTOPILOT] & TASK_SENDMSG_SET_POSITION_TARGET_GLOBAL_INT) {
-            RESETTASK(TASK_AUTOPILOT,TASK_SENDMSG_SET_POSITION_TARGET_GLOBAL_INT);
-            generateSetPositionTargetGlobalInt(_sysid, autopilot.compid, _t_coordinate_frame, _t_type_mask,
-                    _t_lat, _t_lon, _t_alt, _t_vx, _t_vy, _t_vz, _t_yaw_rad, _t_yaw_rad_rate);
-            return; //do only one per loop
-        }
-        if (_task[TASK_AUTOPILOT] & TASK_SENDCMD_NAV_TAKEOFF) {
-            RESETTASK(TASK_AUTOPILOT,TASK_SENDCMD_NAV_TAKEOFF);
-            generateCmdNavTakeoff(_sysid, autopilot.compid, _tcnt_alt_m, 1);
-            return; //do only one per loop
-        }
-        if (_task[TASK_AUTOPILOT] & TASK_SENDCMD_CONDITION_YAW) {
-            RESETTASK(TASK_AUTOPILOT,TASK_SENDCMD_CONDITION_YAW);
-            generateCmdConditionYaw(_sysid, autopilot.compid, _tccy_yaw_deg, 0.0f, _tccy_dir, _tccy_relative);
-            return; //do only one per loop
-        }
-
-		if (_task[TASK_AUTOPILOT] & TASK_SENDMSG_PARAM_REQUEST_LIST) {
-	        RESETTASK(TASK_AUTOPILOT,TASK_SENDMSG_PARAM_REQUEST_LIST);
-	        generateParamRequestList(_sysid, autopilot.compid);
-	        return; //do only one per loop
-		}
-		if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_RAW_SENSORS) {
-	        RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_RAW_SENSORS);
-//XX	        generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_RAW_SENSORS, 2, 1);
-	        return; //do only one per loop
-		}
-		if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_EXTENDED_STATUS) {
-	        RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_EXTENDED_STATUS);
-	        generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_EXTENDED_STATUS, 2, 1);
-	        return; //do only one per loop
-		}
-		if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_POSITION) {
-	        RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_POSITION);
-//XX	        generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_POSITION, 4, 1); // do faster, 4 Hz
-	        return; //do only one per loop
-		}
-		if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_EXTRA1) {
-	        RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_EXTRA1);
-//XX	        generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_EXTRA1, 4, 1); // do faster, 4 Hz
-	        return; //do only one per loop
-		}
-		if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_EXTRA2) {
-	        RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_EXTRA2);
-	        generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_EXTRA2, 2, 1);
-	        return; //do only one per loop
-		}
-		if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_EXTRA3) {
-	        RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_EXTRA3);
-	        generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_EXTRA3, 2, 1);
-	        return; //do only one per loop
-		}
-
-        if (_task[TASK_AUTOPILOT] & TASK_SENDCMD_REQUEST_ATTITUDE) {
-            RESETTASK(TASK_AUTOPILOT,TASK_SENDCMD_REQUEST_ATTITUDE);
-            generateCmdSetMessageInterval(_sysid, autopilot.compid, MAVLINK_MSG_ID_ATTITUDE, 100000, 1);
-            return; //do only one per loop
-        }
-        if (_task[TASK_AUTOPILOT] & TASK_SENDCMD_REQUEST_GLOBAL_POSITION_INT) {
-            RESETTASK(TASK_AUTOPILOT,TASK_SENDCMD_REQUEST_GLOBAL_POSITION_INT);
-            generateCmdSetMessageInterval(_sysid, autopilot.compid, MAVLINK_MSG_ID_GLOBAL_POSITION_INT, 100000, 1);
-            return; //do only one per loop
-        }
-
-        if (_task[TASK_AP] & TASK_ARDUPILOT_REQUESTBANNER) { //MAV_CMD_DO_SEND_BANNER
-            RESETTASK(TASK_AP, TASK_ARDUPILOT_REQUESTBANNER);
-            _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_DO_SEND_BANNER);
-            return; //do only one per loop
-        }
-        if (_task[TASK_AP] & TASK_ARDUPILOT_ARM) { //MAV_CMD_COMPONENT_ARM_DISARM
-            RESETTASK(TASK_AP, TASK_ARDUPILOT_ARM);
-            _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_COMPONENT_ARM_DISARM, 1.0f);
-            return; //do only one per loop
-        }
-        if (_task[TASK_AP] & TASK_ARDUPILOT_DISARM) { //MAV_CMD_COMPONENT_ARM_DISARM
-            RESETTASK(TASK_AP, TASK_ARDUPILOT_DISARM);
-            _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_COMPONENT_ARM_DISARM, 0.0f);
-            return; //do only one per loop
-        }
-        if (_task[TASK_AP] & TASK_ARDUPILOT_COPTER_TAKEOFF) { //MAV_CMD_NAV_TAKEOFF
-            RESETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_TAKEOFF);
-            _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_NAV_TAKEOFF, 0,0, 0.0f, 0,0,0, _tact_takeoff_alt_m); //must_navigate = true
-            return; //do only one per loop
-        }
-        if (_task[TASK_AP] & TASK_ARDUPILOT_LAND) { //MAV_CMD_NAV_LAND
-            RESETTASK(TASK_AP, TASK_ARDUPILOT_LAND);
-            _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_NAV_LAND);
-            return; //do only one per loop
-        }
-        if (_task[TASK_AP] & TASK_ARDUPILOT_COPTER_FLYCLICK) {
-            RESETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_FLYCLICK);
-            _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_SOLO_BTN_FLY_CLICK);
-            return; //do only one per loop
-        }
-        if (_task[TASK_AP] & TASK_ARDUPILOT_COPTER_FLYHOLD) {
-            RESETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_FLYHOLD);
-            _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_SOLO_BTN_FLY_HOLD, _tacf_takeoff_alt_m);
-            return; //do only one per loop
-        }
-        if (_task[TASK_AP] & TASK_ARDUPILOT_COPTER_FLYPAUSE) {
-            RESETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_FLYPAUSE);
-            _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_SOLO_BTN_PAUSE_CLICK, 0.0f); //shoot = no
-            return; //do only one per loop
-        }
-
-        if (_task[TASK_AP] & TASK_ARDUPILOT_REQUESTPARAM_BATT_CAPACITY) {
-            RESETTASK(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_BATT_CAPACITY);
-            generateParamRequestRead(_sysid, autopilot.compid, "BATT_CAPACITY");
-            return; //do only one per loop
-        }
-        if (_task[TASK_AP] & TASK_ARDUPILOT_REQUESTPARAM_BATT2_CAPACITY) {
-            RESETTASK(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_BATT2_CAPACITY);
-            generateParamRequestRead(_sysid, autopilot.compid, "BATT2_CAPACITY");
-            return; //do only one per loop
-        }
-        if (_task[TASK_AP] & TASK_ARDUPILOT_REQUESTPARAM_WPNAV_SPEED) {
-            RESETTASK(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_WPNAV_SPEED);
-            generateParamRequestRead(_sysid, autopilot.compid, "WPNAV_SPEED");
-            return; //do only one per loop
-        }
-        if (_task[TASK_AP] & TASK_ARDUPILOT_REQUESTPARAM_WPNAV_ACCEL) {
-            RESETTASK(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_WPNAV_ACCEL);
-            generateParamRequestRead(_sysid, autopilot.compid, "WPNAV_ACCEL");
-            return; //do only one per loop
-        }
-        if (_task[TASK_AP] & TASK_ARDUPILOT_REQUESTPARAM_WPNAV_ACCEL_Z) {
-            RESETTASK(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_WPNAV_ACCEL_Z);
-            generateParamRequestRead(_sysid, autopilot.compid, "WPNAV_ACCEL_Z");
-            return; //do only one per loop
-        }
-
-	    // camera tasks
-		if (_task[TASK_CAMERA] & TASK_SENDCMD_SET_CAMERA_VIDEO_MODE) {
-	        RESETTASK(TASK_CAMERA, TASK_SENDCMD_SET_CAMERA_VIDEO_MODE);
-	        if (!camera.compid) return;
-	        generateCmdSetCameraMode(_sysid, camera.compid, CAMERA_MODE_VIDEO);
-	        set_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_SETTINGS, 2);
-	        return; //do only one per loop
-		}
-		if (_task[TASK_CAMERA] & TASK_SENDCMD_SET_CAMERA_PHOTO_MODE) {
-	        RESETTASK(TASK_CAMERA, TASK_SENDCMD_SET_CAMERA_PHOTO_MODE);
-            if (!camera.compid) return;
-	        generateCmdSetCameraMode(_sysid, camera.compid, CAMERA_MODE_IMAGE);
-            set_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_SETTINGS, 2);
-	        return; //do only one per loop
-		}
-		if (_task[TASK_CAMERA] & TASK_SENDCMD_IMAGE_START_CAPTURE) {
-	        RESETTASK(TASK_CAMERA, TASK_SENDCMD_IMAGE_START_CAPTURE);
-            if (!camera.compid) return;
-	        generateCmdImageStartCapture(_sysid, camera.compid);
-            set_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS, 2);
-	        return; //do only one per loop
-		}
-		if (_task[TASK_CAMERA] & TASK_SENDCMD_VIDEO_START_CAPTURE) {
-	        RESETTASK(TASK_CAMERA, TASK_SENDCMD_VIDEO_START_CAPTURE);
-            if (!camera.compid) return;
-	        generateCmdVideoStartCapture(_sysid, camera.compid);
-            set_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS, 2);
-	        return; //do only one per loop
-		}
-		if (_task[TASK_CAMERA] & TASK_SENDCMD_VIDEO_STOP_CAPTURE) {
-	        RESETTASK(TASK_CAMERA, TASK_SENDCMD_VIDEO_STOP_CAPTURE);
-            if (!camera.compid) return;
-	        generateCmdVideoStopCapture(_sysid, camera.compid);
-            set_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS, 2);
-	        return; //do only one per loop
-		}
-
-		// the sequence here defines the startup sequence
-		if (_task[TASK_CAMERA] & TASK_SENDREQUEST_CAMERA_INFORMATION) {
-	        RESETTASK(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_INFORMATION);
-	        if (camera.compid) generateCmdRequestCameraInformation(_sysid, camera.compid);
-	        return; //do only one per loop
-		}
-		if (_task[TASK_CAMERA] & TASK_SENDREQUEST_CAMERA_SETTINGS) {
-	        RESETTASK(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_SETTINGS);
-	        if (camera.compid) generateCmdRequestCameraSettings(_sysid, camera.compid);
-	        return; //do only one per loop
-		}
-		if (_task[TASK_CAMERA] & TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS) {
-	        RESETTASK(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS);
-	        if (camera.compid) generateCmdRequestCameraCapturesStatus(_sysid, camera.compid);
-	        return; //do only one per loop
-		}
-		if (_task[TASK_CAMERA] & TASK_SENDREQUEST_STORAGE_INFORMATION) {
-	        RESETTASK(TASK_CAMERA, TASK_SENDREQUEST_STORAGE_INFORMATION);
-	        if (camera.compid) generateCmdRequestStorageInformation(_sysid, camera.compid);
-	        return; //do only one per loop
-		}
-
-	    // gimbal tasks
-		if (_task[TASK_GIMBAL] & TASK_SENDCMD_DO_MOUNT_CONFIGURE) {
-	        RESETTASK(TASK_GIMBAL, TASK_SENDCMD_DO_MOUNT_CONFIGURE);
-	        generateCmdDoMountConfigure(_sysid, autopilot.compid, _t_gimbal_mode);
-	        return; //do only one per loop
-		}
-		if (_task[TASK_GIMBAL] & TASK_SENDCMD_DO_MOUNT_CONTROL) {
-	        RESETTASK(TASK_GIMBAL, TASK_SENDCMD_DO_MOUNT_CONTROL);
-	        generateCmdDoMountControl(_sysid, autopilot.compid, _t_gimbal_pitch_deg, _t_gimbal_yaw_deg);
-	        return; //do only one per loop
-		}
+		doTaskAutopilot();
+        doTaskCamera();
+        doTaskGimbal();
+        doTaskAutopilotLowPriority();
+        doTaskCameraLowPriority();
 	}
 }
 

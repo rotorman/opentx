@@ -93,6 +93,12 @@ class MavlinkTelem
 
     bool isSystemIdValid(void) { return (_sysid > 0); }
 
+    void doTaskAutopilot(void);
+    void doTaskAutopilotLowPriority(void);
+    void doTaskCamera(void);
+    void doTaskCameraLowPriority(void);
+    void doTaskGimbal(void);
+
     void handleMessageAutopilot(void);
     void requestDataStreamFromAutopilot(void);
     void handleMessageCamera(void);
