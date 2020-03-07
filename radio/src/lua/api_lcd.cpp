@@ -867,7 +867,7 @@ Switches backlight on
 
 @status current Introduced in 2.2.6
 */
-static int luaLcdbacklightOn(lua_State *L)
+static int luaLcdBacklightOn(lua_State *L)
 {
   if (!luaLcdAllowed) return 0;
   backlightOn();
@@ -877,7 +877,7 @@ static int luaLcdbacklightOn(lua_State *L)
 
 const luaL_Reg lcdLib[] = {
 //OW
-  { "backlightOn", luaLcdbacklightOn },
+  { "backlightOn", luaLcdBacklightOn },
 //OWEND
   { "refresh", luaLcdRefresh },
   { "clear", luaLcdClear },
