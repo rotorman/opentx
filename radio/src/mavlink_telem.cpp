@@ -658,12 +658,14 @@ void MavlinkTelem::apSetFlightMode(uint32_t ap_flight_mode)
     SETTASK(TASK_AUTOPILOT, TASK_SENDCMD_DO_SET_MODE);
 }
 
+
 void MavlinkTelem::apSetGroundSpeed(float speed)
 {
     _tccs_speed_mps = speed;
     _tccs_speed_type = 1;
     SETTASK(TASK_AUTOPILOT, TASK_SENDCMD_DO_CHANGE_SPEED);
 }
+
 
 void MavlinkTelem::apSimpleGotoPosAlt(int32_t lat, int32_t lon, float alt)
 {
@@ -674,6 +676,7 @@ void MavlinkTelem::apSimpleGotoPosAlt(int32_t lat, int32_t lon, float alt)
     _tmii_lat = lat; _tmii_lon = lon; _tmii_alt_m = alt;
     SETTASK(TASK_AUTOPILOT, TASK_SENDMSG_MISSION_ITEM_INT);
 }
+
 
 //alt and yaw can be NAN if they should be ignored
 // this function is not very useful as it really moves very slowly
@@ -694,6 +697,7 @@ void MavlinkTelem::apGotoPosAltYawDeg(int32_t lat, int32_t lon, float alt, float
     SETTASK(TASK_AUTOPILOT, TASK_SENDMSG_SET_POSITION_TARGET_GLOBAL_INT);
 }
 
+
 void MavlinkTelem::apGotoPosAltVel(int32_t lat, int32_t lon, float alt, float vx, float vy, float vz)
 {
     _t_coordinate_frame = MAV_FRAME_GLOBAL_RELATIVE_ALT_INT;
@@ -705,30 +709,6 @@ void MavlinkTelem::apGotoPosAltVel(int32_t lat, int32_t lon, float alt, float vx
     _t_vx = vx; _t_vy = vy; _t_vz = vz; // m/s
     _t_yaw_rad = _t_yaw_rad_rate = 0.0f; // rad
     SETTASK(TASK_AUTOPILOT, TASK_SENDMSG_SET_POSITION_TARGET_GLOBAL_INT);
-}
-
-bool MavlinkTelem::apMoveToPosAltWithSpeed(int32_t lat, int32_t lon, float alt, float speed, bool xy)
-{
-    // TODO: check if we have a valid position
-    // mimic ArduCopter's position_ok() when it is in armed state
-    bool ok = (ekf.flags & MAVAP_EKF_POS_HORIZ_ABS) && !(ekf.flags & MAVAP_EKF_CONST_POS_MODE);
-    if (!ok) return false;
-    //we grab the current location
-    // from this we calculate the normalized direction vector
-    // which is then multiplied by speed to get the velocity vector
-    // we use flat earth approximation
-    //   xScale = cos(rad(lat0 * 1.0e-7))
-    //   x = rad((lon - lon0) * 1.0e-7) * xScale * R
-    //   y = rad((lat - lat0) * 1.0e-7) * R
-    // in order to get xscale and stay within float we are happy with ca 4 digits accuracy
-    float xscale = cosf( (float)((lat + gposition.lat)/20000) * (1.0E-3f * FPI/180.0f) );
-    float dx = (float)( lon - gposition.lon ) * xscale * (0.6371f); //m
-    float dy = (float)( lat - gposition.lat ) * (0.6371f); //m
-    float dz = (xy) ? 0.0f : (alt - 0.001f * (float)gposition.relative_alt_mm); //m
-    float dist = sqrtf(dx*dx + dy*dy + dz*dz);
-    if (dist == 0.0f ) return false; // if the distance is zero, we can skip it
-    apGotoPosAltVel(lat, lon, alt, (dx/dist)*speed, (dy/dist)*speed, (dz/dist)*speed);
-    return true;
 }
 
 

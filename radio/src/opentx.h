@@ -32,7 +32,7 @@
 
 //OW
 #define MAVLINK_TELEM
-#define OWVERSIONSTR  "olliw-v03rc8"
+#define OWVERSIONSTR  "olliw-v03rc9"
 //OWEND
 
 /*//OW  backlightOn

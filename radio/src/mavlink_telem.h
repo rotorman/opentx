@@ -301,13 +301,10 @@ class MavlinkTelem
     void setTaskParamRequestRead(const char* pname) { strncpy(_prr_param_id, pname, 16); SETTASK(TASK_AUTOPILOT, TASK_SENDMSG_PARAM_REQUEST_READ); }
 
     void apSetFlightMode(uint32_t ap_flight_mode);
-
     void apSetGroundSpeed(float speed);
     void apSimpleGotoPosAlt(int32_t lat, int32_t lon, float alt);
-
     void apGotoPosAltYawDeg(int32_t lat, int32_t lon, float alt, float yaw);
     void apGotoPosAltVel(int32_t lat, int32_t lon, float alt, float vx, float vy, float vz);
-    bool apMoveToPosAltWithSpeed(int32_t lat, int32_t lon, float alt, float speed, bool xy=false);
     void apSetYawDeg(float yaw, bool relative); //note, we can enter negative yaw here, sign determines direction
 
     void apRequestBanner(void) { SETTASK(TASK_AP, TASK_ARDUPILOT_REQUESTBANNER); }
