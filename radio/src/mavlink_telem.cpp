@@ -381,7 +381,7 @@ void MavlinkTelem::doTaskAutopilotLowPriority(void)
 
     if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_RAW_SENSORS) {
         RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_RAW_SENSORS);
-//XX            generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_RAW_SENSORS, 2, 1);
+        generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_RAW_SENSORS, 2, 1);
         return; //do only one per loop
     }
     if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_EXTENDED_STATUS) {
@@ -391,12 +391,12 @@ void MavlinkTelem::doTaskAutopilotLowPriority(void)
     }
     if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_POSITION) {
         RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_POSITION);
-//XX            generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_POSITION, 4, 1); // do faster, 4 Hz
+        generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_POSITION, 4, 1); // do faster, 4 Hz
         return; //do only one per loop
     }
     if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_EXTRA1) {
         RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_EXTRA1);
-//XX            generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_EXTRA1, 4, 1); // do faster, 4 Hz
+        generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_EXTRA1, 4, 1); // do faster, 4 Hz
         return; //do only one per loop
     }
     if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_EXTRA2) {
@@ -683,7 +683,6 @@ void MavlinkTelem::apSimpleGotoPosAlt(int32_t lat, int32_t lon, float alt)
 void MavlinkTelem::apGotoPosAltYawDeg(int32_t lat, int32_t lon, float alt, float yaw)
 {
     _t_coordinate_frame = MAV_FRAME_GLOBAL_RELATIVE_ALT_INT;
-    //_t_type_mask = 0x09F8;
     _t_type_mask = POSITION_TARGET_TYPEMASK_VX_IGNORE | POSITION_TARGET_TYPEMASK_VY_IGNORE | POSITION_TARGET_TYPEMASK_VZ_IGNORE |
                    POSITION_TARGET_TYPEMASK_AX_IGNORE | POSITION_TARGET_TYPEMASK_AY_IGNORE | POSITION_TARGET_TYPEMASK_AZ_IGNORE |
                    POSITION_TARGET_TYPEMASK_YAW_RATE_IGNORE;
@@ -1051,6 +1050,18 @@ void MavlinkTelem::handleMessageAutopilot(void)
         if (!strncmp(payload.param_id,"BATT2_CAPACITY",16)) {
             param.BATT2_CAPACITY = payload.param_value;
             clear_request(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_BATT2_CAPACITY);
+        }
+        if (!strncmp(payload.param_id,"WPNAV_SPEED",16)) {
+            param.WPNAV_SPEED = payload.param_value;
+            clear_request(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_WPNAV_SPEED);
+        }
+        if (!strncmp(payload.param_id,"WPNAV_ACCEL",16)) {
+            param.WPNAV_ACCEL = payload.param_value;
+            clear_request(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_WPNAV_ACCEL);
+        }
+        if (!strncmp(payload.param_id,"WPNAV_ACCEL_Z",16)) {
+            param.WPNAV_ACCEL_Z = payload.param_value;
+            clear_request(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_WPNAV_ACCEL_Z);
         }
         }break;
 

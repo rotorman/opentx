@@ -119,7 +119,7 @@ class MavlinkTelem
     // FIXME: we need something better here!!!
     // use two COMM'S ??!?!??!?
     // 16 is sufficient for a rate of 43 msg/s or 1350 bytes/s, 8 was NOT!
-    Fifo<mavlink_message_t, 2> msgRxFifo;  // HUGE! 16* 256 = 5kB
+    Fifo<mavlink_message_t, 2> msgRxFifo;  // HUGE!
     bool msgFifo_enabled = false;
 
     const mavlink_status_t* getChannelStatus(void) { return &_status; }
@@ -167,9 +167,6 @@ class MavlinkTelem
       AUTOPILOT_REQUESTWAITING_VFR_HUD              = 0x08,
       AUTOPILOT_REQUESTWAITING_BATTERY_STATUS       = 0x10,
       AUTOPILOT_REQUESTWAITING_ALL                  = 0x1F,
-
-      //WPNAV_SPEED, WPNAV_ACCEL, WPNAV_ACCEL_Z
-
     } AUTOPILOTREQUESTWAITINGFLAGS;
 
     typedef enum {
@@ -391,6 +388,7 @@ class MavlinkTelem
     } TASKIDXENUM;
 
     typedef enum {
+      //me
       TASK_SENDMYHEARTBEAT                          = 0x00000001,
       //autopilot
       TASK_SENDREQUESTDATASTREAM_RAW_SENSORS        = 0x00000001, // group 1

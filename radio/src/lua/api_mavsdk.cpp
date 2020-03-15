@@ -957,14 +957,14 @@ static int luaMavsdkGetStatusText(lua_State *L)
 const luaL_Reg mavsdkLib[] = {
 #if defined(MAVLINK_TELEM)
   { "mavtelemIsEnabled", luaMavsdkMavTelemIsEnabled },
-  { "isReceiving", luaMavsdkIsReceiving },			 // bool
+  { "isReceiving", luaMavsdkIsReceiving },
 
-  { "isInitialized", luaMavsdkIsInitialized },       // bool
-  { "getAutopilotType", luaMavsdkGetAutopilotType }, // MAV_AUTOPILOT_xxx
-  { "getVehicleType", luaMavsdkGetVehicleType },	 // MAV_TYPE_xxx
-  { "getFlightMode", luaMavsdkGetFlightMode },		 // MAVSDK_VEHICLECLASS_xxx
-  { "getVehicleClass", luaMavsdkGetVehicleClass },	 // no enum, just raw number
-  { "getSystemStatus", luaMavsdkGetSystemStatus },	 // bool
+  { "isInitialized", luaMavsdkIsInitialized },
+  { "getAutopilotType", luaMavsdkGetAutopilotType },
+  { "getVehicleType", luaMavsdkGetVehicleType },
+  { "getFlightMode", luaMavsdkGetFlightMode },
+  { "getVehicleClass", luaMavsdkGetVehicleClass },
+  { "getSystemStatus", luaMavsdkGetSystemStatus },
   { "isArmed", luaMavsdkIsArmed },
 
   { "gimbalIsReceiving", luaMavsdkGimbalIsReceiving },
@@ -1000,8 +1000,8 @@ const luaL_Reg mavsdkLib[] = {
   { "getAttPitchDeg", luaMavsdkGetAttPitchDeg },
   { "getAttYawDeg", luaMavsdkGetAttYawDeg },
 
-  { "getGpsStatus", luaMavsdkGetGps1Status }, 		// .fix,.hdop,.sat
-  { "getGpsFix", luaMavsdkGetGps1Fix },				// GPS_FIX_TYPE_xxx
+  { "getGpsStatus", luaMavsdkGetGps1Status },
+  { "getGpsFix", luaMavsdkGetGps1Fix },
   { "getGpsHDop", luaMavsdkGetGps1HDop },
   { "getGpsVDop", luaMavsdkGetGps1VDop },
   { "getGpsSat", luaMavsdkGetGps1Sat },
