@@ -131,7 +131,7 @@ uint8_t mavlinkTelemGetc(uint8_t *c)
 void mavlinkTelemWriteWakeup(void)
 {
   if (!mavlinkTelemTxFifo.isEmpty()) {
-    USART_ITConfig(BT_USART, USART_IT_TXE, ENABLE);
+    USART_ITConfig(MAVLINK_TELEM_USART, USART_IT_TXE, ENABLE);
   }
 }
 
