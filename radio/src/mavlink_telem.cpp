@@ -1050,7 +1050,8 @@ void MavlinkTelem::handleMessage(void)
 {
 	if (_msg.sysid == 0) return; //this can't be anything meaningful
 
-    if (!isSystemIdValid() || (_msg.sysid != _sysid)) { //we are user friendly and allow the sys_id to change
+	// autodetect sys id, and handle autopilot connecting
+    if (!isSystemIdValid() || (autopilot.compid == 0)) {
     	if (_msg.msgid == MAVLINK_MSG_ID_HEARTBEAT) {
     		mavlink_heartbeat_t payload;
     		mavlink_msg_heartbeat_decode(&_msg, &payload);
