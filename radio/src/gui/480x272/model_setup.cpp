@@ -134,7 +134,7 @@ enum MenuModelSetupItems {
 };
 
 //OW
-#define MAVLINK_ROWS    LABEL(Mavlink), 0, 0, 0
+#define MAVLINK_ROWS    LABEL(Mavlink), 0, 0, 0, 0
 //OWEND
 
 #define MODEL_SETUP_2ND_COLUMN         200
@@ -1334,6 +1334,7 @@ bool menuModelSetup(event_t event)
       case ITEM_MODEL_SETUP_MAVLINK_MIMICSENSORS: {
         lcdDrawText(MENUS_MARGIN_LEFT + INDENT_WIDTH, y, "Sensors");
         g_model.mavlinkMimicSensors = editCheckBox(g_model.mavlinkMimicSensors, MODEL_SETUP_2ND_COLUMN, y, attr, event);
+        //g_model.mavlinkMimicSensors = editChoice(MODEL_SETUP_2ND_COLUMN, y, "\010""off\0\0\0\0\0\0\0""FrSky\0\0\0\0\0""CrossFire\0""FrSky pass", g_model.mavlinkMimicSensors, 0, 3, attr, event);
       } break;
 
       case ITEM_MODEL_SETUP_MAVLINK_RCOVERRIDE: {
