@@ -779,6 +779,8 @@ void MavlinkTelem::handleMessageCamera(void)
 
 void MavlinkTelem::handleMessageGimbal(void)
 {
+    gimbal.is_receiving = MAVLINK_TELEM_RECEIVING_TIMEOUT; //we accept any msg from the camera to indicate it is alive
+
 	switch (_msg.msgid) {
 
 	case MAVLINK_MSG_ID_HEARTBEAT: {
