@@ -30,14 +30,14 @@
 #include "thirdparty/Mavlink/c_library_v2/ardupilotmega/mavlink.h"
 
 
-#define MAVLINK_TELEM_MY_SYSID 			254 //MP is 255, QGC is
+#define MAVLINK_TELEM_MY_SYSID 			254 //MissionPlanner is 255, QGroundControl is ??
 #define MAVLINK_TELEM_MY_COMPID			(MAV_COMP_ID_MISSIONPLANNER + 1)
 
 
 // wakeup() is currently called every 10 ms
 // if one is changing this, timing needs to be adapted
-#define MAVLINK_TELEM_RECEIVING_TIMEOUT			300 // 3 secs
-#define MAVLINK_TELEM_RADIO_RECEIVING_TIMEOUT	300 // 3 secs
+#define MAVLINK_TELEM_RECEIVING_TIMEOUT			330 // 3.3 secs
+#define MAVLINK_TELEM_RADIO_RECEIVING_TIMEOUT	330 // 3.3 secs
 
 
 //COMMENT:
@@ -307,13 +307,13 @@ class MavlinkTelem
     void apGotoPosAltVel(int32_t lat, int32_t lon, float alt, float vx, float vy, float vz);
     void apSetYawDeg(float yaw, bool relative); //note, we can enter negative yaw here, sign determines direction
 
-    void apRequestBanner(void) { SETTASK(TASK_AP, TASK_ARDUPILOT_REQUESTBANNER); }
-    void apArm(bool arm) { SETTASK(TASK_AP, (arm) ? TASK_ARDUPILOT_ARM : TASK_ARDUPILOT_DISARM); }
-    void apCopterTakeOff(float alt) { _tact_takeoff_alt_m = alt; SETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_TAKEOFF); }
-    void apLand(void) { SETTASK(TASK_AP, TASK_ARDUPILOT_LAND); }
-    void apCopterFlyClick(void) { SETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_FLYCLICK); }
-    void apCopterFlyHold(float alt) { _tacf_takeoff_alt_m = alt; SETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_FLYHOLD); }
-    void apCopterFlyPause(void) { SETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_FLYPAUSE); }
+    void apRequestBanner(void) { SETTASK(TASK_AP, TASK_AP_REQUESTBANNER); }
+    void apArm(bool arm) { SETTASK(TASK_AP, (arm) ? TASK_AP_ARM : TASK_AP_DISARM); }
+    void apCopterTakeOff(float alt) { _tact_takeoff_alt_m = alt; SETTASK(TASK_AP, TASK_AP_COPTER_TAKEOFF); }
+    void apLand(void) { SETTASK(TASK_AP, TASK_AP_LAND); }
+    void apCopterFlyClick(void) { SETTASK(TASK_AP, TASK_AP_COPTER_FLYCLICK); }
+    void apCopterFlyHold(float alt) { _tacf_takeoff_alt_m = alt; SETTASK(TASK_AP, TASK_AP_COPTER_FLYHOLD); }
+    void apCopterFlyPause(void) { SETTASK(TASK_AP, TASK_AP_COPTER_FLYPAUSE); }
 
     // MAVSDK CAMERA
     struct CameraInfo {
@@ -416,21 +416,21 @@ class MavlinkTelem
       TASK_SENDCMD_CONDITION_YAW                    = 0x00200000,
       TASK_SENDMSG_RC_CHANNELS_OVERRIDE             = 0x00400000,
       //ap
-      TASK_ARDUPILOT_REQUESTBANNER                  = 0x00000001,
-      TASK_ARDUPILOT_ARM                            = 0x00000002,
-      TASK_ARDUPILOT_DISARM                         = 0x00000004,
-      TASK_ARDUPILOT_COPTER_TAKEOFF                 = 0x00000008,
-      TASK_ARDUPILOT_LAND                           = 0x00000010,
-      TASK_ARDUPILOT_COPTER_FLYCLICK                = 0x00000020,
-      TASK_ARDUPILOT_COPTER_FLYHOLD                 = 0x00000040,
-      TASK_ARDUPILOT_COPTER_FLYPAUSE                = 0x00000080,
+      TASK_AP_REQUESTBANNER                  		= 0x00000001,
+      TASK_AP_ARM                            		= 0x00000002,
+      TASK_AP_DISARM                         		= 0x00000004,
+      TASK_AP_COPTER_TAKEOFF                 		= 0x00000008,
+      TASK_AP_LAND                           		= 0x00000010,
+      TASK_AP_COPTER_FLYCLICK                		= 0x00000020,
+      TASK_AP_COPTER_FLYHOLD                 		= 0x00000040,
+      TASK_AP_COPTER_FLYPAUSE                		= 0x00000080,
 
-      TASK_ARDUPILOT_REQUESTPARAM_BATT_CAPACITY     = 0x00010000,
-      TASK_ARDUPILOT_REQUESTPARAM_BATT2_CAPACITY    = 0x00020000,
-      TASK_ARDUPILOT_REQUESTPARAM_WPNAV_SPEED       = 0x00040000,
-      TASK_ARDUPILOT_REQUESTPARAM_WPNAV_ACCEL       = 0x00080000,
-      TASK_ARDUPILOT_REQUESTPARAM_WPNAV_ACCEL_Z     = 0x00100000,
-      TASK_ARDUPILOT_REQUESTPARAM_SYSID_MYGCS       = 0x00200000,
+      TASK_AP_REQUESTPARAM_BATT_CAPACITY     		= 0x00010000,
+      TASK_AP_REQUESTPARAM_BATT2_CAPACITY    		= 0x00020000,
+      TASK_AP_REQUESTPARAM_WPNAV_SPEED       		= 0x00040000,
+      TASK_AP_REQUESTPARAM_WPNAV_ACCEL       		= 0x00080000,
+      TASK_AP_REQUESTPARAM_WPNAV_ACCEL_Z     		= 0x00100000,
+      TASK_AP_REQUESTPARAM_SYSID_MYGCS       		= 0x00200000,
       //camera
       TASK_SENDREQUEST_CAMERA_INFORMATION           = 0x00000001,
       TASK_SENDREQUEST_CAMERA_SETTINGS              = 0x00000002,

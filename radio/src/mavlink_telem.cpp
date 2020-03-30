@@ -459,74 +459,74 @@ void MavlinkTelem::doTaskAutopilotLowPriority(void)
         return; //do only one per loop
     }
 
-    if (_task[TASK_AP] & TASK_ARDUPILOT_ARM) { //MAV_CMD_COMPONENT_ARM_DISARM
-        RESETTASK(TASK_AP, TASK_ARDUPILOT_ARM);
+    if (_task[TASK_AP] & TASK_AP_ARM) { //MAV_CMD_COMPONENT_ARM_DISARM
+        RESETTASK(TASK_AP, TASK_AP_ARM);
         _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_COMPONENT_ARM_DISARM, 1.0f);
         return; //do only one per loop
     }
-    if (_task[TASK_AP] & TASK_ARDUPILOT_DISARM) { //MAV_CMD_COMPONENT_ARM_DISARM
-        RESETTASK(TASK_AP, TASK_ARDUPILOT_DISARM);
+    if (_task[TASK_AP] & TASK_AP_DISARM) { //MAV_CMD_COMPONENT_ARM_DISARM
+        RESETTASK(TASK_AP, TASK_AP_DISARM);
         _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_COMPONENT_ARM_DISARM, 0.0f);
         return; //do only one per loop
     }
-    if (_task[TASK_AP] & TASK_ARDUPILOT_COPTER_TAKEOFF) { //MAV_CMD_NAV_TAKEOFF
-        RESETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_TAKEOFF);
+    if (_task[TASK_AP] & TASK_AP_COPTER_TAKEOFF) { //MAV_CMD_NAV_TAKEOFF
+        RESETTASK(TASK_AP, TASK_AP_COPTER_TAKEOFF);
         _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_NAV_TAKEOFF, 0,0, 0.0f, 0,0,0, _tact_takeoff_alt_m); //must_navigate = true
         return; //do only one per loop
     }
-    if (_task[TASK_AP] & TASK_ARDUPILOT_LAND) { //MAV_CMD_NAV_LAND
-        RESETTASK(TASK_AP, TASK_ARDUPILOT_LAND);
+    if (_task[TASK_AP] & TASK_AP_LAND) { //MAV_CMD_NAV_LAND
+        RESETTASK(TASK_AP, TASK_AP_LAND);
         _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_NAV_LAND);
         return; //do only one per loop
     }
-    if (_task[TASK_AP] & TASK_ARDUPILOT_COPTER_FLYCLICK) {
-        RESETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_FLYCLICK);
+    if (_task[TASK_AP] & TASK_AP_COPTER_FLYCLICK) {
+        RESETTASK(TASK_AP, TASK_AP_COPTER_FLYCLICK);
         _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_SOLO_BTN_FLY_CLICK);
         return; //do only one per loop
     }
-    if (_task[TASK_AP] & TASK_ARDUPILOT_COPTER_FLYHOLD) {
-        RESETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_FLYHOLD);
+    if (_task[TASK_AP] & TASK_AP_COPTER_FLYHOLD) {
+        RESETTASK(TASK_AP, TASK_AP_COPTER_FLYHOLD);
         _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_SOLO_BTN_FLY_HOLD, _tacf_takeoff_alt_m);
         return; //do only one per loop
     }
-    if (_task[TASK_AP] & TASK_ARDUPILOT_COPTER_FLYPAUSE) {
-        RESETTASK(TASK_AP, TASK_ARDUPILOT_COPTER_FLYPAUSE);
+    if (_task[TASK_AP] & TASK_AP_COPTER_FLYPAUSE) {
+        RESETTASK(TASK_AP, TASK_AP_COPTER_FLYPAUSE);
         _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_SOLO_BTN_PAUSE_CLICK, 0.0f); //shoot = no
         return; //do only one per loop
     }
 
-    if (_task[TASK_AP] & TASK_ARDUPILOT_REQUESTBANNER) { //MAV_CMD_DO_SEND_BANNER
-        RESETTASK(TASK_AP, TASK_ARDUPILOT_REQUESTBANNER);
+    if (_task[TASK_AP] & TASK_AP_REQUESTBANNER) { //MAV_CMD_DO_SEND_BANNER
+        RESETTASK(TASK_AP, TASK_AP_REQUESTBANNER);
         _generateCmdLong(_sysid, autopilot.compid, MAV_CMD_DO_SEND_BANNER);
         return; //do only one per loop
     }
-    if (_task[TASK_AP] & TASK_ARDUPILOT_REQUESTPARAM_BATT_CAPACITY) {
-        RESETTASK(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_BATT_CAPACITY);
+    if (_task[TASK_AP] & TASK_AP_REQUESTPARAM_BATT_CAPACITY) {
+        RESETTASK(TASK_AP, TASK_AP_REQUESTPARAM_BATT_CAPACITY);
         generateParamRequestRead(_sysid, autopilot.compid, "BATT_CAPACITY");
         return; //do only one per loop
     }
-    if (_task[TASK_AP] & TASK_ARDUPILOT_REQUESTPARAM_BATT2_CAPACITY) {
-        RESETTASK(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_BATT2_CAPACITY);
+    if (_task[TASK_AP] & TASK_AP_REQUESTPARAM_BATT2_CAPACITY) {
+        RESETTASK(TASK_AP, TASK_AP_REQUESTPARAM_BATT2_CAPACITY);
         generateParamRequestRead(_sysid, autopilot.compid, "BATT2_CAPACITY");
         return; //do only one per loop
     }
-    if (_task[TASK_AP] & TASK_ARDUPILOT_REQUESTPARAM_WPNAV_SPEED) {
-        RESETTASK(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_WPNAV_SPEED);
+    if (_task[TASK_AP] & TASK_AP_REQUESTPARAM_WPNAV_SPEED) {
+        RESETTASK(TASK_AP, TASK_AP_REQUESTPARAM_WPNAV_SPEED);
         generateParamRequestRead(_sysid, autopilot.compid, "WPNAV_SPEED");
         return; //do only one per loop
     }
-    if (_task[TASK_AP] & TASK_ARDUPILOT_REQUESTPARAM_WPNAV_ACCEL) {
-        RESETTASK(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_WPNAV_ACCEL);
+    if (_task[TASK_AP] & TASK_AP_REQUESTPARAM_WPNAV_ACCEL) {
+        RESETTASK(TASK_AP, TASK_AP_REQUESTPARAM_WPNAV_ACCEL);
         generateParamRequestRead(_sysid, autopilot.compid, "WPNAV_ACCEL");
         return; //do only one per loop
     }
-    if (_task[TASK_AP] & TASK_ARDUPILOT_REQUESTPARAM_WPNAV_ACCEL_Z) {
-        RESETTASK(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_WPNAV_ACCEL_Z);
+    if (_task[TASK_AP] & TASK_AP_REQUESTPARAM_WPNAV_ACCEL_Z) {
+        RESETTASK(TASK_AP, TASK_AP_REQUESTPARAM_WPNAV_ACCEL_Z);
         generateParamRequestRead(_sysid, autopilot.compid, "WPNAV_ACCEL_Z");
         return; //do only one per loop
     }
-    if (_task[TASK_AP] & TASK_ARDUPILOT_REQUESTPARAM_SYSID_MYGCS) {
-        RESETTASK(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_SYSID_MYGCS);
+    if (_task[TASK_AP] & TASK_AP_REQUESTPARAM_SYSID_MYGCS) {
+        RESETTASK(TASK_AP, TASK_AP_REQUESTPARAM_SYSID_MYGCS);
         generateParamRequestRead(_sysid, autopilot.compid, "SYSID_MYGCS");
         return; //do only one per loop
     }
@@ -1016,27 +1016,27 @@ void MavlinkTelem::handleMessageAutopilot(void)
         mavlink_msg_param_value_decode(&_msg, &payload);
         if (!strncmp(payload.param_id,"BATT_CAPACITY",16)) {
             param.BATT_CAPACITY = payload.param_value;
-            clear_request(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_BATT_CAPACITY);
+            clear_request(TASK_AP, TASK_AP_REQUESTPARAM_BATT_CAPACITY);
         }
         if (!strncmp(payload.param_id,"BATT2_CAPACITY",16)) {
             param.BATT2_CAPACITY = payload.param_value;
-            clear_request(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_BATT2_CAPACITY);
+            clear_request(TASK_AP, TASK_AP_REQUESTPARAM_BATT2_CAPACITY);
         }
         if (!strncmp(payload.param_id,"WPNAV_SPEED",16)) {
             param.WPNAV_SPEED = payload.param_value;
-            clear_request(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_WPNAV_SPEED);
+            clear_request(TASK_AP, TASK_AP_REQUESTPARAM_WPNAV_SPEED);
         }
         if (!strncmp(payload.param_id,"WPNAV_ACCEL",16)) {
             param.WPNAV_ACCEL = payload.param_value;
-            clear_request(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_WPNAV_ACCEL);
+            clear_request(TASK_AP, TASK_AP_REQUESTPARAM_WPNAV_ACCEL);
         }
         if (!strncmp(payload.param_id,"WPNAV_ACCEL_Z",16)) {
             param.WPNAV_ACCEL_Z = payload.param_value;
-            clear_request(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_WPNAV_ACCEL_Z);
+            clear_request(TASK_AP, TASK_AP_REQUESTPARAM_WPNAV_ACCEL_Z);
         }
         if (!strncmp(payload.param_id,"SYSID_MYGCS",16)) {
             param.SYSID_MYGCS = payload.param_value;
-            clear_request(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_SYSID_MYGCS);
+            clear_request(TASK_AP, TASK_AP_REQUESTPARAM_SYSID_MYGCS);
         }
         }break;
 
@@ -1067,7 +1067,7 @@ void MavlinkTelem::handleMessage(void)
         if (!isSystemIdValid()) return;
     }
 
-    //this is inefficient, lots of heartbeat decodes
+    //somewhat inefficient, lots of heartbeat decodes, we probably want a separate heartbeat handler
 
     if ((gimbal.compid == 0) && (_msg.msgid == MAVLINK_MSG_ID_HEARTBEAT)) {
 		mavlink_heartbeat_t payload;
@@ -1187,7 +1187,7 @@ void MavlinkTelem::doTask(void)
     }
 
     if (!camera.is_initialized) {
-    	camera.is_initialized = ((camera.requests_waiting_mask & CAMERA_REQUESTWAITING_ALL) == 0);
+    	camera.is_initialized = (camera.requests_waiting_mask == 0);
     }
 
     // do pending requests
@@ -1218,8 +1218,9 @@ void MavlinkTelem::doTask(void)
 		}
 	}
 
-    // send out pending messages
+    // handle pending tasks
 	if ((_txcount == 0) && TASK_IS_PENDING()) {
+		//TASK_ME
 		if (_task[TASK_ME] & TASK_SENDMYHEARTBEAT) {
 	        RESETTASK(TASK_ME,TASK_SENDMYHEARTBEAT);
 	        uint8_t base_mode = MAV_MODE_PREFLIGHT | MAV_MODE_FLAG_CUSTOM_MODE_ENABLED | MAV_MODE_FLAG_SAFETY_ARMED;
@@ -1229,6 +1230,7 @@ void MavlinkTelem::doTask(void)
 	        return; //do only one per loop
 	    }
 
+		//other tasks
 		doTaskAutopilot();
         doTaskCamera();
         doTaskGimbal();
@@ -1566,11 +1568,11 @@ void MavlinkTelem::requestDataStreamFromAutopilot(void)
         set_request(TASK_AUTOPILOT, TASK_SENDCMD_REQUEST_ATTITUDE, 100, 205);
         set_request(TASK_AUTOPILOT, TASK_SENDCMD_REQUEST_GLOBAL_POSITION_INT, 100, 207);
 
-        set_request(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_BATT_CAPACITY, 10, 225);
-        set_request(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_BATT2_CAPACITY, 10, 228);
-        set_request(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_SYSID_MYGCS, 10, 123); //we request it more frequently to get it sooner
+        set_request(TASK_AP, TASK_AP_REQUESTPARAM_BATT_CAPACITY, 10, 225);
+        set_request(TASK_AP, TASK_AP_REQUESTPARAM_BATT2_CAPACITY, 10, 228);
+        set_request(TASK_AP, TASK_AP_REQUESTPARAM_SYSID_MYGCS, 10, 123); //we request it more frequently to get it sooner
 
-        push_task(TASK_AP, TASK_ARDUPILOT_REQUESTBANNER);
+        push_task(TASK_AP, TASK_AP_REQUESTBANNER);
         return;
     }
     // other autopilots
