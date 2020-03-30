@@ -623,10 +623,12 @@ PACK(struct ModelData {
   char modelRegistrationID[PXX2_LEN_REGISTRATION_ID];
 //OW
 #if defined(PCBHORUS)
-  uint8_t mavlinkEnabled:1;
-  uint8_t mavlinkConfig:3;
-  uint8_t mavlinkMimicSensors:1;
+  uint8_t mavlinkEnabled:1; // on/off
+  uint8_t mavlinkConfig:3; // allow space for 8 configs
+  uint8_t mavlinkMimicSensors:2; // currently just on/off, but allow e.g. FrSky, CF, etc.
+  uint8_t mavlinkRcOverride:1;
   uint8_t mavlinkLogging:1; // not currently used
+  // the byte is full !! should we proactively make it a unit16?
 #endif
 //OWEND
 });

@@ -128,6 +128,7 @@ enum MenuModelSetupItems {
   ITEM_MODEL_SETUP_MAVLINK_ENABLE,
   ITEM_MODEL_SETUP_MAVLINK_CONFIGURATION,
   ITEM_MODEL_SETUP_MAVLINK_MIMICSENSORS,
+  ITEM_MODEL_SETUP_MAVLINK_RCOVERRIDE,
 //OWEND
   ITEM_MODEL_SETUP_MAX
 };
@@ -1329,6 +1330,11 @@ bool menuModelSetup(event_t event)
       case ITEM_MODEL_SETUP_MAVLINK_MIMICSENSORS: {
         lcdDrawText(MENUS_MARGIN_LEFT + INDENT_WIDTH, y, "Sensors");
         g_model.mavlinkMimicSensors = editCheckBox(g_model.mavlinkMimicSensors, MODEL_SETUP_2ND_COLUMN, y, attr, event);
+      } break;
+
+      case ITEM_MODEL_SETUP_MAVLINK_RCOVERRIDE: {
+        lcdDrawText(MENUS_MARGIN_LEFT + INDENT_WIDTH, y, "RC Override");
+        g_model.mavlinkRcOverride = editCheckBox(g_model.mavlinkRcOverride, MODEL_SETUP_2ND_COLUMN, y, attr, event);
       } break;
 //OWEND
 

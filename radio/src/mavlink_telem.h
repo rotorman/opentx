@@ -78,6 +78,7 @@ class MavlinkTelem
     void generateMissionItemInt(uint8_t tsystem, uint8_t tcomponent, uint8_t frame, uint16_t cmd, uint8_t current, int32_t lat, int32_t lon, float alt_m);
     void generateSetPositionTargetGlobalInt(uint8_t tsystem, uint8_t tcomponent, uint8_t frame, uint16_t type_mask, int32_t lat, int32_t lon, float alt, float vx, float vy, float vz, float yaw_rad, float yaw_rad_rate);
     void generateCmdConditionYaw(uint8_t tsystem, uint8_t tcomponent, float yaw_deg, float yaw_deg_rate, int8_t dir, bool rel);
+    void generateRcChannelsOverride(uint8_t sysid, uint8_t tsystem, uint8_t tcomponent, uint16_t* chan_raw);
     //to camera
     void generateCmdRequestCameraInformation(uint8_t tsystem, uint8_t tcomponent);
     void generateCmdRequestCameraSettings(uint8_t tsystem, uint8_t tcomponent);
@@ -273,6 +274,7 @@ class MavlinkTelem
         float WPNAV_SPEED;      //type = float //we use NAN to indicate it wasn't obtained
         float WPNAV_ACCEL;      //type = float //we use NAN to indicate it wasn't obtained
         float WPNAV_ACCEL_Z;    //type = float //we use NAN to indicate it wasn't obtained
+        int16_t SYSID_MYGCS;    //we use -1 to indicate it wasn't obtained
     };
     struct Parameters param;
 
@@ -292,6 +294,7 @@ class MavlinkTelem
     float _tccy_yaw_deg; int8_t _tccy_dir; bool _tccy_relative;
     float _tact_takeoff_alt_m;
     float _tacf_takeoff_alt_m;
+    uint16_t _tovr_chan_raw[18];
 
     //convenience task wrapper for some tasks
     void setTaskParamRequestList(void) { SETTASK(TASK_AUTOPILOT, TASK_SENDMSG_PARAM_REQUEST_LIST); }
@@ -374,6 +377,7 @@ class MavlinkTelem
     uint8_t _my_sysid = MAVLINK_TELEM_MY_SYSID;
     uint8_t _my_compid = MAVLINK_TELEM_MY_COMPID;
     tmr10ms_t _my_heartbeat_tlast;
+    tmr10ms_t _rcoverride_tlast;
 
     uint8_t _sysid = 0; // is autodetected by inspecting the autopilot heartbeat
 
@@ -410,6 +414,7 @@ class MavlinkTelem
       TASK_SENDMSG_MISSION_ITEM_INT                 = 0x00080000, // simple_goto()
       TASK_SENDMSG_SET_POSITION_TARGET_GLOBAL_INT   = 0x00100000,
       TASK_SENDCMD_CONDITION_YAW                    = 0x00200000,
+      TASK_SENDMSG_RC_CHANNELS_OVERRIDE             = 0x00400000,
       //ap
       TASK_ARDUPILOT_REQUESTBANNER                  = 0x00000001,
       TASK_ARDUPILOT_ARM                            = 0x00000002,
@@ -425,6 +430,7 @@ class MavlinkTelem
       TASK_ARDUPILOT_REQUESTPARAM_WPNAV_SPEED       = 0x00040000,
       TASK_ARDUPILOT_REQUESTPARAM_WPNAV_ACCEL       = 0x00080000,
       TASK_ARDUPILOT_REQUESTPARAM_WPNAV_ACCEL_Z     = 0x00100000,
+      TASK_ARDUPILOT_REQUESTPARAM_SYSID_MYGCS       = 0x00200000,
       //camera
       TASK_SENDREQUEST_CAMERA_INFORMATION           = 0x00000001,
       TASK_SENDREQUEST_CAMERA_SETTINGS              = 0x00000002,

@@ -32,10 +32,12 @@
 
 //OW
 #define MAVLINK_TELEM
-#define OWVERSIONSTR  "olliw-v03"
+#define OWVERSIONSTR  "olliw-v04rc02"
 //OWEND
 
 /*
+script hangs up too often - why? issue of script or issue of firmware???
+
 v03 2020-03-15:
 modified files in radio/src/
 

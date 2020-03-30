@@ -273,6 +273,19 @@ void MavlinkTelem::generateCmdConditionYaw(uint8_t tsystem, uint8_t tcomponent, 
     _generateCmdLong(tsystem, tcomponent, MAV_CMD_CONDITION_YAW, yaw_deg, yaw_deg_rate, (dir>0)?1.0f:-1.0f, (rel)?1.0f:0.0f);
 }
 
+void MavlinkTelem::generateRcChannelsOverride(uint8_t sysid, uint8_t tsystem, uint8_t tcomponent, uint16_t* chan_raw)
+{
+    setOutVersionV2();
+    mavlink_msg_rc_channels_override_pack(
+            sysid, _my_compid, &_msg_out,
+            tsystem, tcomponent,
+			chan_raw[0], chan_raw[1], chan_raw[2], chan_raw[3], chan_raw[4], chan_raw[5], chan_raw[6], chan_raw[7],
+			chan_raw[8], chan_raw[9], chan_raw[10], chan_raw[11], chan_raw[12], chan_raw[13], chan_raw[14], chan_raw[15],
+			chan_raw[16], chan_raw[17]
+            );
+    _txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+}
+
 
 void MavlinkTelem::generateCmdRequestCameraInformation(uint8_t tsystem, uint8_t tcomponent)
 {
@@ -328,10 +341,35 @@ void MavlinkTelem::generateCmdDoMountControl(uint8_t tsystem, uint8_t tcomponent
 }
 
 
-// -- Main task handler --
+// -- Task handlers --
 
 void MavlinkTelem::doTaskAutopilot(void)
 {
+	// we give RC_CHHANELS_OVERRIDE a super high priority, and even allow two MAVLink messages with it
+    if (_task[TASK_AUTOPILOT] & TASK_SENDMSG_RC_CHANNELS_OVERRIDE) {
+        RESETTASK(TASK_AUTOPILOT,TASK_SENDMSG_RC_CHANNELS_OVERRIDE);
+/*
+        uint8_t src_sysid = _my_sysid;
+        if (autopilottype == MAV_AUTOPILOT_ARDUPILOTMEGA) {
+            // RC_CHHANELS_OVERRIDE requires the "correct" sysid, so try to work it out
+            // somewhat dirty, but that's how ArduPilot works, it only allows one GCS, and its sys id needs to be set by hand
+            // RC_CHHANELS_OVERRIDE is also considered as kind of a heartbeat, e.g. with respect to gcs failsafe
+        	if (param.SYSID_MYGCS >= 0)  src_sysid = param.SYSID_MYGCS;
+        }
+        generateRcChannelsOverride(src_sysid, _sysid, autopilot.compid, _tovr_chan_raw);
+*/
+        if (autopilottype == MAV_AUTOPILOT_ARDUPILOTMEGA) {
+            // RC_CHHANELS_OVERRIDE requires the "correct" sysid, so try to work it out
+            // somewhat dirty, but that's how ArduPilot works, it only allows one GCS, and its sys id needs to be set by hand
+            // RC_CHHANELS_OVERRIDE is also considered as kind of a heartbeat, e.g. with respect to gcs failsafe
+        	if (param.SYSID_MYGCS >= 0)
+        		generateRcChannelsOverride(param.SYSID_MYGCS, _sysid, autopilot.compid, _tovr_chan_raw);
+        } else {
+        	//TODO: chack what other flight stacks expect
+        	generateRcChannelsOverride(_my_sysid, _sysid, autopilot.compid, _tovr_chan_raw);
+        }
+    }
+
     if (!_task[TASK_AUTOPILOT]) return; // no task pending
 
     if (_task[TASK_AUTOPILOT] & TASK_SENDCMD_DO_CHANGE_SPEED) {
@@ -487,6 +525,11 @@ void MavlinkTelem::doTaskAutopilotLowPriority(void)
         generateParamRequestRead(_sysid, autopilot.compid, "WPNAV_ACCEL_Z");
         return; //do only one per loop
     }
+    if (_task[TASK_AP] & TASK_ARDUPILOT_REQUESTPARAM_SYSID_MYGCS) {
+        RESETTASK(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_SYSID_MYGCS);
+        generateParamRequestRead(_sysid, autopilot.compid, "SYSID_MYGCS");
+        return; //do only one per loop
+    }
 }
 
 
@@ -574,78 +617,6 @@ void MavlinkTelem::doTaskGimbal(void)
         generateCmdDoMountControl(_sysid, autopilot.compid, _t_gimbal_pitch_deg, _t_gimbal_yaw_deg);
         return; //do only one per loop
     }
-}
-
-
-void MavlinkTelem::doTask(void)
-{
-	tmr10ms_t tnow = get_tmr10ms();
-
-	bool tick_1Hz = false;
-
-	if ((tnow - _my_heartbeat_tlast) > 100) { //1 sec
-		_my_heartbeat_tlast = tnow;
-		SETTASK(TASK_ME, TASK_SENDMYHEARTBEAT);
-
-		msg_rx_persec = _msg_rx_persec_cnt;
-		_msg_rx_persec_cnt = 0;
-		bytes_rx_persec = _bytes_rx_persec_cnt;
-		_bytes_rx_persec_cnt = 0;
-
-		tick_1Hz = true;
-	}
-
-	if (!isSystemIdValid()) return;
-
-	// we need to wait until at least one heartbeat was send out before requesting data streams
-	if (autopilot.requests_triggered) {
-		if (tick_1Hz) autopilot.requests_triggered++;
-		if (autopilot.requests_triggered > 3) { // wait for 3 heartbeats
-			autopilot.requests_triggered = 0;
-			requestDataStreamFromAutopilot();
-		}
-	}
-
-	// we wait until at least one heartbeat was send out, and autopilot requests have been done
-    if (camera.compid && camera.requests_triggered && !autopilot.requests_triggered) {
-		if (tick_1Hz) camera.requests_triggered++;
-		if (camera.requests_triggered > 1) { // wait for the next heartbeat
-			camera.requests_triggered = 0;
-	    	set_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_INFORMATION, 10, 200); //10x every ca 2sec
-	    	set_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_SETTINGS, 10, 205);
-	    	set_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS, 10, 210);
-	    	set_request(TASK_CAMERA, TASK_SENDREQUEST_STORAGE_INFORMATION, 10, 215);
-    	}
-    }
-
-    if (!autopilot.is_initialized) {
-        autopilot.is_initialized = (autopilot.requests_waiting_mask == 0);
-    }
-
-    if (!camera.is_initialized) {
-    	camera.is_initialized = ((camera.requests_waiting_mask & CAMERA_REQUESTWAITING_ALL) == 0);
-    }
-
-    // do pending requests
-    do_requests();
-
-    // send out pending messages
-	if ((_txcount == 0) && TASK_IS_PENDING()) {
-		if (_task[TASK_ME] & TASK_SENDMYHEARTBEAT) {
-	        RESETTASK(TASK_ME,TASK_SENDMYHEARTBEAT);
-	        uint8_t base_mode = MAV_MODE_PREFLIGHT | MAV_MODE_FLAG_CUSTOM_MODE_ENABLED | MAV_MODE_FLAG_SAFETY_ARMED;
-	        uint8_t system_status = MAV_STATE_UNINIT | MAV_STATE_ACTIVE;
-            uint32_t custom_mode = 0;
-            generateHeartbeat(base_mode, custom_mode, system_status);
-	        return; //do only one per loop
-	    }
-
-		doTaskAutopilot();
-        doTaskCamera();
-        doTaskGimbal();
-        doTaskAutopilotLowPriority();
-        doTaskCameraLowPriority();
-	}
 }
 
 
@@ -1063,6 +1034,10 @@ void MavlinkTelem::handleMessageAutopilot(void)
             param.WPNAV_ACCEL_Z = payload.param_value;
             clear_request(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_WPNAV_ACCEL_Z);
         }
+        if (!strncmp(payload.param_id,"SYSID_MYGCS",16)) {
+            param.SYSID_MYGCS = payload.param_value;
+            clear_request(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_SYSID_MYGCS);
+        }
         }break;
 
     };
@@ -1083,6 +1058,7 @@ void MavlinkTelem::handleMessage(void)
     			_sysid = _msg.sysid;
     			autopilottype = payload.autopilot;
     			vehicletype = payload.type;
+    			_resetAutopilot();
                 autopilot.compid = _msg.compid;
     			autopilot.requests_triggered = 1; //we need to postpone it
     		}
@@ -1090,7 +1066,7 @@ void MavlinkTelem::handleMessage(void)
         if (!isSystemIdValid()) return;
     }
 
-    //this is inefficient!! lots of heartbeat decodes
+    //this is inefficient, lots of heartbeat decodes
 
     if ((gimbal.compid == 0) && (_msg.msgid == MAVLINK_MSG_ID_HEARTBEAT)) {
 		mavlink_heartbeat_t payload;
@@ -1117,8 +1093,9 @@ void MavlinkTelem::handleMessage(void)
     	}
     }
 
+    // reset receiving timeout, but ignore RADIO_STATUS
     if (_msg.msgid != MAVLINK_MSG_ID_RADIO_STATUS) {
-        _is_receiving = MAVLINK_TELEM_RECEIVING_TIMEOUT; //reset receiving timeout
+        _is_receiving = MAVLINK_TELEM_RECEIVING_TIMEOUT;
     }
 
     // MAVLINK
@@ -1149,7 +1126,7 @@ void MavlinkTelem::handleMessage(void)
    	}
 
     // handle messages coming from autopilot
-    if (_msg.compid == autopilot.compid) {
+    if (autopilot.compid && (_msg.compid == autopilot.compid)) {
     	handleMessageAutopilot();
     }
     if (camera.compid && (_msg.compid == camera.compid)) {
@@ -1161,11 +1138,112 @@ void MavlinkTelem::handleMessage(void)
 }
 
 
+// -- Main task handler --
+
+void MavlinkTelem::doTask(void)
+{
+	tmr10ms_t tnow = get_tmr10ms();
+
+	bool tick_1Hz = false;
+
+	if ((tnow - _my_heartbeat_tlast) > 100) { //1 sec
+		_my_heartbeat_tlast = tnow;
+		SETTASK(TASK_ME, TASK_SENDMYHEARTBEAT);
+
+		msg_rx_persec = _msg_rx_persec_cnt;
+		_msg_rx_persec_cnt = 0;
+		bytes_rx_persec = _bytes_rx_persec_cnt;
+		_bytes_rx_persec_cnt = 0;
+
+		tick_1Hz = true;
+	}
+
+	if (!isSystemIdValid()) return;
+
+	// we need to wait until at least one heartbeat was send out before requesting data streams
+	if (autopilot.requests_triggered) {
+		if (tick_1Hz) autopilot.requests_triggered++;
+		if (autopilot.requests_triggered > 3) { // wait for 3 heartbeats
+			autopilot.requests_triggered = 0;
+			requestDataStreamFromAutopilot();
+		}
+	}
+
+	// we wait until at least one heartbeat was send out, and autopilot requests have been done
+    if (camera.compid && camera.requests_triggered && !autopilot.requests_triggered) {
+		if (tick_1Hz) camera.requests_triggered++;
+		if (camera.requests_triggered > 1) { // wait for the next heartbeat
+			camera.requests_triggered = 0;
+	    	set_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_INFORMATION, 10, 200); //10x every ca 2sec
+	    	set_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_SETTINGS, 10, 205);
+	    	set_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_CAPTURE_STATUS, 10, 210);
+	    	set_request(TASK_CAMERA, TASK_SENDREQUEST_STORAGE_INFORMATION, 10, 215);
+    	}
+    }
+
+    if (!autopilot.is_initialized) {
+        autopilot.is_initialized = (autopilot.requests_waiting_mask == 0);
+    }
+
+    if (!camera.is_initialized) {
+    	camera.is_initialized = ((camera.requests_waiting_mask & CAMERA_REQUESTWAITING_ALL) == 0);
+    }
+
+    // do pending requests
+    do_requests();
+
+    // do rc override
+    // ArduPilot has a DAMED BUG!!!
+    // per MAVLink spec 0 and UNIT16_MAX should not be considered for channels >= 8, but it doesn't do it for 0
+    // but we can hope that it handles 0 for the higher channels
+	if (g_model.mavlinkRcOverride && param.SYSID_MYGCS >= 0) {
+		if ((tnow - _rcoverride_tlast) >= 5) { //50 ms
+			_rcoverride_tlast = tnow;
+			for (uint8_t i = 0; i < 8; i++) {
+				/* would this be the right way to figure out which output is actually active ??
+		    	MixData * md;
+		    	if (i < MAX_MIXERS && (md=mixAddress(i))->srcRaw && md->destCh == i) {
+		    		int value = channelOutputs[i] + 2 * PPM_CH_CENTER(i) - 2 * PPM_CENTER;
+		    		_tovr_chan_raw[i] = value;
+		    	}else{
+		    		_tovr_chan_raw[i] = UINT16_MAX;
+		    	}*/
+				// the first four channels may not be ordered like with transmitter!!
+				int value = channelOutputs[i]/2 + PPM_CH_CENTER(i);
+				_tovr_chan_raw[i] = value;
+			}
+			for (uint8_t i = 8; i < 18; i++) { _tovr_chan_raw[i] = 0; }
+			SETTASK(TASK_AUTOPILOT, TASK_SENDMSG_RC_CHANNELS_OVERRIDE);
+		}
+	}
+
+    // send out pending messages
+	if ((_txcount == 0) && TASK_IS_PENDING()) {
+		if (_task[TASK_ME] & TASK_SENDMYHEARTBEAT) {
+	        RESETTASK(TASK_ME,TASK_SENDMYHEARTBEAT);
+	        uint8_t base_mode = MAV_MODE_PREFLIGHT | MAV_MODE_FLAG_CUSTOM_MODE_ENABLED | MAV_MODE_FLAG_SAFETY_ARMED;
+	        uint8_t system_status = MAV_STATE_UNINIT | MAV_STATE_ACTIVE;
+            uint32_t custom_mode = 0;
+            generateHeartbeat(base_mode, custom_mode, system_status);
+	        return; //do only one per loop
+	    }
+
+		doTaskAutopilot();
+        doTaskCamera();
+        doTaskGimbal();
+        doTaskAutopilotLowPriority();
+        doTaskCameraLowPriority();
+	}
+}
+
+
 // -- Wakeup call from OpenTx --
 // this is the single and main entry point
+
 void MavlinkTelem::wakeup()
 {
 #if defined(MAVLINK_TELEM)
+	// handle configuration change
     if ((_interface_enabled != g_model.mavlinkEnabled) || (_interface_config != g_model.mavlinkConfig)) { // a change occurred
         mavlinkTelemDeInit();
         _interface_enabled = g_model.mavlinkEnabled;
@@ -1180,12 +1258,13 @@ void MavlinkTelem::wakeup()
             }
         }
     }
+
     if (!_interface_enabled) return;
 
     // look for incoming messages, also do statistics
 	uint32_t available = mavlinkTelemAvailable();
 	if (available > 128) available = 128; //limit how much we read at once, shouldn't ever trigger
-	for (uint32_t i = 0; i < available; i++){
+	for (uint32_t i = 0; i < available; i++) {
 		uint8_t c;
 		mavlinkTelemGetc(&c);
 		_bytes_rx_persec_cnt++;
@@ -1341,6 +1420,7 @@ void MavlinkTelem::_resetAutopilot(void)
     param.WPNAV_SPEED = NAN;
     param.WPNAV_ACCEL = NAN;
     param.WPNAV_ACCEL_Z = NAN;
+    param.SYSID_MYGCS = -1;
 }
 
 
@@ -1485,10 +1565,11 @@ void MavlinkTelem::requestDataStreamFromAutopilot(void)
         set_request(TASK_AUTOPILOT, TASK_SENDCMD_REQUEST_ATTITUDE, 100, 205);
         set_request(TASK_AUTOPILOT, TASK_SENDCMD_REQUEST_GLOBAL_POSITION_INT, 100, 207);
 
-        push_task(TASK_AP, TASK_ARDUPILOT_REQUESTBANNER);
         set_request(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_BATT_CAPACITY, 10, 225);
-        set_request(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_BATT2_CAPACITY, 10, 227);
+        set_request(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_BATT2_CAPACITY, 10, 228);
+        set_request(TASK_AP, TASK_ARDUPILOT_REQUESTPARAM_SYSID_MYGCS, 10, 123); //we request it more frequently to get it sooner
 
+        push_task(TASK_AP, TASK_ARDUPILOT_REQUESTBANNER);
         return;
     }
     // other autopilots
@@ -1771,3 +1852,111 @@ def handleAttach(self, attach):
 
 
  */
+
+
+
+
+
+
+
+/*
+  MIXSRC_FIRST_CH,
+  MIXSRC_CH1 = MIXSRC_FIRST_CH,             LUA_EXPORT_MULTIPLE("ch", "Channel CH%d", MAX_OUTPUT_CHANNELS)
+  MIXSRC_CH2,
+  MIXSRC_CH3,
+  MIXSRC_CH4,
+  MIXSRC_CH5,
+  MIXSRC_CH6,
+  MIXSRC_CH7,
+  MIXSRC_CH8,
+  MIXSRC_CH9,
+  MIXSRC_CH10,
+  MIXSRC_CH11,
+  MIXSRC_CH12,
+  MIXSRC_CH13,
+  MIXSRC_CH14,
+  MIXSRC_CH15,
+  MIXSRC_CH16,
+  MIXSRC_LAST_CH = MIXSRC_CH1+MAX_OUTPUT_CHANNELS-1,
+
+MAX_OUTPUT_CHANNELS = 32
+
+extern int16_t            channelOutputs[MAX_OUTPUT_CHANNELS];
+
+
+#define PPM_CENTER                     1500
+#if defined(PPM_CENTER_ADJUSTABLE)
+  #define PPM_CH_CENTER(ch)            (PPM_CENTER + limitAddress(ch)->ppmCenter)
+#else
+  #define PPM_CH_CENTER(ch)            (PPM_CENTER)
+#endif
+
+
+  int16_t PPM_range = g_model.extendedLimits ? (512*LIMIT_EXT_PERCENT/100) * 2 : 512 * 2; // range of 0.7 .. 1.7msec
+  uint8_t firstCh = channelsStart;
+  uint8_t lastCh = min<uint8_t>(MAX_OUTPUT_CHANNELS, firstCh + 8 + channelsCount);
+  for (uint32_t i=firstCh; i<lastCh; i++) {
+    int16_t v = limit((int16_t)-PPM_range, channelOutputs[i], (int16_t)PPM_range) + 2*PPM_CH_CENTER(i);
+
+  int16_t PPM_range = g_model.extendedLimits ? 640*2 : 512*2;
+  int firstCh = g_model.trainerData.channelsStart;
+  int lastCh = firstCh + 8;
+  for (int channel=0; channel<lastCh; channel+=2, cur+=3) {
+    uint16_t channelValue1 = PPM_CH_CENTER(channel) + limit((int16_t)-PPM_range, channelOutputs[channel], (int16_t)PPM_range) / 2;
+    uint16_t channelValue2 = PPM_CH_CENTER(channel+1) + limit((int16_t)-PPM_range, channelOutputs[channel+1], (int16_t)PPM_range) / 2;
+
+  for (int i=0; i<DSM2_CHANS; i++) {
+    int channel = g_model.moduleData[EXTERNAL_MODULE].channelsStart + i;
+    int value = channelOutputs[channel] + 2*PPM_CH_CENTER(channel) - 2*PPM_CENTER;
+
+  for (int i = 0; i < MULTI_CHANS; i++) {
+    int channel = g_model.moduleData[moduleIdx].channelsStart + i;
+    int value = channelOutputs[channel] + 2 * PPM_CH_CENTER(channel) - 2 * PPM_CENTER;
+
+      if (i < sendUpperChannels) {
+        int channel = 8 + g_model.moduleData[moduleIdx].channelsStart + i;
+        int value = channelOutputs[channel] + 2*PPM_CH_CENTER(channel) - 2*PPM_CENTER;
+        pulseValue = limit(2049, (value * 512 / 682) + 3072, 4094);
+      }
+      else if (i < sentModulePXXChannels(moduleIdx)) {
+        int channel = g_model.moduleData[moduleIdx].channelsStart + i;
+        int value = channelOutputs[channel] + 2*PPM_CH_CENTER(channel) - 2*PPM_CENTER;
+        pulseValue = limit(1, (value * 512 / 682) + 1024, 2046);
+      }
+
+  uint8_t channel = g_model.moduleData[module].channelsStart;
+  uint8_t count = sentModuleChannels(module);
+  for (int8_t i = 0; i < count; i++, channel++) {
+    int value = channelOutputs[channel] + 2*PPM_CH_CENTER(channel) - 2*PPM_CENTER;
+    pulseValue = limit(1, (value * 512 / 682) + 1024, 2046);
+
+  for (int i=0; i<SBUS_NORMAL_CHANS; i++) {
+    int value = getChannelValue(EXTERNAL_MODULE, i);
+
+
+inline int getChannelValue(uint8_t port, int channel)
+{
+  int ch = g_model.moduleData[port].channelsStart + channel;
+  // We will ignore 17 and 18th if that brings us over the limit
+  if (ch > 31)
+    return 0;
+  return channelOutputs[ch] + 2 * PPM_CH_CENTER(ch) - 2*PPM_CENTER;
+}
+
+extern uint8_t g_moduleIdx;
+
+
+
+  int i = 0;
+
+  for (int ch=1; ch<=MAX_OUTPUT_CHANNELS; ch++) {
+    MixData * md;
+    coord_t y = MENU_CONTENT_TOP + (cur-menuVerticalOffset)*FH;
+    if (i<MAX_MIXERS && (md=mixAddress(i))->srcRaw && md->destCh+1 == ch) {
+      if (cur-menuVerticalOffset >= 0 && cur-menuVerticalOffset < NUM_BODY_LINES) {
+        putsChn(MENUS_MARGIN_LEFT, y, ch, 0); // show CHx
+      }
+
+
+*/
+
