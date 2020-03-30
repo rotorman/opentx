@@ -345,19 +345,13 @@ void MavlinkTelem::generateCmdDoMountControl(uint8_t tsystem, uint8_t tcomponent
 
 void MavlinkTelem::doTaskAutopilot(void)
 {
-	// we give RC_CHHANELS_OVERRIDE a super high priority, and even allow two MAVLink messages with it
+    if (!_task[TASK_AUTOPILOT]) return; // no task pending
+
+    if (!autopilot.compid) { _task[TASK_AUTOPILOT] = _task[TASK_AP] = 0; return; }
+
+	// we give RC_CHANNELS_OVERRIDE highest priority
     if (_task[TASK_AUTOPILOT] & TASK_SENDMSG_RC_CHANNELS_OVERRIDE) {
         RESETTASK(TASK_AUTOPILOT,TASK_SENDMSG_RC_CHANNELS_OVERRIDE);
-/*
-        uint8_t src_sysid = _my_sysid;
-        if (autopilottype == MAV_AUTOPILOT_ARDUPILOTMEGA) {
-            // RC_CHHANELS_OVERRIDE requires the "correct" sysid, so try to work it out
-            // somewhat dirty, but that's how ArduPilot works, it only allows one GCS, and its sys id needs to be set by hand
-            // RC_CHHANELS_OVERRIDE is also considered as kind of a heartbeat, e.g. with respect to gcs failsafe
-        	if (param.SYSID_MYGCS >= 0)  src_sysid = param.SYSID_MYGCS;
-        }
-        generateRcChannelsOverride(src_sysid, _sysid, autopilot.compid, _tovr_chan_raw);
-*/
         if (autopilottype == MAV_AUTOPILOT_ARDUPILOTMEGA) {
             // RC_CHHANELS_OVERRIDE requires the "correct" sysid, so try to work it out
             // somewhat dirty, but that's how ArduPilot works, it only allows one GCS, and its sys id needs to be set by hand
@@ -365,12 +359,11 @@ void MavlinkTelem::doTaskAutopilot(void)
         	if (param.SYSID_MYGCS >= 0)
         		generateRcChannelsOverride(param.SYSID_MYGCS, _sysid, autopilot.compid, _tovr_chan_raw);
         } else {
-        	//TODO: chack what other flight stacks expect
+        	//TODO: check what other flight stacks expect
         	generateRcChannelsOverride(_my_sysid, _sysid, autopilot.compid, _tovr_chan_raw);
         }
+        return; //do only one per loop
     }
-
-    if (!_task[TASK_AUTOPILOT]) return; // no task pending
 
     if (_task[TASK_AUTOPILOT] & TASK_SENDCMD_DO_CHANGE_SPEED) {
         RESETTASK(TASK_AUTOPILOT,TASK_SENDCMD_DO_CHANGE_SPEED);
@@ -832,6 +825,8 @@ void MavlinkTelem::handleMessageGimbal(void)
 
 void MavlinkTelem::handleMessageAutopilot(void)
 {
+	autopilot.is_receiving = MAVLINK_TELEM_RECEIVING_TIMEOUT; //we accept any msg from the autopilot to indicate it is alive
+
 	switch (_msg.msgid) {
 
 	case MAVLINK_MSG_ID_HEARTBEAT: {
@@ -1126,6 +1121,8 @@ void MavlinkTelem::handleMessage(void)
     	return;
    	}
 
+	if (_msg.sysid != _sysid) return; //this is not from our system
+
     // handle messages coming from autopilot
     if (autopilot.compid && (_msg.compid == autopilot.compid)) {
     	handleMessageAutopilot();
@@ -1162,7 +1159,7 @@ void MavlinkTelem::doTask(void)
 	if (!isSystemIdValid()) return;
 
 	// we need to wait until at least one heartbeat was send out before requesting data streams
-	if (autopilot.requests_triggered) {
+	if (autopilot.compid && autopilot.requests_triggered) {
 		if (tick_1Hz) autopilot.requests_triggered++;
 		if (autopilot.requests_triggered > 3) { // wait for 3 heartbeats
 			autopilot.requests_triggered = 0;
