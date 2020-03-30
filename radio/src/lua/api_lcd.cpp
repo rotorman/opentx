@@ -872,26 +872,7 @@ static int luaRGB(lua_State *L)
 }
 #endif
 
-//OW
-/*luadoc
-@function lcd.backlightOn()
-
-Switches backlight on
-
-@status current Introduced in 2.2.6
-*/
-static int luaLcdBacklightOn(lua_State *L)
-{
-  if (!luaLcdAllowed) return 0;
-  backlightOn();
-  return 0;
-}
-//OWEND
-
 const luaL_Reg lcdLib[] = {
-//OW
-  { "backlightOn", luaLcdBacklightOn },
-//OWEND
   { "refresh", luaLcdRefresh },
   { "clear", luaLcdClear },
   { "resetBacklightTimeout", luaLcdResetBacklightTimeout },
