@@ -407,7 +407,7 @@ Bitmap loading can fail if:
  * System is low on memory
  * Combined memory usage of all Lua script bitmaps exceeds certain value
 
-@param name (string) full path to the bitmap on SD card (i.e. “/IMAGES/test.bmp”)
+@param name (string) full path to the bitmap on SD card (i.e. â€œ/IMAGES/test.bmpâ€�)
 
 @retval bitmap (object) a bitmap object that can be used with other bitmap functions
 
@@ -556,7 +556,7 @@ Draw a bitmap at (x,y)
 
 @param x,y (positive numbers) starting coordinates
 
-@param name (string) full path to the bitmap on SD card (i.e. “/IMAGES/test.bmp”)
+@param name (string) full path to the bitmap on SD card (i.e. â€œ/IMAGES/test.bmpâ€�)
 
 @notice Maximum image size is [display width / 2] x [display height] pixels.
 
@@ -872,7 +872,26 @@ static int luaRGB(lua_State *L)
 }
 #endif
 
+//OW
+/*luadoc
+@function lcd.backlightOn()
+
+Switches backlight on
+
+@status current Introduced in 2.2.6
+*/
+static int luaLcdBacklightOn(lua_State *L)
+{
+  if (!luaLcdAllowed) return 0;
+  backlightOn();
+  return 0;
+}
+//OWEND
+
 const luaL_Reg lcdLib[] = {
+//OW
+  { "backlightOn", luaLcdBacklightOn },
+//OWEND
   { "refresh", luaLcdRefresh },
   { "clear", luaLcdClear },
   { "resetBacklightTimeout", luaLcdResetBacklightTimeout },

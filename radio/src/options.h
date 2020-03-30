@@ -83,6 +83,12 @@ static const char * options[] = {
 #if defined(SHUTDOWN_CONFIRMATION)
   "shutdownconfirm",
 #endif
+//OW
+#if defined(MAVLINK_TELEM)
+  "mavlink",
+#endif
+  OWVERSIONSTR, //this is not strictly a option, but is to mark that its my fork, "better" than doing in stamp.cpp/DISPLAY_VERSION
+//OWEND
   nullptr //sentinel
 };
 
