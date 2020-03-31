@@ -850,7 +850,8 @@ void MavlinkTelem::handleMessageAutopilot(void)
         att.pitch_rad = payload.pitch;
         att.yaw_rad = payload.yaw;
         INCU8(att.updated);
-        clear_request(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTRA1);
+        //clear_request(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTRA1);
+        clear_request(TASK_AUTOPILOT, TASK_SENDCMD_REQUEST_ATTITUDE);
         autopilot.requests_waiting_mask &=~ AUTOPILOT_REQUESTWAITING_ATTITUDE;
 		}break;
 
@@ -908,7 +909,8 @@ void MavlinkTelem::handleMessageAutopilot(void)
         gposition.vz_cmps = payload.vz;
         gposition.hdg_cdeg = payload.hdg;
         INCU8(gposition.updated);
-        clear_request(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_POSITION);
+        //clear_request(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_POSITION);
+        clear_request(TASK_AUTOPILOT, TASK_SENDCMD_REQUEST_GLOBAL_POSITION_INT);
         autopilot.requests_waiting_mask &=~ AUTOPILOT_REQUESTWAITING_GLOBAL_POSITION_INT;
         }break;
 
