@@ -32,7 +32,7 @@
 
 //OW
 #define MAVLINK_TELEM
-#define OWVERSIONSTR  "olliw-v07rc01"
+#define OWVERSIONSTR  "olliw-v08rc01"
 //OWEND
 
 /*
