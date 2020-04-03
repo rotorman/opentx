@@ -909,7 +909,6 @@ void MavlinkTelem::handleMessageAutopilot(void)
         gposition.vz_cmps = payload.vz;
         gposition.hdg_cdeg = payload.hdg;
         INCU8(gposition.updated);
-        //clear_request(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_POSITION);
         clear_request(TASK_AUTOPILOT, TASK_SENDCMD_REQUEST_GLOBAL_POSITION_INT);
         autopilot.requests_waiting_mask &=~ AUTOPILOT_REQUESTWAITING_GLOBAL_POSITION_INT;
         }break;
@@ -980,8 +979,6 @@ void MavlinkTelem::handleMessageAutopilot(void)
             INCU8(bat2.updated);
         }
         if (payload.id < 8) bat_instancemask |= (1 << payload.id);
-        clear_request(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTRA3);
-        autopilot.requests_waiting_mask &=~ AUTOPILOT_REQUESTWAITING_BATTERY_STATUS;
         if (g_model.mavlinkMimicSensors) {
             setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, BATT_ID, 0, 17, voltage/100, UNIT_VOLTS, 1);
             setTelemetryValue(PROTOCOL_TELEMETRY_FRSKY_SPORT, VFAS_FIRST_ID, 0, 18, voltage/10, UNIT_VOLTS, 2);
@@ -1008,6 +1005,8 @@ void MavlinkTelem::handleMessageAutopilot(void)
         //we don't really need the other fields
         ekf.flags = payload.flags;
         INCU8(ekf.updated);
+        clear_request(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTRA3);
+        autopilot.requests_waiting_mask &=~ AUTOPILOT_REQUESTWAITING_EKF_STATUS_REPORT;
         }break;
 
     case MAVLINK_MSG_ID_PARAM_VALUE: {
@@ -1542,31 +1541,39 @@ void MavlinkTelem::_reset(void)
 void MavlinkTelem::requestDataStreamFromAutopilot(void)
 {
     if (autopilottype == MAV_AUTOPILOT_ARDUPILOTMEGA) {
-        // 2Hz sufficient, cleared by MAVLINK_MSG_ID_GPS_RAW_INT
+        // 2Hz sufficient
         // yields: MAVLINK_MSG_ID_GPS_RAW_INT
         //         MAVLINK_MSG_ID_GPS2_RAW
         //         MAVLINK_MSG_ID_SYS_STATUS
+        // cleared by MAVLINK_MSG_ID_GPS_RAW_INT (is send even when both GPS are 0, so we can use it to clear)
         set_request(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTENDED_STATUS, 100, 196);
 
-        // cleared by MAVLINK_MSG_ID_GLOBAL_POSITION_INT
         // yields: MAVLINK_MSG_ID_GLOBAL_POSITION_INT
+        // cleared by MAVLINK_MSG_ID_GLOBAL_POSITION_INT
         //set_request(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_POSITION, 100, 198);
 
-        // cleared by MAVLINK_MSG_ID_ATTITUDE
         // yields: MAVLINK_MSG_ID_ATTITUDE
+        // cleared by MAVLINK_MSG_ID_ATTITUDE
         //set_request(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTRA1, 100, 211);
 
-        // 2Hz sufficient, cleared by MAVLINK_MSG_ID_VFR_HUD
+        // 2Hz sufficient
         // yields: MAVLINK_MSG_ID_VFR_HUD
+        // cleared by MAVLINK_MSG_ID_VFR_HUD
         set_request(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTRA2, 100, 220);
 
-        // 2Hz sufficient, cleared by MAVLINK_MSG_ID_BATTERY_STATUS
-        // yields: MAVLINK_MSG_ID_BATTERY_STATUS
+        // 2Hz sufficient
+        // yields: MAVLINK_MSG_ID_BATTERY_STATUS (only if batt monitor configured)
+        //         MAVLINK_MSG_ID_BATTERY2 (only if batt2 monitor configured)
         //         MAVLINK_MSG_ID_EKF_STATUS_REPORT
+        // cleared by MAVLINK_MSG_ID_EKF_STATUS_REPORT
         set_request(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTRA3, 100, 203);
 
         // call these at high rates of 10 Hz
+        // yields: MAVLINK_MSG_ID_ATTITUDE
+        // cleared by MAVLINK_MSG_ID_ATTITUDE
         set_request(TASK_AUTOPILOT, TASK_SENDCMD_REQUEST_ATTITUDE, 100, 205);
+        // yields: MAVLINK_MSG_ID_GLOBAL_POSITION_INT
+        // cleared by MAVLINK_MSG_ID_GLOBAL_POSITION_INT
         set_request(TASK_AUTOPILOT, TASK_SENDCMD_REQUEST_GLOBAL_POSITION_INT, 100, 207);
 
         set_request(TASK_AP, TASK_AP_REQUESTPARAM_BATT_CAPACITY, 10, 225);

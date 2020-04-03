@@ -152,7 +152,7 @@ class MavlinkTelem
 		bool is_critical;
         bool prearm_ok;
         uint8_t updated;
-        //for initializing it
+        //for initializing it, expects some required messages to be received
         uint8_t requests_triggered;
         uint8_t requests_waiting_mask;
         bool is_initialized;
@@ -166,8 +166,8 @@ class MavlinkTelem
       AUTOPILOT_REQUESTWAITING_GLOBAL_POSITION_INT  = 0x02,
       AUTOPILOT_REQUESTWAITING_ATTITUDE             = 0x04,
       AUTOPILOT_REQUESTWAITING_VFR_HUD              = 0x08,
-      AUTOPILOT_REQUESTWAITING_BATTERY_STATUS       = 0x10,
-      AUTOPILOT_REQUESTWAITING_ALL                  = 0x1F,
+	  AUTOPILOT_REQUESTWAITING_EKF_STATUS_REPORT    = 0x10,
+      AUTOPILOT_REQUESTWAITING_ALL                  = 0x0F,
     } AUTOPILOTREQUESTWAITINGFLAGS;
 
     typedef enum {
