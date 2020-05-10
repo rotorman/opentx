@@ -21,6 +21,7 @@
  * (c) www.olliw.eu, OlliW, OlliW42
  */
 
+
 #define MAVLINK_COMM_NUM_BUFFERS 		1 // 4
 #define MAVLINK_MAX_SIGNING_STREAMS 	1 // 16
 
@@ -30,8 +31,8 @@
 #include "thirdparty/Mavlink/c_library_v2/ardupilotmega/mavlink.h"
 
 
-#define MAVLINK_TELEM_MY_SYSID 			254 //MissionPlanner is 255, QGroundControl is ??
-#define MAVLINK_TELEM_MY_COMPID			(MAV_COMP_ID_MISSIONPLANNER + 1)
+#define MAVLINK_TELEM_MY_SYSID 			254 //MissionPlanner is 255, QGroundControl is 255
+#define MAVLINK_TELEM_MY_COMPID			(MAV_COMP_ID_MISSIONPLANNER + 4) //191 I use for companion
 
 
 // wakeup() is currently called every 10 ms
@@ -58,18 +59,20 @@ class MavlinkTelem
     } CONFIGUARTENUM;
 
     void wakeup();
-    void handleMessage(void);
-    void doTask(void);
 
-    bool isInVersionV2(void);
+    // SOME MAVLINK stuff
+
+    bool isInVersionV2(void); // not used
     void setOutVersionV2(void);
     void setOutVersionV1(void);
+
+    // GENERATE MAVLink messages
 
     void _generateCmdLong(uint8_t tsystem, uint8_t tcomponent, uint16_t cmd, float p1=0.0f, float p2=0.0f, float p3=0.0f, float p4=0.0f, float p5=0.0f, float p6=0.0f, float p7=0.0f);
     void generateHeartbeat(uint8_t base_mode, uint32_t custom_mode, uint8_t system_status);
     void generateParamRequestList(uint8_t tsystem, uint8_t tcomponent);
     void generateParamRequestRead(uint8_t tsystem, uint8_t tcomponent, const char* param_name);
-    //to autopilot
+    // autopilot
     void generateRequestDataStream(uint8_t tsystem, uint8_t tcomponent, uint8_t data_stream, uint16_t rate_hz, uint8_t startstop);
     void generateCmdSetMessageInterval(uint8_t tsystem, uint8_t tcomponent, uint8_t msgid, int32_t period_us, uint8_t startstop);
     void generateCmdDoSetMode(uint8_t tsystem, uint8_t tcomponent, MAV_MODE base_mode, uint32_t custom_mode);
@@ -79,7 +82,7 @@ class MavlinkTelem
     void generateSetPositionTargetGlobalInt(uint8_t tsystem, uint8_t tcomponent, uint8_t frame, uint16_t type_mask, int32_t lat, int32_t lon, float alt, float vx, float vy, float vz, float yaw_rad, float yaw_rad_rate);
     void generateCmdConditionYaw(uint8_t tsystem, uint8_t tcomponent, float yaw_deg, float yaw_deg_rate, int8_t dir, bool rel);
     void generateRcChannelsOverride(uint8_t sysid, uint8_t tsystem, uint8_t tcomponent, uint16_t* chan_raw);
-    //to camera
+    // camera
     void generateCmdRequestCameraInformation(uint8_t tsystem, uint8_t tcomponent);
     void generateCmdRequestCameraSettings(uint8_t tsystem, uint8_t tcomponent);
     void generateCmdRequestStorageInformation(uint8_t tsystem, uint8_t tcomponent);
@@ -88,44 +91,59 @@ class MavlinkTelem
     void generateCmdImageStartCapture(uint8_t tsystem, uint8_t tcomponent);
     void generateCmdVideoStartCapture(uint8_t tsystem, uint8_t tcomponent);
     void generateCmdVideoStopCapture(uint8_t tsystem, uint8_t tcomponent);
-    //to gimbal
+    // gimbal & gimbalmanager
     void generateCmdDoMountConfigure(uint8_t tsystem, uint8_t tcomponent, uint8_t mode);
     void generateCmdDoMountControl(uint8_t tsystem, uint8_t tcomponent, float pitch_deg, float yaw_deg);
+    void generateCmdRequestGimbalDeviceInformation(uint8_t tsystem, uint8_t tcomponent);
+    void generateGimbalDeviceSetAttitude(uint8_t tsystem, uint8_t tcomponent, float pitch_deg, float yaw_deg, uint16_t flags);
+    void generateGimbalManagerStatus(uint8_t gimbal_device_id, uint32_t flags);
+    void generateCmdRequestGimbalManagerInformation(uint8_t tsystem, uint8_t tcomponent);
+    void generateGimbalManagerSetAttitude(uint8_t tsystem, uint8_t tcomponent, uint8_t gimbal_device_id, float pitch_deg, float yaw_deg, uint32_t flags);
+    void generateCmdDoGimbalManagerAttitude(uint8_t tsystem, uint8_t tcomponent, uint8_t gimbal_device_id, float pitch_deg, float yaw_deg, uint32_t flags);
+
+    // TASK AND MESSAGE HANDLERS
 
     bool isSystemIdValid(void) { return (_sysid > 0); }
 
-    void doTaskAutopilot(void);
-    void doTaskAutopilotLowPriority(void);
-    void doTaskCamera(void);
-    void doTaskCameraLowPriority(void);
-    void doTaskGimbal(void);
+    bool doTaskAutopilot(void);
+    bool doTaskAutopilotLowPriority(void);
+    bool doTaskCamera(void);
+    bool doTaskCameraLowPriority(void);
+    bool doTaskGimbalAndGimbalManager(void);
+    void doTask(void);
 
     void handleMessageAutopilot(void);
-    void requestDataStreamFromAutopilot(void);
     void handleMessageCamera(void);
     void handleMessageGimbal(void);
+    void handleMessageGimbalManager(void);
+    void handleMessage(void);
+
+    void setAutopilotStartupRequests(void);
+    void setCameraStartupRequests(void);
+    void setGimbalDeviceStartupRequests(void);
+    void setGimbalManagerStartupRequests(void);
+
+    // TASKS
+
+    #define TASKIDX_MAX  		8
 
     #define SETTASK(idx,x)      {_task[idx] |= (x);}
     #define RESETTASK(idx,x)    {_task[idx] &=~ (x);}
-    #define TASKIDX_MAX  8
-    bool TASK_IS_PENDING()      {for(uint16_t i=0; i<TASKIDX_MAX; i++) if (_task[i] > 0) return true; return false;}
+    bool TASK_IS_PENDING()      {for(uint16_t i=0; i<TASKIDX_MAX; i++){ if (_task[i] > 0) return true;} return false;}
 
-    uint32_t msg_rx_count;
-    uint32_t msg_rx_persec;
-    uint32_t bytes_rx_persec;
-    uint32_t msg_rx_lost;
+    // REQUESTS
 
-    // MAVLINK
+    #define REQUESTLIST_MAX  	32
+
     // the widget background task is called at 50ms, = 576 bytes max at 115200 bps
     // FIXME: we need something better here!!!
     // use two COMM'S ??!?!??!?
     // 16 is sufficient for a rate of 43 msg/s or 1350 bytes/s, 8 was NOT!
-    Fifo<mavlink_message_t, 2> msgRxFifo;  // HUGE!
-    bool msgFifo_enabled = false;
-
-    const mavlink_status_t* getChannelStatus(void) { return &_status; }
+    //Fifo<mavlink_message_t, 2> msgRxFifo;  // HUGE!
+    //bool msgFifo_enabled = false;
 
     // MAVSDK GENERAL
+
     bool isReceiving(void) { return (_is_receiving > 0); }
 
     uint8_t autopilottype = MAV_AUTOPILOT_GENERIC;
@@ -152,7 +170,7 @@ class MavlinkTelem
 		bool is_critical;
         bool prearm_ok;
         uint8_t updated;
-        //for initializing it, expects some required messages to be received
+        //for initializing, if it expects some required messages to be received
         uint8_t requests_triggered;
         uint8_t requests_waiting_mask;
         bool is_initialized;
@@ -160,24 +178,10 @@ class MavlinkTelem
     struct Comp autopilot;
     struct Comp gimbal;
     struct Comp camera;
-
-    typedef enum {
-      AUTOPILOT_REQUESTWAITING_GPS_RAW_INT          = 0x01,
-      AUTOPILOT_REQUESTWAITING_GLOBAL_POSITION_INT  = 0x02,
-      AUTOPILOT_REQUESTWAITING_ATTITUDE             = 0x04,
-      AUTOPILOT_REQUESTWAITING_VFR_HUD              = 0x08,
-	  AUTOPILOT_REQUESTWAITING_EKF_STATUS_REPORT    = 0x10,
-      AUTOPILOT_REQUESTWAITING_ALL                  = 0x0F,
-    } AUTOPILOTREQUESTWAITINGFLAGS;
-
-    typedef enum {
-      CAMERA_REQUESTWAITING_CAMERA_INFORMATION      = 0x01,
-      CAMERA_REQUESTWAITING_CAMERA_SETTINGS         = 0x02,
-      CAMERA_REQUESTWAITING_CAMERA_CAPTURE_STATUS   = 0x04,
-      CAMERA_REQUESTWAITING_ALL                     = 0x07,
-    } CAMERAREQUESTWAITINGFLAGS;
+    struct Comp gimbalmanager; //it's not exactly a component, can be the autopilot or the companion
 
     // MAVSDK AUTOPILOT
+
     struct Att {
     	float roll_rad; // rad
     	float pitch_rad; // rad
@@ -298,7 +302,10 @@ class MavlinkTelem
 
     //convenience task wrapper for some tasks
     void setTaskParamRequestList(void) { SETTASK(TASK_AUTOPILOT, TASK_SENDMSG_PARAM_REQUEST_LIST); }
-    void setTaskParamRequestRead(const char* pname) { strncpy(_prr_param_id, pname, 16); SETTASK(TASK_AUTOPILOT, TASK_SENDMSG_PARAM_REQUEST_READ); }
+    void setTaskParamRequestRead(const char* pname) {
+        strncpy(_prr_param_id, pname, 16);
+        SETTASK(TASK_AUTOPILOT, TASK_SENDMSG_PARAM_REQUEST_READ);
+    }
 
     void apSetFlightMode(uint32_t ap_flight_mode);
     void apSetGroundSpeed(float speed);
@@ -316,9 +323,11 @@ class MavlinkTelem
     void apCopterFlyPause(void) { SETTASK(TASK_AP, TASK_AP_COPTER_FLYPAUSE); }
 
     // MAVSDK CAMERA
+
     struct CameraInfo {
     	char vendor_name[32+1];
 		char model_name[32+1];
+		uint32_t firmware_version;
 		uint32_t flags;
 		bool has_video;
 		bool has_photo;
@@ -345,12 +354,16 @@ class MavlinkTelem
     void setCameraStopVideo(void) { SETTASK(TASK_CAMERA, TASK_SENDCMD_VIDEO_STOP_CAPTURE); }
     void setCameraTakePhoto(void) { SETTASK(TASK_CAMERA, TASK_SENDCMD_IMAGE_START_CAPTURE); }
 
-    // MAVSDK GIMBAL
+    // MAVSDK GIMBAL & GIMBAL MANAGER
+
+    bool _iam_gimbalmanager;
+
     struct GimbalAtt {
     	float roll_deg;
     	float pitch_deg;
     	float yaw_deg_relative;
     	float yaw_deg_absolute;
+    	int32_t flags;  //uint16_t, GIMBAL_DEVICE_FLAGS, these may not be available, so use -1 if so
         uint8_t updated;
     };
     struct GimbalAtt gimbalAtt;
@@ -360,19 +373,64 @@ class MavlinkTelem
     float _t_gimbal_pitch_deg, _t_gimbal_yaw_deg;
 
     //convenience task wrapper
-    void setGimbalTargetingMode(uint8_t mode) {
-        _t_gimbal_mode = mode; SETTASK(TASK_GIMBAL, TASK_SENDCMD_DO_MOUNT_CONFIGURE);
-    }
-    void setGimbalPitchYawDeg(float pitch, float yaw) {
-        _t_gimbal_pitch_deg = pitch; _t_gimbal_yaw_deg = yaw; SETTASK(TASK_GIMBAL, TASK_SENDCMD_DO_MOUNT_CONTROL);
-    }
+    void setGimbalTargetingMode(uint8_t mode);
+    void setGimbalPitchYawDeg(float pitch, float yaw);
 
+    struct GimbalDeviceInfo {
+    	char vendor_name[32+1];
+		char model_name[32+1];
+		uint32_t firmware_version;
+    	uint16_t cap_flags;
+        uint8_t updated;
+    };
+    struct GimbalDeviceInfo gimbaldeviceInfo;
+
+    struct GimbalManagerInfo {
+    	uint32_t cap_flags;
+        uint8_t updated;
+    };
+    struct GimbalManagerInfo gimbalmanagerInfo;
+
+    struct GimbalManagerStatus {
+    	uint32_t flags; //uint32_t GIMBAL_MANAGER_FLAGS
+        uint8_t updated;
+    };
+    struct GimbalManagerStatus gimbalmanagerStatus;
+
+    //some tasks need some additional data
+	float _t_gimbaldevice_pitch_deg, _t_gimbaldevice_yaw_deg;
+	uint16_t _t_gimbaldevice_flags;
+
+    float _t_gimbalmanager_pitch_deg, _t_gimbalmanager_yaw_deg;
+    uint32_t _t_gimbalmanager_flags;
+    float _t_gimbalmanager_cmd_pitch_deg, _t_gimbalmanager_cmd_yaw_deg;
+    uint32_t _t_gimbalmanager_cmd_flags;
+
+    //convenience task wrapper
+    void setGimbalDeviceNeutral(void);
+    void setGimbalDeviceNormal(void);
+    void setGimbalDevicePitchYawDeg(float pitch, float yaw);
+    void setGimbalManagerPitchYawDegOverride(float pitch, float yaw);
+    void setGimbalManagerCmdPitchYawDeg(float pitch, float yaw);
+
+    // SOME more MAVLINK stuff
+
+    const mavlink_status_t* getChannelStatus(void) { return &_status; }
+
+    uint32_t msg_rx_count;
+    uint32_t msg_rx_persec;
+    uint32_t bytes_rx_persec;
+    uint32_t msg_rx_lost;
+
+    // PROTECTED FIELDS and METHODS
   protected:
+
     void _reset(void);
     void _resetRadio(void);
     void _resetAutopilot(void);
-    void _resetGimbal(void);
     void _resetCamera(void);
+    void _resetGimbalAndGimbalManager(void);
+    void _resetGimbalManager(void);
 
     uint8_t _my_sysid = MAVLINK_TELEM_MY_SYSID;
     uint8_t _my_compid = MAVLINK_TELEM_MY_COMPID;
@@ -381,20 +439,22 @@ class MavlinkTelem
 
     uint8_t _sysid = 0; // is autodetected by inspecting the autopilot heartbeat
 
-    uint16_t _is_receiving = 0;
+    uint16_t _is_receiving = 0; // is set by any arbitrary incoming MAVLink message
+
+    // TASKS
 
     typedef enum {
       TASK_ME = 0,
-      TASK_AUTOPILOT,
-      TASK_AP,
-      TASK_GIMBAL,
-      TASK_CAMERA,
+      TASK_AUTOPILOT, 	// autopilot, non-specific
+      TASK_AP,			// autopilot, ardupilot-specific
+      TASK_GIMBAL, 		// gimbal and gimbal manager
+      TASK_CAMERA,      // camera
     } TASKIDXENUM;
 
     typedef enum {
-      //me
+      // me
       TASK_SENDMYHEARTBEAT                          = 0x00000001,
-      //autopilot
+      // autopilot
       TASK_SENDREQUESTDATASTREAM_RAW_SENSORS        = 0x00000001, // group 1
       TASK_SENDREQUESTDATASTREAM_EXTENDED_STATUS    = 0x00000002, // group 2
       TASK_SENDREQUESTDATASTREAM_RC_CHANNELS        = 0x00000004, // group 3
@@ -415,7 +475,7 @@ class MavlinkTelem
       TASK_SENDMSG_SET_POSITION_TARGET_GLOBAL_INT   = 0x00100000,
       TASK_SENDCMD_CONDITION_YAW                    = 0x00200000,
       TASK_SENDMSG_RC_CHANNELS_OVERRIDE             = 0x00400000,
-      //ap
+      // ap
       TASK_AP_REQUESTBANNER                  		= 0x00000001,
       TASK_AP_ARM                            		= 0x00000002,
       TASK_AP_DISARM                         		= 0x00000004,
@@ -431,7 +491,7 @@ class MavlinkTelem
       TASK_AP_REQUESTPARAM_WPNAV_ACCEL       		= 0x00080000,
       TASK_AP_REQUESTPARAM_WPNAV_ACCEL_Z     		= 0x00100000,
       TASK_AP_REQUESTPARAM_SYSID_MYGCS       		= 0x00200000,
-      //camera
+      // camera
       TASK_SENDREQUEST_CAMERA_INFORMATION           = 0x00000001,
       TASK_SENDREQUEST_CAMERA_SETTINGS              = 0x00000002,
       TASK_SENDREQUEST_STORAGE_INFORMATION          = 0x00000004,
@@ -441,9 +501,16 @@ class MavlinkTelem
       TASK_SENDCMD_VIDEO_START_CAPTURE              = 0x00000040,
       TASK_SENDCMD_VIDEO_STOP_CAPTURE               = 0x00000080,
       TASK_SENDCMD_IMAGE_START_CAPTURE              = 0x00000100,
-      //gimbal
-      TASK_SENDCMD_DO_MOUNT_CONFIGURE               = 0x00000001,
-      TASK_SENDCMD_DO_MOUNT_CONTROL                 = 0x00000002,
+      // gimbal & gimbal manager
+      TASK_SENDCMD_DO_MOUNT_CONFIGURE               = 0x00000001, //this goes to the autopilot
+      TASK_SENDCMD_DO_MOUNT_CONTROL                 = 0x00000002, //this goes to the autopilot
+
+      TASK_SENDREQUEST_GIMBAL_DEVICE_INFORMATION    = 0x00000004, //this goes to the gimbal
+      TASK_SENDMSG_GIMBAL_DEVICE_SET_ATTITUDE       = 0x00000008, //this goes to the gimbal device
+      TASK_SENDMSG_GIMBAL_MANAGER_STATUS            = 0x00000010, //this is broadcast
+      TASK_SENDREQUEST_GIMBAL_MANAGER_INFORMATION   = 0x00000020, //this goes to the gimbal manager
+      TASK_SENDMSG_GIMBAL_MANAGER_SET_ATTITUDE      = 0x00000040, //this goes to the gimbal manager
+      TASK_SENDCMD_DO_GIMBAL_MANAGER_ATTITUDE       = 0x00000080, //this goes to the gimbal manager
     } TASKMASKENUM;
 
     uint32_t _task[TASKIDX_MAX];
@@ -456,36 +523,65 @@ class MavlinkTelem
     Fifo<struct Task, 32> _taskFifo; // the fifo is to further rate limit the execution of tasks
     tmr10ms_t _taskFifo_tlast;
 
+    void push_task(uint8_t idx, uint32_t task);
+    void pop_and_set_task(void);
+
+    // REQUESTS
+
+    typedef enum {
+      AUTOPILOT_REQUESTWAITING_GPS_RAW_INT          = 0x01,
+      AUTOPILOT_REQUESTWAITING_GLOBAL_POSITION_INT  = 0x02,
+      AUTOPILOT_REQUESTWAITING_ATTITUDE             = 0x04,
+      AUTOPILOT_REQUESTWAITING_VFR_HUD              = 0x08,
+	  AUTOPILOT_REQUESTWAITING_EKF_STATUS_REPORT    = 0x10,
+      AUTOPILOT_REQUESTWAITING_ALL                  = 0x0F,
+    } AUTOPILOTREQUESTWAITINGFLAGS;
+
+    typedef enum {
+      CAMERA_REQUESTWAITING_CAMERA_INFORMATION      = 0x01,
+      CAMERA_REQUESTWAITING_CAMERA_SETTINGS         = 0x02,
+      CAMERA_REQUESTWAITING_CAMERA_CAPTURE_STATUS   = 0x04,
+      CAMERA_REQUESTWAITING_ALL                     = 0x07,
+    } CAMERAREQUESTWAITINGFLAGS;
+
+    typedef enum {
+      GIMBALDEVICE_REQUESTWAITING_INFORMATION   	= 0x01,
+      GIMBALMANAGER_REQUESTWAITING_INFORMATION 		= 0x02,
+      GIMBALDEVICE_REQUESTWAITING_ALL              	= 0x01,
+      GIMBALMANAGER_REQUESTWAITING_ALL              = 0x03,
+    } GIMBALREQUESTWAITINGFLAGS;
+
     struct Request {
         uint32_t task;
         uint8_t idx;
-        uint8_t retry; //UINT8_MAX means for ever
+        uint8_t retry; // UINT8_MAX means request it for ever
         tmr10ms_t tlast;
         tmr10ms_t trate;
     };
 
-    #define REQUESTLIST_MAX  32
     struct Request _requestList[REQUESTLIST_MAX];  // 0 in the task field indicates that the slot is free and unused
     uint32_t _request_is_waiting[TASKIDX_MAX];
 
-    void push_task(uint8_t idx, uint32_t task);
-    void pop_and_set_task(void);
     void set_request(uint8_t idx, uint32_t task, uint8_t retry, tmr10ms_t rate = 102);
     void clear_request(uint8_t idx, uint32_t task);
     void do_requests(void);
 
-    uint32_t _msg_rx_persec_cnt, _bytes_rx_persec_cnt;
+    // MORE MAVLINK STUFF
+
+    uint32_t _msg_rx_persec_cnt;
+    uint32_t _bytes_rx_persec_cnt;
     int16_t _seq_rx_last = -1;
 
     mavlink_status_t _status;
     mavlink_message_t _msg;
     mavlink_message_t _msg_out;
     uint16_t _txcount = 0;
-    uint8_t _txbuf[512]; //only needs to hold one message, thus by construction large enough
+    uint8_t _txbuf[512]; //only needs to hold one MAVLink message, thus 512 is by construction large enough
 
-    //uart stuff
+    // STUFF
+
     bool _interface_enabled = false;
-    uint8_t _interface_config = UINT8_MAX;
+    uint8_t _interface_config = UINT8_MAX; //to enforce change
 };
 
 

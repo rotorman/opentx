@@ -32,6 +32,14 @@
 #define FDEGTORAD   (FPI/180.0f)
 #define FRADTODEG   (180.0f/FPI)
 
+void u8toBCDstr(uint8_t n, char* s)
+{
+  if (n>= 100){ for( *s='0'; n>= 100; n-= 100 ){ (*s)++; } s++; }
+  if (n>= 10){ for( *s='0'; n>= 10; n-= 10 ){ (*s)++; } s++; }
+  *s= '0'+n; s++;
+  *s='\0';
+}
+
 
 // -- GIMBAL --
 
@@ -53,6 +61,18 @@ static int luaMavsdkGimbalGetInfo(lua_State *L)
 {
 	lua_newtable(L);
 	lua_pushtableinteger(L, "compid", mavlinkTelem.gimbal.compid);
+
+	lua_pushtablestring(L, "vendor_name", mavlinkTelem.gimbaldeviceInfo.vendor_name);
+	lua_pushtablestring(L, "model_name", mavlinkTelem.gimbaldeviceInfo.model_name);
+	char s[32], ss[20]; s[0] = '\0';
+	if (mavlinkTelem.gimbaldeviceInfo.firmware_version) {
+		u8toBCDstr((mavlinkTelem.gimbaldeviceInfo.firmware_version >> 0) & 0xFF, ss); strcat(s, ss); strcat(s, ".");
+		u8toBCDstr((mavlinkTelem.gimbaldeviceInfo.firmware_version >> 8) & 0xFF, ss); strcat(s, ss); strcat(s, ".");
+		u8toBCDstr((mavlinkTelem.gimbaldeviceInfo.firmware_version >> 16) & 0xFF, ss); strcat(s, ss); strcat(s, ".");
+		u8toBCDstr((mavlinkTelem.gimbaldeviceInfo.firmware_version >> 24) & 0xFF, ss); strcat(s, ss);
+	}
+	lua_pushtablestring(L, "firmware_version", s);
+	lua_pushtableinteger(L, "capability_flags", mavlinkTelem.gimbaldeviceInfo.cap_flags);
 	return 1;
 }
 
@@ -122,6 +142,117 @@ static int luaMavsdkGimbalSetPitchYawDeg(lua_State *L)
 	return 0;
 }
 
+// -- GIMBAL DEVICE --
+
+static int luaMavsdkIsGimbalManager(lua_State *L)
+{
+    lua_pushboolean(L, mavlinkTelem._iam_gimbalmanager);
+	return 1;
+}
+
+static int luaMavsdkGimbalDeviceGetInfo(lua_State *L)
+{
+	lua_newtable(L);
+	lua_pushtablestring(L, "vendor_name", mavlinkTelem.gimbaldeviceInfo.vendor_name);
+	lua_pushtablestring(L, "model_name", mavlinkTelem.gimbaldeviceInfo.model_name);
+	char s[32], ss[20]; s[0] = '\0';
+	if (mavlinkTelem.gimbaldeviceInfo.firmware_version) {
+		u8toBCDstr((mavlinkTelem.gimbaldeviceInfo.firmware_version >> 0) & 0xFF, ss); strcat(s, ss); strcat(s, ".");
+		u8toBCDstr((mavlinkTelem.gimbaldeviceInfo.firmware_version >> 8) & 0xFF, ss); strcat(s, ss); strcat(s, ".");
+		u8toBCDstr((mavlinkTelem.gimbaldeviceInfo.firmware_version >> 16) & 0xFF, ss); strcat(s, ss); strcat(s, ".");
+		u8toBCDstr((mavlinkTelem.gimbaldeviceInfo.firmware_version >> 24) & 0xFF, ss); strcat(s, ss);
+	}
+	lua_pushtablestring(L, "firmware_version", s);
+	lua_pushtableinteger(L, "capability_flags", mavlinkTelem.gimbaldeviceInfo.cap_flags);
+	return 1;
+}
+
+static int luaMavsdkGimbalDeviceGetStatus(lua_State *L)
+{
+	lua_newtable(L);
+	lua_pushtableinteger(L, "flags", mavlinkTelem.gimbalAtt.flags);
+	return 1;
+}
+
+static int luaMavsdkGimbalDeviceSetNeutral(lua_State *L)
+{
+	mavlinkTelem.setGimbalDeviceNeutral();
+	return 0;
+}
+
+static int luaMavsdkGimbalDeviceSetNormal(lua_State *L)
+{
+	mavlinkTelem.setGimbalDeviceNormal();
+	return 0;
+}
+
+static int luaMavsdkGimbalDeviceSetPitchYawDeg(lua_State *L)
+{
+	float pitch = luaL_checknumber(L, 1);
+	float yaw = luaL_checknumber(L, 2);
+	mavlinkTelem.setGimbalDevicePitchYawDeg(pitch, yaw);
+	return 0;
+}
+
+// -- GIMBAL MANAGER --
+
+static int luaMavsdkGimbalHasManager(lua_State *L)
+{
+    bool flag = (mavlinkTelem.gimbalmanager.compid > 0);
+    lua_pushboolean(L, flag);
+	return 1;
+}
+
+static int luaMavsdkGimbalManagerIsReceiving(lua_State *L)
+{
+    bool flag = (mavlinkTelem.gimbalmanager.is_receiving > 0);
+    lua_pushboolean(L, flag);
+    return 1;
+}
+
+static int luaMavsdkGimbalManagerIsInitialized(lua_State *L)
+{
+    bool flag = (mavlinkTelem.gimbalmanager.is_receiving > 0) && mavlinkTelem.gimbalmanager.is_initialized;
+    lua_pushboolean(L, flag);
+    return 1;
+}
+
+static int luaMavsdkGimbalManagerGetInfo(lua_State *L)
+{
+	lua_newtable(L);
+	lua_pushtableinteger(L, "capability_flags", mavlinkTelem.gimbalmanagerInfo.cap_flags);
+	return 1;
+}
+
+static int luaMavsdkGimbalManagerGetStatus(lua_State *L)
+{
+	lua_newtable(L);
+	lua_pushtableinteger(L, "flags", mavlinkTelem.gimbalmanagerStatus.flags);
+	return 1;
+}
+
+static int luaMavsdkGimbalManagerSetNeutral(lua_State *L)
+{
+	//
+	return 0;
+}
+
+static int luaMavsdkGimbalManagerSetPitchYawDeg(lua_State *L)
+{
+	float pitch = luaL_checknumber(L, 1);
+	float yaw = luaL_checknumber(L, 2);
+	mavlinkTelem.setGimbalManagerPitchYawDegOverride(pitch, yaw);
+	return 0;
+}
+
+static int luaMavsdkGimbalManagerSetPitchYawDegCmd(lua_State *L)
+{
+	float pitch = luaL_checknumber(L, 1);
+	float yaw = luaL_checknumber(L, 2);
+	mavlinkTelem.setGimbalManagerCmdPitchYawDeg(pitch, yaw);
+	return 0;
+}
+
 
 // -- CAMERA --
 
@@ -154,6 +285,14 @@ static int luaMavsdkCameraGetInfo(lua_State *L)
 	}
 	lua_pushtablestring(L, "vendor_name", mavlinkTelem.cameraInfo.vendor_name);
 	lua_pushtablestring(L, "model_name", mavlinkTelem.cameraInfo.model_name);
+	char s[32], ss[20]; s[0] = '\0';
+	if (mavlinkTelem.cameraInfo.firmware_version) {
+		u8toBCDstr((mavlinkTelem.cameraInfo.firmware_version >> 0) & 0xFF, ss); strcat(s, ss); strcat(s, ".");
+		u8toBCDstr((mavlinkTelem.cameraInfo.firmware_version >> 8) & 0xFF, ss); strcat(s, ss); strcat(s, ".");
+		u8toBCDstr((mavlinkTelem.cameraInfo.firmware_version >> 16) & 0xFF, ss); strcat(s, ss); strcat(s, ".");
+		u8toBCDstr((mavlinkTelem.cameraInfo.firmware_version >> 24) & 0xFF, ss); strcat(s, ss);
+	}
+	lua_pushtablestring(L, "firmware_version", s);
 	return 1;
 }
 
@@ -974,12 +1113,29 @@ const luaL_Reg mavsdkLib[] = {
   { "gimbalGetAttRollDeg", luaMavsdkGimbalGetAttRollDeg },
   { "gimbalGetAttPitchDeg", luaMavsdkGimbalGetAttPitchDeg },
   { "gimbalGetAttYawDeg", luaMavsdkGimbalGetAttYawDeg },
+  //old
   { "gimbalSetNeutralMode", luaMavsdkGimbalSetNeutralMode },
   { "gimbalSetMavlinkTargetingMode", luaMavsdkGimbalSetMavlinkTargetingMode },
   { "gimbalSetRcTargetingMode", luaMavsdkGimbalSetRcTargetingMode },
   { "gimbalSetGpsPointMode", luaMavsdkGimbalSetGpsPointMode },
   { "gimbalSetSysIdTargetingMode", luaMavsdkGimbalSetSysIdTargetingMode },
   { "gimbalSetPitchYawDeg", luaMavsdkGimbalSetPitchYawDeg },
+  //new: device
+  { "isGimbalManager", luaMavsdkIsGimbalManager },
+  { "gimbaldevGetInfo",luaMavsdkGimbalDeviceGetInfo },
+  { "gimbaldevGetStatus", luaMavsdkGimbalDeviceGetStatus },
+  { "gimbaldevSetNeutral", luaMavsdkGimbalDeviceSetNeutral },
+  { "gimbaldevSetNormal", luaMavsdkGimbalDeviceSetNormal },
+  { "gimbaldevSetPitchYawDeg", luaMavsdkGimbalDeviceSetPitchYawDeg },
+  //new: manager
+  { "gimbalHasManager", luaMavsdkGimbalHasManager },
+  { "gimbalmanIsReceiving", luaMavsdkGimbalManagerIsReceiving },
+  { "gimbalmanIsInitialized", luaMavsdkGimbalManagerIsInitialized },
+  { "gimbalmanGetInfo", luaMavsdkGimbalManagerGetInfo },
+  { "gimbalmanGetStatus", luaMavsdkGimbalManagerGetStatus },
+  { "gimbalmanSetNeutral", luaMavsdkGimbalManagerSetNeutral },
+  { "gimbalmanSetPitchYawDeg", luaMavsdkGimbalManagerSetPitchYawDeg },
+  { "gimbalmanSetPitchYawDegCmd", luaMavsdkGimbalManagerSetPitchYawDegCmd },
 
   { "cameraIsReceiving", luaMavsdkCameraIsReceiving },
   { "cameraIsInitialized", luaMavsdkCameraIsInitialized },

@@ -59,7 +59,7 @@ static int luaMavlinkGetChannelStatus(lua_State * L)
     return 1;
 }
 
-
+/*
 static int luaMavlinkMsgAvailable(lua_State * L)
 {
 	uint32_t size = mavlinkTelem.msgRxFifo.size();
@@ -118,15 +118,15 @@ static int luaMavlinkMsgClear(lua_State * L)
 
 static int luaMavlinkMsgEnable(lua_State * L)
 {
-/*	uint32_t flag = luaL_checkunsigned(L, 1);
-	if (flag && !mavlinkTelem.msgFifo_enabled) {
-		//we enable it from disabled state, so we better clear()
-		mavlinkTelem.msgRxFifo.clear();
-	}
-	mavlinkTelem.msgFifo_enabled = (flag > 0); */
+//	uint32_t flag = luaL_checkunsigned(L, 1);
+//	if (flag && !mavlinkTelem.msgFifo_enabled) {
+//		//we enable it from disabled state, so we better clear()
+//		mavlinkTelem.msgRxFifo.clear();
+//	}
+//	mavlinkTelem.msgFifo_enabled = (flag > 0);
     return 0;
 }
-
+*/
 
 
 #if 0
@@ -157,6 +157,7 @@ const luaR_value_entry mavlinkConstants[] = {
 
 #else
 
+/*
 static int luaMavlinkMsgHeartbeatPop(lua_State * L)
 {
 mavlink_message_t msg; // FIXME: should be a reference/pointer to save stack, but _MAV_PAYLOAD wants a pointer
@@ -203,7 +204,7 @@ mavlink_message_t msg; // FIXME: should be a reference/pointer to save stack, bu
 #define MAVLINK_LIB_FUNCTIONS \
 	{ "msgHeartbeatPop", luaMavlinkMsgHeartbeatPop }, \
 	{ "msgAttitudePop", luaMavlinkMsgAttitudePop }, \
-
+*/
 
 //------------------------------------------------------------
 // mavlinkConstants
@@ -385,7 +386,6 @@ mavlink_message_t msg; // FIXME: should be a reference/pointer to save stack, bu
     { "MSG_ID_UTM_GLOBAL_POSITION", MAVLINK_MSG_ID_UTM_GLOBAL_POSITION }, \
     { "MSG_ID_DEBUG_FLOAT_ARRAY", MAVLINK_MSG_ID_DEBUG_FLOAT_ARRAY }, \
     { "MSG_ID_ORBIT_EXECUTION_STATUS", MAVLINK_MSG_ID_ORBIT_EXECUTION_STATUS }, \
-    { "MSG_ID_STATUSTEXT_LONG", MAVLINK_MSG_ID_STATUSTEXT_LONG }, \
     { "MSG_ID_SMART_BATTERY_INFO", MAVLINK_MSG_ID_SMART_BATTERY_INFO }, \
     { "MSG_ID_SMART_BATTERY_STATUS", MAVLINK_MSG_ID_SMART_BATTERY_STATUS }, \
     { "MSG_ID_ACTUATOR_OUTPUT_STATUS", MAVLINK_MSG_ID_ACTUATOR_OUTPUT_STATUS }, \
@@ -536,7 +536,7 @@ mavlink_message_t msg; // FIXME: should be a reference/pointer to save stack, bu
     { "MAV_COMP_ID_USER13", 37 }, \
     { "MAV_COMP_ID_USER14", 38 }, \
     { "MAV_COMP_ID_USER15", 39 }, \
-    { "MAV_COMP_ID_USE16", 40 }, \
+    { "MAV_COMP_ID_USER16", 40 }, \
     { "MAV_COMP_ID_USER17", 41 }, \
     { "MAV_COMP_ID_USER18", 42 }, \
     { "MAV_COMP_ID_USER19", 43 }, \
@@ -1345,13 +1345,13 @@ const luaL_Reg mavlinkLib[] = {
 #if defined(MAVLINK_TELEM)
     { "getVersion", luaMavlinkGetVersion },
     { "getChannelStatus", luaMavlinkGetChannelStatus },
-    { "available", luaMavlinkMsgAvailable },
-    { "probeHeader", luaMavlinkMsgProbeHeader },
-    { "popAndDiscard", luaMavlinkMsgPopAndDiscard },
-    { "clear", luaMavlinkMsgClear },
-    { "enable", luaMavlinkMsgEnable },
+//    { "available", luaMavlinkMsgAvailable },
+//    { "probeHeader", luaMavlinkMsgProbeHeader },
+//    { "popAndDiscard", luaMavlinkMsgPopAndDiscard },
+//    { "clear", luaMavlinkMsgClear },
+//    { "enable", luaMavlinkMsgEnable },
 
-    MAVLINK_LIB_FUNCTIONS
+//    MAVLINK_LIB_FUNCTIONS
 #endif
     { nullptr, nullptr }  /* sentinel */
 };
