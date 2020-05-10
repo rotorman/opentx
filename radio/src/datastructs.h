@@ -623,12 +623,13 @@ PACK(struct ModelData {
   char modelRegistrationID[PXX2_LEN_REGISTRATION_ID];
 //OW
 #if defined(PCBHORUS)
-  uint8_t mavlinkEnabled:1; // on/off
-  uint8_t mavlinkConfig:3; // allow space for 8 configs
-  uint8_t mavlinkMimicSensors:2; // currently just on/off, but allow e.g. FrSky, CF, FrSky passthrough.
-  uint8_t mavlinkRcOverride:1;
-  uint8_t mavlinkLogging:1; // not currently used
-  // the byte is full !! should we proactively make it a unit16?
+  uint16_t mavlinkEnabled:1; // on/off
+  uint16_t mavlinkConfig:3; // allow space for 8 configs
+  uint16_t mavlinkMimicSensors:3; // currently just off/on, but allow e.g. FrSky, CF, FrSky passthrough.
+  uint16_t mavlinkRcOverride:1;
+  uint16_t mavlinkIamGimbalManager:1;
+  uint16_t mavlinkLogging:1; // not currently used
+  // needs to adapt CHKSIZE below //if not all are use compiled optiomizes to lowest size, which may raise error
 #endif
 //OWEND
 });
@@ -948,7 +949,7 @@ static inline void check_struct()
   CHKSIZE(RadioData, 881);
 //OW
 //  CHKSIZE(ModelData, 9736);
-  CHKSIZE(ModelData, 9736+1);
+  CHKSIZE(ModelData, 9736+2);
 //OWEND
 #endif
 
