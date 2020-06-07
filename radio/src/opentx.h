@@ -32,13 +32,11 @@
 
 //OW
 #define MAVLINK_TELEM
-#define OWVERSIONSTR  "olliw-v09rc01"
+#define OWVERSIONSTR  "olliw-v11"
 //OWEND
 
 /*
-script hangs up too often - why? issue of script or issue of firmware???
-
-v03 2020-03-15:
+v11 2020-06-07:
 modified files in radio/src/
 
     CMakeList.txt:  1x
@@ -49,9 +47,11 @@ modified files in radio/src/
     opentx.h:       2x
     options.h:      1x
     tasks.cpp:      1x
+    gui/480x272/lcd.cpp:            1x
+    gui/480x272/lcd.h:              1x
     gui/480x272/model_setup.cpp:    4x
     lua/api_general.cpp:    3x
-    lua/api_lcd.cpp:        3x
+    lua/api_lcd.cpp:        2x
     targets/horus/board.cpp:        4x
     targets/horus/board.h:          1x
     targets/horus/hal.h:            1x
