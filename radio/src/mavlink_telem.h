@@ -94,9 +94,8 @@ class MavlinkTelem
     // gimbal & gimbalmanager
     void generateCmdDoMountConfigure(uint8_t tsystem, uint8_t tcomponent, uint8_t mode);
     void generateCmdDoMountControl(uint8_t tsystem, uint8_t tcomponent, float pitch_deg, float yaw_deg);
-    void generateCmdRequestGimbalDeviceInformation(uint8_t tsystem, uint8_t tcomponent);
     void generateGimbalDeviceSetAttitude(uint8_t tsystem, uint8_t tcomponent, float pitch_deg, float yaw_deg, uint16_t flags);
-    void generateGimbalManagerStatus(uint8_t gimbal_device_id, uint32_t flags);
+    void generateCmdRequestGimbalDeviceInformation(uint8_t tsystem, uint8_t tcomponent);
     void generateCmdRequestGimbalManagerInformation(uint8_t tsystem, uint8_t tcomponent);
     void generateGimbalManagerSetAttitude(uint8_t tsystem, uint8_t tcomponent, uint8_t gimbal_device_id, float pitch_deg, float yaw_deg, uint32_t flags);
     void generateCmdDoGimbalManagerAttitude(uint8_t tsystem, uint8_t tcomponent, uint8_t gimbal_device_id, float pitch_deg, float yaw_deg, uint32_t flags);
@@ -109,19 +108,19 @@ class MavlinkTelem
     bool doTaskAutopilotLowPriority(void);
     bool doTaskCamera(void);
     bool doTaskCameraLowPriority(void);
-    bool doTaskGimbalAndGimbalManager(void);
+    bool doTaskGimbalAndGimbalClient(void);
     void doTask(void);
 
     void handleMessageAutopilot(void);
     void handleMessageCamera(void);
     void handleMessageGimbal(void);
-    void handleMessageGimbalManager(void);
+    void handleMessageGimbalClient(void);
     void handleMessage(void);
 
     void setAutopilotStartupRequests(void);
     void setCameraStartupRequests(void);
-    void setGimbalDeviceStartupRequests(void);
-    void setGimbalManagerStartupRequests(void);
+    void setGimbalStartupRequests(void);
+    void setGimbalClientStartupRequests(void);
 
     // TASKS
 
@@ -178,7 +177,7 @@ class MavlinkTelem
     struct Comp autopilot;
     struct Comp gimbal;
     struct Comp camera;
-    struct Comp gimbalmanager; //it's not exactly a component, can be the autopilot or the companion
+    struct Comp gimbalmanager; //it's not exactly a component, can be the autopilot or the companion or the gimbal
 
     // MAVSDK AUTOPILOT
 
@@ -354,9 +353,7 @@ class MavlinkTelem
     void setCameraStopVideo(void) { SETTASK(TASK_CAMERA, TASK_SENDCMD_VIDEO_STOP_CAPTURE); }
     void setCameraTakePhoto(void) { SETTASK(TASK_CAMERA, TASK_SENDCMD_IMAGE_START_CAPTURE); }
 
-    // MAVSDK GIMBAL & GIMBAL MANAGER
-
-    bool _iam_gimbalmanager;
+    // MAVSDK GIMBAL & GIMBAL CLIENT
 
     struct GimbalAtt {
     	float roll_deg;
@@ -400,18 +397,48 @@ class MavlinkTelem
     //some tasks need some additional data
 	float _t_gimbaldevice_pitch_deg, _t_gimbaldevice_yaw_deg;
 	uint16_t _t_gimbaldevice_flags;
-
-    float _t_gimbalmanager_pitch_deg, _t_gimbalmanager_yaw_deg;
-    uint32_t _t_gimbalmanager_flags;
-    float _t_gimbalmanager_cmd_pitch_deg, _t_gimbalmanager_cmd_yaw_deg;
-    uint32_t _t_gimbalmanager_cmd_flags;
+    void setGimbalDevicePitchYawDeg(float pitch, float yaw);
 
     //convenience task wrapper
-    void setGimbalDeviceNeutral(void);
-    void setGimbalDeviceNormal(void);
-    void setGimbalDevicePitchYawDeg(float pitch, float yaw);
-    void setGimbalManagerPitchYawDegOverride(float pitch, float yaw);
+    float _t_gimbalmanager_setatt_pitch_deg, _t_gimbalmanager_setatt_yaw_deg;
+    uint32_t _t_gimbalmanager_setatt_flags;
+    float _t_gimbalmanager_cmd_pitch_deg, _t_gimbalmanager_cmd_yaw_deg;
+    uint32_t _t_gimbalmanager_cmd_flags;
     void setGimbalManagerCmdPitchYawDeg(float pitch, float yaw);
+
+    typedef enum {
+      GIMBALCLIENT_MODE_NONE = 0,
+	  GIMBALCLIENT_MODE_RETRACT,
+	  GIMBALCLIENT_MODE_NEUTRAL,
+	  GIMBALCLIENT_MODE_OVERRIDE,
+	  GIMBALCLIENT_MODE_NUDGE,
+	  GIMBALCLIENT_MODE_RC_NUDGE,
+	  GIMBALCLIENT_MODE_RC_OVERRIDE,
+
+	  GIMBALCLIENT_SETFLAG_GCS_OVERRIDE = 10,
+	  GIMBALCLIENT_SETFLAG_GCS_NUDGE,
+	  GIMBALCLIENT_SETFLAG_RC_OVERRIDE,
+	  GIMBALCLIENT_SETFLAG_RC_NUDGE,
+	  GIMBALCLIENT_SETFLAG_CMD_OVERRIDE,
+	  GIMBALCLIENT_SETFLAG_CMD_NUDGE,
+    } GIMBALCLIENTMODEENUM;
+
+    uint16_t _gimbalclient_mode;
+
+    void setGimbalClientMode(uint16_t mode);
+    void setGimbalManagerPitchYawDeg(float pitch, float yaw);
+
+    // missing gimbal protocol v2 flags
+    typedef enum {
+      GIMBAL_MANAGER_FLAGS_GCS_NUDGE              = GIMBAL_MANAGER_FLAGS_NUDGE,      //=2097152  2^21
+      GIMBAL_MANAGER_FLAGS_GCS_OVERRIDE           = GIMBAL_MANAGER_FLAGS_OVERRIDE,   //=4194304  2^22
+      GIMBAL_MANAGER_FLAGS_MISSION_NOTOVERRIDE    = GIMBAL_MANAGER_FLAGS_NONE,       //=8388608  2^23
+      GIMBAL_MANAGER_FLAGS_MISSION_NUDGE          = ((uint32_t)1 << 24),
+      GIMBAL_MANAGER_FLAGS_RC_NUDGE               = ((uint32_t)1 << 25),
+      GIMBAL_MANAGER_FLAGS_RC_OVERRIDE            = ((uint32_t)1 << 26),
+      GIMBAL_MANAGER_FLAGS_COMPANION_NUDGE        = ((uint32_t)1 << 27),
+      GIMBAL_MANAGER_FLAGS_COMPANION_OVERRIDE     = ((uint32_t)1 << 28),
+    }GIMBALMANAGERMISSINGFLAGSENUM;
 
     // SOME more MAVLINK stuff
 
@@ -429,8 +456,8 @@ class MavlinkTelem
     void _resetRadio(void);
     void _resetAutopilot(void);
     void _resetCamera(void);
-    void _resetGimbalAndGimbalManager(void);
-    void _resetGimbalManager(void);
+    void _resetGimbalAndGimbalClient(void);
+    void _resetGimbalClient(void);
 
     uint8_t _my_sysid = MAVLINK_TELEM_MY_SYSID;
     uint8_t _my_compid = MAVLINK_TELEM_MY_COMPID;
@@ -447,7 +474,7 @@ class MavlinkTelem
       TASK_ME = 0,
       TASK_AUTOPILOT, 	// autopilot, non-specific
       TASK_AP,			// autopilot, ardupilot-specific
-      TASK_GIMBAL, 		// gimbal and gimbal manager
+      TASK_GIMBAL, 		// gimbal and gimbal client
       TASK_CAMERA,      // camera
     } TASKIDXENUM;
 
@@ -501,13 +528,12 @@ class MavlinkTelem
       TASK_SENDCMD_VIDEO_START_CAPTURE              = 0x00000040,
       TASK_SENDCMD_VIDEO_STOP_CAPTURE               = 0x00000080,
       TASK_SENDCMD_IMAGE_START_CAPTURE              = 0x00000100,
-      // gimbal & gimbal manager
+      // gimbal & gimbal client
       TASK_SENDCMD_DO_MOUNT_CONFIGURE               = 0x00000001, //this goes to the autopilot
       TASK_SENDCMD_DO_MOUNT_CONTROL                 = 0x00000002, //this goes to the autopilot
 
       TASK_SENDREQUEST_GIMBAL_DEVICE_INFORMATION    = 0x00000004, //this goes to the gimbal
       TASK_SENDMSG_GIMBAL_DEVICE_SET_ATTITUDE       = 0x00000008, //this goes to the gimbal device
-      TASK_SENDMSG_GIMBAL_MANAGER_STATUS            = 0x00000010, //this is broadcast
       TASK_SENDREQUEST_GIMBAL_MANAGER_INFORMATION   = 0x00000020, //this goes to the gimbal manager
       TASK_SENDMSG_GIMBAL_MANAGER_SET_ATTITUDE      = 0x00000040, //this goes to the gimbal manager
       TASK_SENDCMD_DO_GIMBAL_MANAGER_ATTITUDE       = 0x00000080, //this goes to the gimbal manager
@@ -545,10 +571,10 @@ class MavlinkTelem
     } CAMERAREQUESTWAITINGFLAGS;
 
     typedef enum {
-      GIMBALDEVICE_REQUESTWAITING_INFORMATION   	= 0x01,
-      GIMBALMANAGER_REQUESTWAITING_INFORMATION 		= 0x02,
-      GIMBALDEVICE_REQUESTWAITING_ALL              	= 0x01,
-      GIMBALMANAGER_REQUESTWAITING_ALL              = 0x03,
+      GIMBAL_REQUESTWAITING_GIMBAL_DEVICE_INFORMATION	= 0x01,
+      GIMBAL_REQUESTWAITING_GIMBAL_MANAGER_INFORMATION	= 0x02,
+      GIMBAL_REQUESTWAITING_ALL                  		= 0x01,
+      GIMBALCLIENT_REQUESTWAITING_ALL              		= 0x03,
     } GIMBALREQUESTWAITINGFLAGS;
 
     struct Request {

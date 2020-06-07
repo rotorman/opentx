@@ -116,6 +116,88 @@ void MavlinkTelem::generateRcChannelsOverride(uint8_t sysid, uint8_t tsystem, ui
 }
 
 
+
+// -- Mavsdk Convenience Task Wrapper --
+// to make it easy for api_mavsdk to call functions
+
+void MavlinkTelem::apSetFlightMode(uint32_t ap_flight_mode)
+{
+    _tcsm_base_mode = MAV_MODE_FLAG_CUSTOM_MODE_ENABLED;
+    _tcsm_custom_mode = ap_flight_mode;
+    SETTASK(TASK_AUTOPILOT, TASK_SENDCMD_DO_SET_MODE);
+}
+
+
+void MavlinkTelem::apSetGroundSpeed(float speed)
+{
+    _tccs_speed_mps = speed;
+    _tccs_speed_type = 1;
+    SETTASK(TASK_AUTOPILOT, TASK_SENDCMD_DO_CHANGE_SPEED);
+}
+
+
+void MavlinkTelem::apSimpleGotoPosAlt(int32_t lat, int32_t lon, float alt)
+{
+//    _tmii_frame = MAV_FRAME_GLOBAL_RELATIVE_ALT_INT; //Ardupilot doesn't seem to take this
+    _tmii_frame = MAV_FRAME_GLOBAL_RELATIVE_ALT;
+    _tmii_cmd = MAV_CMD_NAV_WAYPOINT;
+    _tmii_current = 2;
+    _tmii_lat = lat; _tmii_lon = lon; _tmii_alt_m = alt;
+    SETTASK(TASK_AUTOPILOT, TASK_SENDMSG_MISSION_ITEM_INT);
+}
+
+
+//alt and yaw can be NAN if they should be ignored
+// this function is not very useful as it really moves very slowly
+void MavlinkTelem::apGotoPosAltYawDeg(int32_t lat, int32_t lon, float alt, float yaw)
+{
+    _t_coordinate_frame = MAV_FRAME_GLOBAL_RELATIVE_ALT_INT;
+    _t_type_mask = POSITION_TARGET_TYPEMASK_VX_IGNORE | POSITION_TARGET_TYPEMASK_VY_IGNORE | POSITION_TARGET_TYPEMASK_VZ_IGNORE |
+                   POSITION_TARGET_TYPEMASK_AX_IGNORE | POSITION_TARGET_TYPEMASK_AY_IGNORE | POSITION_TARGET_TYPEMASK_AZ_IGNORE |
+                   POSITION_TARGET_TYPEMASK_YAW_RATE_IGNORE;
+    if (isnan(alt)) { _t_type_mask |= POSITION_TARGET_TYPEMASK_Z_IGNORE; alt = 1.0f; }
+    if (isnan(yaw)) { _t_type_mask |= POSITION_TARGET_TYPEMASK_YAW_IGNORE; yaw = 0.0f; }
+    _t_lat = lat; _t_lon = lon;
+    _t_alt = alt; // m
+    _t_vx = _t_vy = _t_vz = 0.0f;
+    _t_yaw_rad = yaw * FDEGTORAD; // rad
+    _t_yaw_rad_rate = 0.0f;
+    SETTASK(TASK_AUTOPILOT, TASK_SENDMSG_SET_POSITION_TARGET_GLOBAL_INT);
+}
+
+
+void MavlinkTelem::apGotoPosAltVel(int32_t lat, int32_t lon, float alt, float vx, float vy, float vz)
+{
+    _t_coordinate_frame = MAV_FRAME_GLOBAL_RELATIVE_ALT_INT;
+    _t_type_mask = POSITION_TARGET_TYPEMASK_AX_IGNORE | POSITION_TARGET_TYPEMASK_AY_IGNORE | POSITION_TARGET_TYPEMASK_AZ_IGNORE |
+                   POSITION_TARGET_TYPEMASK_YAW_IGNORE |
+                   POSITION_TARGET_TYPEMASK_YAW_RATE_IGNORE;
+    _t_lat = lat; _t_lon = lon;
+    _t_alt = alt; // m
+    _t_vx = vx; _t_vy = vy; _t_vz = vz; // m/s
+    _t_yaw_rad = _t_yaw_rad_rate = 0.0f; // rad
+    SETTASK(TASK_AUTOPILOT, TASK_SENDMSG_SET_POSITION_TARGET_GLOBAL_INT);
+}
+
+
+//note, we can enter negative yaw here, sign determines direction
+void MavlinkTelem::apSetYawDeg(float yaw, bool relative)
+{
+    if (relative) {
+        _tccy_relative = 1.0f;
+        if (yaw < 0.0f){ _tccy_dir = -1.0f; yaw = -yaw; } else{ _tccy_dir = 1.0f; }
+    } else {
+        _tccy_relative = 0.0f;
+        _tccy_dir = 0.0f;
+    }
+    float res = fmodf(yaw, 360.0f);
+    if (res < 0.0f) res += 360.0f;
+    _tccy_yaw_deg = res;  // is in deg, must be in range [0..360]
+    SETTASK(TASK_AUTOPILOT, TASK_SENDCMD_CONDITION_YAW);
+}
+
+
+
 // -- Task handlers --
 
 bool MavlinkTelem::doTaskAutopilot(void)
@@ -302,86 +384,6 @@ bool MavlinkTelem::doTaskAutopilotLowPriority(void)
     }
 
     return false;
-}
-
-
-
-// -- Mavsdk Convenience Task Wrapper --
-
-void MavlinkTelem::apSetFlightMode(uint32_t ap_flight_mode)
-{
-    _tcsm_base_mode = MAV_MODE_FLAG_CUSTOM_MODE_ENABLED;
-    _tcsm_custom_mode = ap_flight_mode;
-    SETTASK(TASK_AUTOPILOT, TASK_SENDCMD_DO_SET_MODE);
-}
-
-
-void MavlinkTelem::apSetGroundSpeed(float speed)
-{
-    _tccs_speed_mps = speed;
-    _tccs_speed_type = 1;
-    SETTASK(TASK_AUTOPILOT, TASK_SENDCMD_DO_CHANGE_SPEED);
-}
-
-
-void MavlinkTelem::apSimpleGotoPosAlt(int32_t lat, int32_t lon, float alt)
-{
-//    _tmii_frame = MAV_FRAME_GLOBAL_RELATIVE_ALT_INT; //Ardupilot doesn't seem to take this
-    _tmii_frame = MAV_FRAME_GLOBAL_RELATIVE_ALT;
-    _tmii_cmd = MAV_CMD_NAV_WAYPOINT;
-    _tmii_current = 2;
-    _tmii_lat = lat; _tmii_lon = lon; _tmii_alt_m = alt;
-    SETTASK(TASK_AUTOPILOT, TASK_SENDMSG_MISSION_ITEM_INT);
-}
-
-
-//alt and yaw can be NAN if they should be ignored
-// this function is not very useful as it really moves very slowly
-void MavlinkTelem::apGotoPosAltYawDeg(int32_t lat, int32_t lon, float alt, float yaw)
-{
-    _t_coordinate_frame = MAV_FRAME_GLOBAL_RELATIVE_ALT_INT;
-    _t_type_mask = POSITION_TARGET_TYPEMASK_VX_IGNORE | POSITION_TARGET_TYPEMASK_VY_IGNORE | POSITION_TARGET_TYPEMASK_VZ_IGNORE |
-                   POSITION_TARGET_TYPEMASK_AX_IGNORE | POSITION_TARGET_TYPEMASK_AY_IGNORE | POSITION_TARGET_TYPEMASK_AZ_IGNORE |
-                   POSITION_TARGET_TYPEMASK_YAW_RATE_IGNORE;
-    if (isnan(alt)) { _t_type_mask |= POSITION_TARGET_TYPEMASK_Z_IGNORE; alt = 1.0f; }
-    if (isnan(yaw)) { _t_type_mask |= POSITION_TARGET_TYPEMASK_YAW_IGNORE; yaw = 0.0f; }
-    _t_lat = lat; _t_lon = lon;
-    _t_alt = alt; // m
-    _t_vx = _t_vy = _t_vz = 0.0f;
-    _t_yaw_rad = yaw * FDEGTORAD; // rad
-    _t_yaw_rad_rate = 0.0f;
-    SETTASK(TASK_AUTOPILOT, TASK_SENDMSG_SET_POSITION_TARGET_GLOBAL_INT);
-}
-
-
-void MavlinkTelem::apGotoPosAltVel(int32_t lat, int32_t lon, float alt, float vx, float vy, float vz)
-{
-    _t_coordinate_frame = MAV_FRAME_GLOBAL_RELATIVE_ALT_INT;
-    _t_type_mask = POSITION_TARGET_TYPEMASK_AX_IGNORE | POSITION_TARGET_TYPEMASK_AY_IGNORE | POSITION_TARGET_TYPEMASK_AZ_IGNORE |
-                   POSITION_TARGET_TYPEMASK_YAW_IGNORE |
-                   POSITION_TARGET_TYPEMASK_YAW_RATE_IGNORE;
-    _t_lat = lat; _t_lon = lon;
-    _t_alt = alt; // m
-    _t_vx = vx; _t_vy = vy; _t_vz = vz; // m/s
-    _t_yaw_rad = _t_yaw_rad_rate = 0.0f; // rad
-    SETTASK(TASK_AUTOPILOT, TASK_SENDMSG_SET_POSITION_TARGET_GLOBAL_INT);
-}
-
-
-//note, we can enter negative yaw here, sign determines direction
-void MavlinkTelem::apSetYawDeg(float yaw, bool relative)
-{
-    if (relative) {
-        _tccy_relative = 1.0f;
-        if (yaw < 0.0f){ _tccy_dir = -1.0f; yaw = -yaw; } else{ _tccy_dir = 1.0f; }
-    } else {
-        _tccy_relative = 0.0f;
-        _tccy_dir = 0.0f;
-    }
-    float res = fmodf(yaw, 360.0f);
-    if (res < 0.0f) res += 360.0f;
-    _tccy_yaw_deg = res;  // is in deg, must be in range [0..360]
-    SETTASK(TASK_AUTOPILOT, TASK_SENDCMD_CONDITION_YAW);
 }
 
 

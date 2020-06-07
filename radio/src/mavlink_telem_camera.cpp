@@ -83,6 +83,12 @@ void MavlinkTelem::generateCmdVideoStopCapture(uint8_t tsystem, uint8_t tcompone
 
 
 
+// -- Mavsdk Convenience Task Wrapper --
+// to make it easy for api_mavsdk to call functions
+// are short here and defined in mavlink_telem.h
+
+
+
 // -- Task handlers --
 
 bool MavlinkTelem::doTaskCamera(void)

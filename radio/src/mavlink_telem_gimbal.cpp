@@ -31,7 +31,16 @@
 #define INCU8(x)  if ((x) < UINT8_MAX) { (x)++; }
 
 
-void calc_q_from_angles_deg(float* q, float roll_deg, float pitch_deg, float yaw_deg)
+// quaternions and euler angles
+// we do not use NED (roll-pitch-yaw) to convert quaternion to Euler angles and vice versa
+// we use pitch-roll-yaw instead
+// when the roll angle is zero, both are equivalent, this should be the majority of cases anyhow
+// also, for most gimbals pitch-roll-yaw is appropriate
+// the issue with NED is the gimbal lock at pitch +-90°, but pitch +-90° is a common operation point for gimbals
+// the angles we store in this lib are thus pitch-roll-yaw Euler
+
+//NED
+void calc_q_from_NED_angles_deg(float* q, float roll_deg, float pitch_deg, float yaw_deg)
 {
 	float cr2 = cosf(roll_deg * 0.5f * FDEGTORAD);
 	float sr2 = sinf(roll_deg * 0.5f * FDEGTORAD);
@@ -47,6 +56,7 @@ void calc_q_from_angles_deg(float* q, float roll_deg, float pitch_deg, float yaw
 }
 
 
+//equal for NED and G
 void calc_q_from_pitchyaw_deg(float* q, float pitch_deg, float yaw_deg)
 {
 	float cp2 = cosf(pitch_deg * 0.5f * FDEGTORAD);
@@ -55,14 +65,18 @@ void calc_q_from_pitchyaw_deg(float* q, float pitch_deg, float yaw_deg)
 	float sy2 = sinf(yaw_deg * 0.5f * FDEGTORAD);
 
 	q[0] = cp2*cy2;
-	q[1] = - sp2*sy2;
+	q[1] = -sp2*sy2;
 	q[2] = sp2*cy2;
 	q[3] = cp2*sy2;
 }
 
 
-void calc_angles_deg_from_q(float* roll_deg, float* pitch_deg, float* yaw_deg, float* q)
+void calc_NED_angles_deg_from_q(float* roll_deg, float* pitch_deg, float* yaw_deg, float* q)
 {
+	// roll = atan2f(2.0f*(q0*q1 + q2*q3), 1.0f - 2.0f*(q1*q1 + q2*q2));   // R32 / R33 = cpsr / cpcr
+	// pitch = asin(2.0f*(q0*q2 - q1*q3));                                 // -R31 = - (-sp)
+	// yaw = atan2f(2.0f*(q0*q3 + q1*q2), 1.0f - 2.0f*(q2*q2 + q3*q3));    // R21 / R11 = cpsy / cpcy
+
     *roll_deg = atan2f( 2.0f*(q[0]*q[1] + q[2]*q[3]), 1.0f - 2.0f*(q[1]*q[1] + q[2]*q[2]) ) * FRADTODEG;
 
     float arg = 2.0f*(q[0]*q[2] - q[1]*q[3]);
@@ -80,9 +94,32 @@ void calc_angles_deg_from_q(float* roll_deg, float* pitch_deg, float* yaw_deg, f
 }
 
 
+void calc_G_angles_deg_from_q(float* roll_deg, float* pitch_deg, float* yaw_deg, float* q)
+{
+    // pitch = atan2f(2.0f*(q0*q2 - q1*q3), 1.0f - 2.0f*(q1*q1 + q2*q2));  // -R31 / R33 = -(-spcr) / cpcr
+	// roll = asin(2.0f*(q0*q1 + q2*q3));                                  // R32 = sr
+	// yaw = atan2f(2.0f*(q0*q3 - q1*q2), 1.0f - 2.0f*(q1*q1 + q3*q3));    // -R12 / R22 = -(-crsy) / crcy
+
+    *pitch_deg = atan2f( q[0]*q[2] - q[1]*q[3], 0.5f - q[1]*q[1] - q[2]*q[2] ) * FRADTODEG;
+
+    float arg = 2.0f*(q[0]*q[1] + q[2]*q[3]);
+    if (isnan(arg)) {
+         *roll_deg = 0.0f;
+    } else if (arg >= 1.0f) {
+        *roll_deg = 90.0f;
+    } else if (arg <= -1.0f) {
+        *roll_deg = -90.0f;
+    } else {
+        *roll_deg = asinf(arg) * FRADTODEG;
+    }
+
+    *yaw_deg = atan2f( q[0]*q[3] - q[1]*q[2], 0.5f - q[1]*q[1] - q[3]*q[3] ) * FRADTODEG;
+}
+
+
 
 // -- Generate MAVLink messages --
-// these should never be called directly, should only by called by the task handler
+// these should never be called directly, should only be called by the task handler
 
 void MavlinkTelem::generateCmdDoMountConfigure(uint8_t tsystem, uint8_t tcomponent, uint8_t mode)
 {
@@ -101,29 +138,20 @@ void MavlinkTelem::generateCmdDoMountControl(uint8_t tsystem, uint8_t tcomponent
 }
 
 
-void MavlinkTelem::generateCmdRequestGimbalDeviceInformation(uint8_t tsystem, uint8_t tcomponent)
-{
-    _generateCmdLong(tsystem, tcomponent,
-    		MAV_CMD_REQUEST_MESSAGE,
-			MAVLINK_MSG_ID_GIMBAL_DEVICE_INFORMATION, 0,0,0,0,0,0);
-}
-
-
 void MavlinkTelem::generateGimbalDeviceSetAttitude(uint8_t tsystem, uint8_t tcomponent,
 		float pitch_deg, float yaw_deg, uint16_t flags)
 {
 float q[4];
 
     if ((pitch_deg != NAN) && (yaw_deg != NAN)) {
-    	calc_q_from_angles_deg(q, 0.0f, pitch_deg, yaw_deg);
+    	calc_q_from_pitchyaw_deg(q, pitch_deg, yaw_deg);
     } else {
     	q[0] = q[1] = q[2] = q[3] = NAN;
     }
 
     setOutVersionV2();
     mavlink_msg_gimbal_device_set_attitude_pack(
-//XX            _my_sysid, _my_compid, &_msg_out,
-            _sysid, _my_compid, &_msg_out, //we mimic being part of the autopilot system
+            _sysid, _my_compid, &_msg_out, //_sys_id and not _my_sysid !!! we mimic being part of the autopilot system
 			tsystem, tcomponent,
 			flags,
 			q,
@@ -132,16 +160,11 @@ float q[4];
 }
 
 
-void MavlinkTelem::generateGimbalManagerStatus(uint8_t gimbal_device_id, uint32_t flags)
+void MavlinkTelem::generateCmdRequestGimbalDeviceInformation(uint8_t tsystem, uint8_t tcomponent)
 {
-    setOutVersionV2();
-    mavlink_msg_gimbal_manager_status_pack(
-//XX            _my_sysid, _my_compid, &_msg_out,
-            _sysid, _my_compid, &_msg_out, //we mimic being part of the autopilot system
-			get_tmr10ms()*10, //uint32_t time_boot_ms,
-			flags,
-			gimbal_device_id);
-    _txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+    _generateCmdLong(tsystem, tcomponent,
+    		MAV_CMD_REQUEST_MESSAGE,
+			MAVLINK_MSG_ID_GIMBAL_DEVICE_INFORMATION, 0,0,0,0,0,0);
 }
 
 
@@ -159,7 +182,7 @@ void MavlinkTelem::generateGimbalManagerSetAttitude(uint8_t tsystem, uint8_t tco
 float q[4];
 
 	if ((pitch_deg != NAN) && (yaw_deg != NAN)) {
-		calc_q_from_angles_deg(q, 0.0f, pitch_deg, yaw_deg);
+		calc_q_from_pitchyaw_deg(q, pitch_deg, yaw_deg);
 	} else {
 		q[0] = q[1] = q[2] = q[3] = NAN;
 	}
@@ -186,7 +209,8 @@ void MavlinkTelem::generateCmdDoGimbalManagerAttitude(uint8_t tsystem, uint8_t t
 
 
 
-// -- Convenience Task Wrapper --
+// -- Mavsdk Convenience Task Wrapper --
+// to make it easy for api_mavsdk to call functions
 
 void MavlinkTelem::setGimbalTargetingMode(uint8_t mode)
 {
@@ -203,58 +227,282 @@ void MavlinkTelem::setGimbalPitchYawDeg(float pitch, float yaw)
 }
 
 
-void MavlinkTelem::setGimbalDeviceNeutral(void)
-{
-    _t_gimbaldevice_flags |= GIMBAL_DEVICE_FLAGS_ROLL_LOCK | GIMBAL_MANAGER_FLAGS_PITCH_LOCK;
-//XX    if (_t_gimbaldevice_flags & GIMBAL_MANAGER_FLAGS_NEUTRAL) return; //do it only when it has not yet been send
-    _t_gimbaldevice_flags = GIMBAL_MANAGER_FLAGS_NEUTRAL | GIMBAL_DEVICE_FLAGS_ROLL_LOCK | GIMBAL_MANAGER_FLAGS_PITCH_LOCK;
-    setGimbalManagerPitchYawDegOverride(NAN, NAN);
-}
-
-
-void MavlinkTelem::setGimbalDeviceNormal(void)
-{
-    _t_gimbaldevice_flags |= GIMBAL_DEVICE_FLAGS_ROLL_LOCK | GIMBAL_MANAGER_FLAGS_PITCH_LOCK;
-//XX    if (!(_t_gimbaldevice_flags & GIMBAL_MANAGER_FLAGS_NEUTRAL)) return; //do it only when it has not yet been send
-    _t_gimbaldevice_flags = GIMBAL_DEVICE_FLAGS_ROLL_LOCK | GIMBAL_MANAGER_FLAGS_PITCH_LOCK;
-    setGimbalManagerPitchYawDegOverride(NAN, NAN);
-}
-
-
+//we shouldn't use this
 void MavlinkTelem::setGimbalDevicePitchYawDeg(float pitch, float yaw)
 {
     _t_gimbaldevice_pitch_deg = pitch;
     _t_gimbaldevice_yaw_deg = yaw;
-//XX    _t_gimbaldevice_flags = gimbalAtt.flags; //we mirror the fags we got from the gimbal
     //we assume a simple 3 axis gimbal
     // our gimbal must EXACTLY have these capabilities for now, so we fake it
-    _t_gimbaldevice_flags |= GIMBAL_DEVICE_FLAGS_ROLL_LOCK | GIMBAL_MANAGER_FLAGS_PITCH_LOCK;
+    _t_gimbaldevice_flags |= GIMBAL_DEVICE_FLAGS_ROLL_LOCK | GIMBAL_DEVICE_FLAGS_PITCH_LOCK;
+    _t_gimbaldevice_flags &=~ GIMBAL_DEVICE_FLAGS_YAW_LOCK;
     SETTASK(TASK_GIMBAL, TASK_SENDMSG_GIMBAL_DEVICE_SET_ATTITUDE);
 }
 
 
-void MavlinkTelem::setGimbalManagerPitchYawDegOverride(float pitch, float yaw)
-{
-    _t_gimbalmanager_pitch_deg = pitch;
-    _t_gimbalmanager_yaw_deg = yaw;
-    _t_gimbalmanager_flags = gimbalmanagerStatus.flags | GIMBAL_MANAGER_FLAGS_OVERRIDE; //keep other but set override
-    SETTASK(TASK_GIMBAL, TASK_SENDMSG_GIMBAL_MANAGER_SET_ATTITUDE);
-}
-
-
+//we shouldn't use this
 void MavlinkTelem::setGimbalManagerCmdPitchYawDeg(float pitch, float yaw)
 {
     _t_gimbalmanager_cmd_pitch_deg = pitch;
     _t_gimbalmanager_cmd_yaw_deg = yaw;
-    _t_gimbalmanager_flags = gimbalmanagerStatus.flags;
+    _t_gimbalmanager_cmd_flags = gimbalmanagerStatus.flags;
+    _t_gimbalmanager_cmd_flags &=~ GIMBAL_MANAGER_FLAGS_MISSION_NOTOVERRIDE;
+    _t_gimbalmanager_cmd_flags &=~ (GIMBAL_MANAGER_FLAGS_GCS_OVERRIDE | GIMBAL_MANAGER_FLAGS_GCS_NUDGE |
+                                    GIMBAL_MANAGER_FLAGS_RC_OVERRIDE | GIMBAL_MANAGER_FLAGS_RC_NUDGE |
+    		                        GIMBAL_MANAGER_FLAGS_RETRACT | GIMBAL_MANAGER_FLAGS_NEUTRAL);
     SETTASK(TASK_GIMBAL, TASK_SENDCMD_DO_GIMBAL_MANAGER_ATTITUDE);
 }
+
+
+// we have introduced our own specific method for handling the gimbal manager flags, by introducing GIMBALMANAGER_MODE_XXX
+// that's no breach of specification however, so perfectly fine
+void MavlinkTelem::setGimbalClientMode(uint16_t mode)
+{
+	_gimbalclient_mode = mode;
+}
+
+
+void MavlinkTelem::setGimbalManagerPitchYawDeg(float pitch, float yaw)
+{
+uint32_t flags = gimbalmanagerStatus.flags;
+
+    //clear GCS and RC flags as default, so we only have to set which we need
+    flags &=~ (GIMBAL_MANAGER_FLAGS_GCS_OVERRIDE | GIMBAL_MANAGER_FLAGS_GCS_NUDGE |
+               GIMBAL_MANAGER_FLAGS_RC_OVERRIDE | GIMBAL_MANAGER_FLAGS_RC_NUDGE |
+               GIMBAL_MANAGER_FLAGS_RETRACT | GIMBAL_MANAGER_FLAGS_NEUTRAL);
+
+	switch (_gimbalclient_mode) {
+	case GIMBALCLIENT_MODE_NONE:
+	    _t_gimbalmanager_setatt_pitch_deg = NAN;
+	    _t_gimbalmanager_setatt_yaw_deg = NAN;
+	    _t_gimbalmanager_setatt_flags = flags;
+	    SETTASK(TASK_GIMBAL, TASK_SENDMSG_GIMBAL_MANAGER_SET_ATTITUDE);
+		break;
+	case GIMBALCLIENT_MODE_RETRACT:
+	    _t_gimbalmanager_setatt_pitch_deg = NAN;
+	    _t_gimbalmanager_setatt_yaw_deg = NAN;
+	    _t_gimbalmanager_setatt_flags = (flags | GIMBAL_MANAGER_FLAGS_RETRACT);
+	    SETTASK(TASK_GIMBAL, TASK_SENDMSG_GIMBAL_MANAGER_SET_ATTITUDE);
+		break;
+	case GIMBALCLIENT_MODE_NEUTRAL:
+	    _t_gimbalmanager_setatt_pitch_deg = NAN;
+	    _t_gimbalmanager_setatt_yaw_deg = NAN;
+	    _t_gimbalmanager_setatt_flags = (flags | GIMBAL_MANAGER_FLAGS_NEUTRAL);
+	    SETTASK(TASK_GIMBAL, TASK_SENDMSG_GIMBAL_MANAGER_SET_ATTITUDE);
+		break;
+	case GIMBALCLIENT_MODE_OVERRIDE:
+	    _t_gimbalmanager_setatt_pitch_deg = pitch;
+	    _t_gimbalmanager_setatt_yaw_deg = yaw;
+	    _t_gimbalmanager_setatt_flags = (flags | GIMBAL_MANAGER_FLAGS_GCS_OVERRIDE);
+	    SETTASK(TASK_GIMBAL, TASK_SENDMSG_GIMBAL_MANAGER_SET_ATTITUDE);
+		break;
+	case GIMBALCLIENT_MODE_NUDGE:
+	    _t_gimbalmanager_setatt_pitch_deg = pitch;
+	    _t_gimbalmanager_setatt_yaw_deg = yaw;
+	    _t_gimbalmanager_setatt_flags = (flags | GIMBAL_MANAGER_FLAGS_GCS_NUDGE);
+	    SETTASK(TASK_GIMBAL, TASK_SENDMSG_GIMBAL_MANAGER_SET_ATTITUDE);
+		break;
+	case GIMBALCLIENT_MODE_RC_NUDGE:
+	    _t_gimbalmanager_setatt_pitch_deg = pitch;
+	    _t_gimbalmanager_setatt_yaw_deg = yaw;
+	    _t_gimbalmanager_setatt_flags = (flags | GIMBAL_MANAGER_FLAGS_RC_NUDGE);
+	    SETTASK(TASK_GIMBAL, TASK_SENDMSG_GIMBAL_MANAGER_SET_ATTITUDE);
+		break;
+	case GIMBALCLIENT_MODE_RC_OVERRIDE:
+	    _t_gimbalmanager_setatt_pitch_deg = pitch;
+	    _t_gimbalmanager_setatt_yaw_deg = yaw;
+	    _t_gimbalmanager_setatt_flags = (flags | GIMBAL_MANAGER_FLAGS_RC_OVERRIDE);
+	    SETTASK(TASK_GIMBAL, TASK_SENDMSG_GIMBAL_MANAGER_SET_ATTITUDE);
+		break;
+
+	case GIMBALCLIENT_SETFLAG_GCS_OVERRIDE:
+	    _t_gimbalmanager_setatt_pitch_deg = pitch;
+	    _t_gimbalmanager_setatt_yaw_deg = yaw;
+	    _t_gimbalmanager_setatt_flags = gimbalmanagerStatus.flags;
+	    _t_gimbalmanager_setatt_flags |= GIMBAL_MANAGER_FLAGS_GCS_OVERRIDE;
+  	    _t_gimbalmanager_setatt_flags &=~ GIMBAL_MANAGER_FLAGS_GCS_NUDGE;
+	    _t_gimbalmanager_setatt_flags &=~ (GIMBAL_MANAGER_FLAGS_RETRACT | GIMBAL_MANAGER_FLAGS_NEUTRAL);
+	    SETTASK(TASK_GIMBAL, TASK_SENDMSG_GIMBAL_MANAGER_SET_ATTITUDE);
+		break;
+	case GIMBALCLIENT_SETFLAG_GCS_NUDGE:
+	    _t_gimbalmanager_setatt_pitch_deg = pitch;
+	    _t_gimbalmanager_setatt_yaw_deg = yaw;
+	    _t_gimbalmanager_setatt_flags = gimbalmanagerStatus.flags;
+	    _t_gimbalmanager_setatt_flags &=~ GIMBAL_MANAGER_FLAGS_GCS_OVERRIDE;
+  	    _t_gimbalmanager_setatt_flags |= GIMBAL_MANAGER_FLAGS_GCS_NUDGE;
+	    _t_gimbalmanager_setatt_flags &=~ (GIMBAL_MANAGER_FLAGS_RETRACT | GIMBAL_MANAGER_FLAGS_NEUTRAL);
+	    SETTASK(TASK_GIMBAL, TASK_SENDMSG_GIMBAL_MANAGER_SET_ATTITUDE);
+		break;
+	case GIMBALCLIENT_SETFLAG_RC_OVERRIDE:
+	    _t_gimbalmanager_setatt_pitch_deg = pitch;
+	    _t_gimbalmanager_setatt_yaw_deg = yaw;
+	    _t_gimbalmanager_setatt_flags = gimbalmanagerStatus.flags;
+	    _t_gimbalmanager_setatt_flags |= GIMBAL_MANAGER_FLAGS_RC_OVERRIDE;
+  	    _t_gimbalmanager_setatt_flags &=~ GIMBAL_MANAGER_FLAGS_RC_NUDGE;
+	    _t_gimbalmanager_setatt_flags &=~ (GIMBAL_MANAGER_FLAGS_RETRACT | GIMBAL_MANAGER_FLAGS_NEUTRAL);
+	    SETTASK(TASK_GIMBAL, TASK_SENDMSG_GIMBAL_MANAGER_SET_ATTITUDE);
+		break;
+	case GIMBALCLIENT_SETFLAG_RC_NUDGE:
+	    _t_gimbalmanager_setatt_pitch_deg = pitch;
+	    _t_gimbalmanager_setatt_yaw_deg = yaw;
+	    _t_gimbalmanager_setatt_flags = gimbalmanagerStatus.flags;
+	    _t_gimbalmanager_setatt_flags &=~ GIMBAL_MANAGER_FLAGS_RC_OVERRIDE;
+  	    _t_gimbalmanager_setatt_flags |= GIMBAL_MANAGER_FLAGS_RC_NUDGE;
+	    _t_gimbalmanager_setatt_flags &=~ (GIMBAL_MANAGER_FLAGS_RETRACT | GIMBAL_MANAGER_FLAGS_NEUTRAL);
+	    SETTASK(TASK_GIMBAL, TASK_SENDMSG_GIMBAL_MANAGER_SET_ATTITUDE);
+		break;
+	case GIMBALCLIENT_SETFLAG_CMD_OVERRIDE:
+        _t_gimbalmanager_cmd_pitch_deg = pitch;
+        _t_gimbalmanager_cmd_yaw_deg = yaw;
+        _t_gimbalmanager_cmd_flags = gimbalmanagerStatus.flags;
+        _t_gimbalmanager_cmd_flags &=~ GIMBAL_MANAGER_FLAGS_MISSION_NOTOVERRIDE;
+        _t_gimbalmanager_cmd_flags &=~ GIMBAL_MANAGER_FLAGS_MISSION_NUDGE;
+        _t_gimbalmanager_cmd_flags &=~ (GIMBAL_MANAGER_FLAGS_RETRACT | GIMBAL_MANAGER_FLAGS_NEUTRAL);
+        SETTASK(TASK_GIMBAL, TASK_SENDCMD_DO_GIMBAL_MANAGER_ATTITUDE);
+		break;
+	case GIMBALCLIENT_SETFLAG_CMD_NUDGE:
+        _t_gimbalmanager_cmd_pitch_deg = pitch;
+        _t_gimbalmanager_cmd_yaw_deg = yaw;
+        _t_gimbalmanager_cmd_flags = gimbalmanagerStatus.flags;
+        _t_gimbalmanager_cmd_flags |= GIMBAL_MANAGER_FLAGS_MISSION_NOTOVERRIDE;
+        _t_gimbalmanager_cmd_flags |= GIMBAL_MANAGER_FLAGS_MISSION_NUDGE;
+        _t_gimbalmanager_cmd_flags &=~ (GIMBAL_MANAGER_FLAGS_RETRACT | GIMBAL_MANAGER_FLAGS_NEUTRAL);
+        SETTASK(TASK_GIMBAL, TASK_SENDCMD_DO_GIMBAL_MANAGER_ATTITUDE);
+		break;
+    }
+
+/*
+
+	switch (_gimbalclient_mode) {
+	case GIMBALCLIENT_MODE_NONE:
+	    _t_gimbalmanager_setatt_pitch_deg = NAN;
+	    _t_gimbalmanager_setatt_yaw_deg = NAN;
+	    _t_gimbalmanager_setatt_flags = gimbalmanagerStatus.flags;
+	    _t_gimbalmanager_setatt_flags &=~ (GIMBAL_MANAGER_FLAGS_GCS_OVERRIDE | GIMBAL_MANAGER_FLAGS_GCS_NUDGE |
+				                           GIMBAL_MANAGER_FLAGS_RC_OVERRIDE | GIMBAL_MANAGER_FLAGS_RC_NUDGE |
+	    		                           GIMBAL_MANAGER_FLAGS_RETRACT|GIMBAL_MANAGER_FLAGS_NEUTRAL);
+	    _t_gimbalmanager_setatt_flags |= GIMBAL_MANAGER_FLAGS_MISSION_NOTOVERRIDE;
+	    SETTASK(TASK_GIMBAL, TASK_SENDMSG_GIMBAL_MANAGER_SET_ATTITUDE);
+		break;
+	case GIMBALCLIENT_MODE_RETRACT:
+	    _t_gimbalmanager_setatt_pitch_deg = NAN;
+	    _t_gimbalmanager_setatt_yaw_deg = NAN;
+	    _t_gimbalmanager_setatt_flags = gimbalmanagerStatus.flags;
+	    _t_gimbalmanager_setatt_flags |= GIMBAL_MANAGER_FLAGS_RETRACT;
+	    _t_gimbalmanager_setatt_flags &=~ (GIMBAL_MANAGER_FLAGS_GCS_OVERRIDE | GIMBAL_MANAGER_FLAGS_GCS_NUDGE |
+                                           GIMBAL_MANAGER_FLAGS_RC_OVERRIDE | GIMBAL_MANAGER_FLAGS_RC_NUDGE |
+	    		                           GIMBAL_MANAGER_FLAGS_NEUTRAL);
+	    _t_gimbalmanager_setatt_flags |= GIMBAL_MANAGER_FLAGS_MISSION_NOTOVERRIDE;
+	    SETTASK(TASK_GIMBAL, TASK_SENDMSG_GIMBAL_MANAGER_SET_ATTITUDE);
+		break;
+	case GIMBALCLIENT_MODE_NEUTRAL:
+	    _t_gimbalmanager_setatt_pitch_deg = NAN;
+	    _t_gimbalmanager_setatt_yaw_deg = NAN;
+	    _t_gimbalmanager_setatt_flags = gimbalmanagerStatus.flags;
+	    _t_gimbalmanager_setatt_flags |= GIMBAL_MANAGER_FLAGS_NEUTRAL;
+	    _t_gimbalmanager_setatt_flags &=~ (GIMBAL_MANAGER_FLAGS_GCS_OVERRIDE | GIMBAL_MANAGER_FLAGS_GCS_NUDGE |
+                                           GIMBAL_MANAGER_FLAGS_RC_OVERRIDE | GIMBAL_MANAGER_FLAGS_RC_NUDGE |
+	    		                           GIMBAL_MANAGER_FLAGS_RETRACT);
+	    _t_gimbalmanager_setatt_flags |= GIMBAL_MANAGER_FLAGS_MISSION_NOTOVERRIDE;
+	    SETTASK(TASK_GIMBAL, TASK_SENDMSG_GIMBAL_MANAGER_SET_ATTITUDE);
+		break;
+	case GIMBALCLIENT_MODE_OVERRIDE:
+	    _t_gimbalmanager_setatt_pitch_deg = pitch;
+	    _t_gimbalmanager_setatt_yaw_deg = yaw;
+	    _t_gimbalmanager_setatt_flags = gimbalmanagerStatus.flags;
+	    _t_gimbalmanager_setatt_flags |= GIMBAL_MANAGER_FLAGS_GCS_OVERRIDE;
+	    _t_gimbalmanager_setatt_flags &=~ (GIMBAL_MANAGER_FLAGS_GCS_NUDGE |
+                                           GIMBAL_MANAGER_FLAGS_RC_OVERRIDE | GIMBAL_MANAGER_FLAGS_RC_NUDGE |
+	    		                           GIMBAL_MANAGER_FLAGS_RETRACT | GIMBAL_MANAGER_FLAGS_NEUTRAL);
+	    _t_gimbalmanager_setatt_flags |= GIMBAL_MANAGER_FLAGS_MISSION_NOTOVERRIDE;
+	    SETTASK(TASK_GIMBAL, TASK_SENDMSG_GIMBAL_MANAGER_SET_ATTITUDE);
+		break;
+	case GIMBALCLIENT_MODE_NUDGE:
+	    _t_gimbalmanager_setatt_pitch_deg = pitch;
+	    _t_gimbalmanager_setatt_yaw_deg = yaw;
+	    _t_gimbalmanager_setatt_flags = gimbalmanagerStatus.flags;
+	    _t_gimbalmanager_setatt_flags |= GIMBAL_MANAGER_FLAGS_GCS_NUDGE;
+	    _t_gimbalmanager_setatt_flags &=~ (GIMBAL_MANAGER_FLAGS_GCS_OVERRIDE |
+                                           GIMBAL_MANAGER_FLAGS_RC_OVERRIDE | GIMBAL_MANAGER_FLAGS_RC_NUDGE |
+	    		                           GIMBAL_MANAGER_FLAGS_RETRACT | GIMBAL_MANAGER_FLAGS_NEUTRAL);
+	    _t_gimbalmanager_setatt_flags |= GIMBAL_MANAGER_FLAGS_MISSION_NOTOVERRIDE;
+	    SETTASK(TASK_GIMBAL, TASK_SENDMSG_GIMBAL_MANAGER_SET_ATTITUDE);
+		break;
+	case GIMBALCLIENT_MODE_CMD:
+        _t_gimbalmanager_cmd_pitch_deg = pitch;
+        _t_gimbalmanager_cmd_yaw_deg = yaw;
+        _t_gimbalmanager_cmd_flags = gimbalmanagerStatus.flags;
+        _t_gimbalmanager_cmd_flags &=~ GIMBAL_MANAGER_FLAGS_MISSION_NOTOVERRIDE;
+        _t_gimbalmanager_cmd_flags &=~ GIMBAL_MANAGER_FLAGS_MISSION_NUDGE;
+        _t_gimbalmanager_cmd_flags &=~ (GIMBAL_MANAGER_FLAGS_GCS_OVERRIDE | GIMBAL_MANAGER_FLAGS_GCS_NUDGE |
+	    								GIMBAL_MANAGER_FLAGS_RC_OVERRIDE | GIMBAL_MANAGER_FLAGS_RC_NUDGE |
+	    		                        GIMBAL_MANAGER_FLAGS_RETRACT | GIMBAL_MANAGER_FLAGS_NEUTRAL);
+        SETTASK(TASK_GIMBAL, TASK_SENDCMD_DO_GIMBAL_MANAGER_ATTITUDE);
+		break;
+
+	case GIMBALCLIENT_MODE_GCS_OVERRIDE:
+	    _t_gimbalmanager_setatt_pitch_deg = pitch;
+	    _t_gimbalmanager_setatt_yaw_deg = yaw;
+	    _t_gimbalmanager_setatt_flags = gimbalmanagerStatus.flags;
+	    _t_gimbalmanager_setatt_flags |= GIMBAL_MANAGER_FLAGS_GCS_OVERRIDE;
+  	    _t_gimbalmanager_setatt_flags &=~ GIMBAL_MANAGER_FLAGS_GCS_NUDGE;
+	    _t_gimbalmanager_setatt_flags &=~ (GIMBAL_MANAGER_FLAGS_RETRACT | GIMBAL_MANAGER_FLAGS_NEUTRAL);
+		break;
+	case GIMBALCLIENT_MODE_GCS_NUDGE:
+	    _t_gimbalmanager_setatt_pitch_deg = pitch;
+	    _t_gimbalmanager_setatt_yaw_deg = yaw;
+	    _t_gimbalmanager_setatt_flags = gimbalmanagerStatus.flags;
+	    _t_gimbalmanager_setatt_flags &=~ GIMBAL_MANAGER_FLAGS_GCS_OVERRIDE;
+  	    _t_gimbalmanager_setatt_flags |= GIMBAL_MANAGER_FLAGS_GCS_NUDGE;
+	    _t_gimbalmanager_setatt_flags &=~ (GIMBAL_MANAGER_FLAGS_RETRACT | GIMBAL_MANAGER_FLAGS_NEUTRAL);
+	    SETTASK(TASK_GIMBAL, TASK_SENDMSG_GIMBAL_MANAGER_SET_ATTITUDE);
+		break;
+	case GIMBALCLIENT_MODE_RC_OVERRIDE:
+	    _t_gimbalmanager_setatt_pitch_deg = pitch;
+	    _t_gimbalmanager_setatt_yaw_deg = yaw;
+	    _t_gimbalmanager_setatt_flags = gimbalmanagerStatus.flags;
+	    _t_gimbalmanager_setatt_flags |= GIMBAL_MANAGER_FLAGS_RC_OVERRIDE;
+  	    _t_gimbalmanager_setatt_flags &=~ GIMBAL_MANAGER_FLAGS_RC_NUDGE;
+	    _t_gimbalmanager_setatt_flags &=~ (GIMBAL_MANAGER_FLAGS_RETRACT | GIMBAL_MANAGER_FLAGS_NEUTRAL);
+	    SETTASK(TASK_GIMBAL, TASK_SENDMSG_GIMBAL_MANAGER_SET_ATTITUDE);
+		break;
+	case GIMBALCLIENT_MODE_RC_NUDGE:
+	    _t_gimbalmanager_setatt_pitch_deg = pitch;
+	    _t_gimbalmanager_setatt_yaw_deg = yaw;
+	    _t_gimbalmanager_setatt_flags = gimbalmanagerStatus.flags;
+	    _t_gimbalmanager_setatt_flags &=~ GIMBAL_MANAGER_FLAGS_RC_OVERRIDE;
+  	    _t_gimbalmanager_setatt_flags |= GIMBAL_MANAGER_FLAGS_RC_NUDGE;
+	    _t_gimbalmanager_setatt_flags &=~ (GIMBAL_MANAGER_FLAGS_RETRACT | GIMBAL_MANAGER_FLAGS_NEUTRAL);
+	    SETTASK(TASK_GIMBAL, TASK_SENDMSG_GIMBAL_MANAGER_SET_ATTITUDE);
+		break;
+	case GIMBALCLIENT_MODE_CMD_OVERRIDE:
+        _t_gimbalmanager_cmd_pitch_deg = pitch;
+        _t_gimbalmanager_cmd_yaw_deg = yaw;
+        _t_gimbalmanager_cmd_flags = gimbalmanagerStatus.flags;
+        _t_gimbalmanager_cmd_flags &=~ GIMBAL_MANAGER_FLAGS_MISSION_NOTOVERRIDE;
+        _t_gimbalmanager_cmd_flags &=~ GIMBAL_MANAGER_FLAGS_MISSION_NUDGE;
+        _t_gimbalmanager_cmd_flags &=~ (GIMBAL_MANAGER_FLAGS_RETRACT | GIMBAL_MANAGER_FLAGS_NEUTRAL);
+        SETTASK(TASK_GIMBAL, TASK_SENDCMD_DO_GIMBAL_MANAGER_ATTITUDE);
+		break;
+	case GIMBALCLIENT_MODE_CMD_NUDGE:
+        _t_gimbalmanager_cmd_pitch_deg = pitch;
+        _t_gimbalmanager_cmd_yaw_deg = yaw;
+        _t_gimbalmanager_cmd_flags = gimbalmanagerStatus.flags;
+        _t_gimbalmanager_cmd_flags |= GIMBAL_MANAGER_FLAGS_MISSION_NOTOVERRIDE;
+        _t_gimbalmanager_cmd_flags |= GIMBAL_MANAGER_FLAGS_MISSION_NUDGE;
+        _t_gimbalmanager_cmd_flags &=~ (GIMBAL_MANAGER_FLAGS_RETRACT | GIMBAL_MANAGER_FLAGS_NEUTRAL);
+        SETTASK(TASK_GIMBAL, TASK_SENDCMD_DO_GIMBAL_MANAGER_ATTITUDE);
+		break;
+    }
+*/
+}
+
 
 
 
 // -- Task handlers --
 
-bool MavlinkTelem::doTaskGimbalAndGimbalManager(void)
+bool MavlinkTelem::doTaskGimbalAndGimbalClient(void)
 {
     if (!_task[TASK_GIMBAL]) return false; // no task pending
 
@@ -274,27 +522,15 @@ bool MavlinkTelem::doTaskGimbalAndGimbalManager(void)
         return true; //do only one per loop
     }
 
-    if (_task[TASK_GIMBAL] & TASK_SENDMSG_GIMBAL_DEVICE_SET_ATTITUDE) {
-        RESETTASK(TASK_GIMBAL, TASK_SENDMSG_GIMBAL_DEVICE_SET_ATTITUDE);
-        if (!_iam_gimbalmanager) return false;
-        generateGimbalDeviceSetAttitude(_sysid, gimbal.compid,
-        		_t_gimbaldevice_pitch_deg, _t_gimbaldevice_yaw_deg, _t_gimbaldevice_flags);
-        return true; //do only one per loop
-    }
     if (_task[TASK_GIMBAL] & TASK_SENDREQUEST_GIMBAL_DEVICE_INFORMATION) {
         RESETTASK(TASK_GIMBAL, TASK_SENDREQUEST_GIMBAL_DEVICE_INFORMATION);
         generateCmdRequestGimbalDeviceInformation(_sysid, gimbal.compid);
         return true; //do only one per loop
     }
-    if (_task[TASK_GIMBAL] & TASK_SENDMSG_GIMBAL_MANAGER_STATUS) {
-        RESETTASK(TASK_GIMBAL, TASK_SENDMSG_GIMBAL_MANAGER_STATUS);
-        if (!_iam_gimbalmanager) return false;
-        _t_gimbalmanager_flags =
-        		//GIMBAL_MANAGER_FLAGS_NEUTRAL		Based on GIMBAL_DEVICE_FLAGS_NEUTRAL
-        		GIMBAL_MANAGER_FLAGS_ROLL_LOCK |
-        		GIMBAL_MANAGER_FLAGS_PITCH_LOCK;
-        		//GIMBAL_MANAGER_FLAGS_OVERRIDE;
-        generateGimbalManagerStatus(gimbal.compid, _t_gimbalmanager_flags);
+    if (_task[TASK_GIMBAL] & TASK_SENDMSG_GIMBAL_DEVICE_SET_ATTITUDE) { // we shouldn't use this one!
+        RESETTASK(TASK_GIMBAL, TASK_SENDMSG_GIMBAL_DEVICE_SET_ATTITUDE);
+        generateGimbalDeviceSetAttitude(_sysid, gimbal.compid,
+        		_t_gimbaldevice_pitch_deg, _t_gimbaldevice_yaw_deg, _t_gimbaldevice_flags);
         return true; //do only one per loop
     }
 
@@ -304,7 +540,7 @@ bool MavlinkTelem::doTaskGimbalAndGimbalManager(void)
         RESETTASK(TASK_GIMBAL, TASK_SENDMSG_GIMBAL_MANAGER_SET_ATTITUDE);
         generateGimbalManagerSetAttitude(_sysid, gimbalmanager.compid,
         		gimbal.compid,
-        		_t_gimbalmanager_pitch_deg, _t_gimbalmanager_yaw_deg, _t_gimbalmanager_flags);
+        		_t_gimbalmanager_setatt_pitch_deg, _t_gimbalmanager_setatt_yaw_deg, _t_gimbalmanager_setatt_flags);
         return true; //do only one per loop
     }
     if (_task[TASK_GIMBAL] & TASK_SENDCMD_DO_GIMBAL_MANAGER_ATTITUDE) {
@@ -322,6 +558,7 @@ bool MavlinkTelem::doTaskGimbalAndGimbalManager(void)
 
     return false;
 }
+
 
 
 // -- Handle incoming MAVLink messages, which are for the Gimbal --
@@ -374,11 +611,16 @@ void MavlinkTelem::handleMessageGimbal(void)
     case MAVLINK_MSG_ID_GIMBAL_DEVICE_ATTITUDE_STATUS: {
     	mavlink_gimbal_device_attitude_status_t payload;
         mavlink_msg_gimbal_device_attitude_status_decode(&_msg, &payload);
-        calc_angles_deg_from_q(&gimbalAtt.roll_deg, &gimbalAtt.pitch_deg, &gimbalAtt.yaw_deg_relative, payload.q);
+        calc_G_angles_deg_from_q(&gimbalAtt.roll_deg, &gimbalAtt.pitch_deg, &gimbalAtt.yaw_deg_relative, payload.q);
         gimbalAtt.yaw_deg_absolute = gimbalAtt.yaw_deg_relative + att.yaw_rad * FRADTODEG;
         if (gimbalAtt.yaw_deg_absolute < -180.0f) gimbalAtt.yaw_deg_absolute += 360.0f;
         gimbalAtt.flags = payload.flags;
         INCU8(gimbalAtt.updated);
+        // update gimbal manager flags, if gimbal manager has been discovered
+        if (gimbalmanager.compid) {
+        	gimbalmanagerStatus.flags &=~ 0x0000FFFF; //clear
+        	gimbalmanagerStatus.flags |= (uint16_t)payload.flags; //set
+        }
 		}break;
 
     case MAVLINK_MSG_ID_GIMBAL_DEVICE_INFORMATION: {
@@ -392,35 +634,23 @@ void MavlinkTelem::handleMessageGimbal(void)
         gimbaldeviceInfo.cap_flags = payload.cap_flags;
         INCU8(gimbaldeviceInfo.updated);
         clear_request(TASK_GIMBAL, TASK_SENDREQUEST_GIMBAL_DEVICE_INFORMATION);
-        gimbal.requests_waiting_mask &=~ GIMBALDEVICE_REQUESTWAITING_INFORMATION; //could have been requested by either
-        gimbalmanager.requests_waiting_mask &=~ GIMBALDEVICE_REQUESTWAITING_INFORMATION;
+        gimbal.requests_waiting_mask &=~ GIMBAL_REQUESTWAITING_GIMBAL_DEVICE_INFORMATION;
+        gimbalmanager.requests_waiting_mask &=~ GIMBAL_REQUESTWAITING_GIMBAL_DEVICE_INFORMATION;
+        // we do not copy to the gimbal manager capability flags, we rely on the gimbal manager to provide the correct ones
 	    }break;
 
 	}
 }
 
 
-// -- Handle incoming MAVLink messages, which are for the Gimbal Manager --
 
-void MavlinkTelem::handleMessageGimbalManager(void)
+// -- Handle incoming MAVLink messages, which are for the Gimbal Client --
+
+void MavlinkTelem::handleMessageGimbalClient(void)
 {
     gimbalmanager.is_receiving = MAVLINK_TELEM_RECEIVING_TIMEOUT; //we accept any msg from the manager to indicate it is alive
 
 	switch (_msg.msgid) {
-
-	//this might be e.g. the autopilot, but also might be a different component
-	/* we do not bother with tracing the state of the hosting component
-	case MAVLINK_MSG_ID_HEARTBEAT: {
-		mavlink_heartbeat_t payload;
-		mavlink_msg_heartbeat_decode(&_msg, &payload);
-		gimbalmanager.system_status = payload.system_status;
-		gimbalmanager.custom_mode = payload.custom_mode;
-		gimbalmanager.is_armed = (payload.base_mode & MAV_MODE_FLAG_SAFETY_ARMED) ? true : false;
-        gimbalmanager.is_standby = (payload.system_status <= MAV_STATE_STANDBY) ? true : false;
-        gimbalmanager.is_critical = (payload.system_status >= MAV_STATE_CRITICAL) ? true : false;
-        INCU8(gimbalmanager.updated);
-        gimbalmanager.is_receiving = MAVLINK_TELEM_RECEIVING_TIMEOUT;
-		}break; */
 
 	case MAVLINK_MSG_ID_GIMBAL_MANAGER_STATUS: {
 		mavlink_gimbal_manager_status_t payload;
@@ -438,7 +668,7 @@ void MavlinkTelem::handleMessageGimbalManager(void)
 		gimbalmanagerInfo.cap_flags = payload.cap_flags;
         INCU8(gimbalmanagerInfo.updated);
         clear_request(TASK_GIMBAL, TASK_SENDREQUEST_GIMBAL_MANAGER_INFORMATION);
-        gimbalmanager.requests_waiting_mask &=~ GIMBALMANAGER_REQUESTWAITING_INFORMATION;
+        gimbalmanager.requests_waiting_mask &=~ GIMBAL_REQUESTWAITING_GIMBAL_MANAGER_INFORMATION;
 		}break;
 
 	}
@@ -448,23 +678,22 @@ void MavlinkTelem::handleMessageGimbalManager(void)
 
 // -- Startup Requests --
 
-void MavlinkTelem::setGimbalDeviceStartupRequests(void)
+void MavlinkTelem::setGimbalStartupRequests(void)
 {
 	set_request(TASK_GIMBAL, TASK_SENDREQUEST_GIMBAL_DEVICE_INFORMATION, 10, 200-12);
 }
 
 
-void MavlinkTelem::setGimbalManagerStartupRequests(void)
+void MavlinkTelem::setGimbalClientStartupRequests(void)
 {
 	set_request(TASK_GIMBAL, TASK_SENDREQUEST_GIMBAL_DEVICE_INFORMATION, 10, 200-12);
 	set_request(TASK_GIMBAL, TASK_SENDREQUEST_GIMBAL_MANAGER_INFORMATION, 10, 200-18);
 }
 
 
-
 // -- Resets --
 
-void MavlinkTelem::_resetGimbalAndGimbalManager(void)
+void MavlinkTelem::_resetGimbalAndGimbalClient(void)
 {
     _task[TASK_GIMBAL] = 0;
 
@@ -472,7 +701,7 @@ void MavlinkTelem::_resetGimbalAndGimbalManager(void)
 	gimbal.is_receiving = 0;
 
     gimbal.requests_triggered = 0;
-    gimbal.requests_waiting_mask = GIMBALDEVICE_REQUESTWAITING_ALL;
+    gimbal.requests_waiting_mask = GIMBAL_REQUESTWAITING_ALL;
     gimbal.is_initialized = false;
 
 	gimbal.system_status = MAV_STATE_UNINIT;
@@ -490,19 +719,19 @@ void MavlinkTelem::_resetGimbalAndGimbalManager(void)
     gimbalAtt.flags = -1;
     gimbalAtt.updated = 0;
 
-    _resetGimbalManager();
+    _resetGimbalClient();
 }
 
 
-void MavlinkTelem::_resetGimbalManager(void)
+void MavlinkTelem::_resetGimbalClient(void)
 {
-    //_task[TASK_GIMBAL] = 0; // only reset gimbal manager tasks, but not very important
+    //_task[TASK_GIMBAL] = 0; // only reset gimbal client tasks, but not very important
 
 	gimbalmanager.compid = 0;
 	gimbalmanager.is_receiving = 0;
 
     gimbalmanager.requests_triggered = 0;
-    gimbalmanager.requests_waiting_mask = GIMBALMANAGER_REQUESTWAITING_ALL; //this prevents it ever becomes initialized = true
+    gimbalmanager.requests_waiting_mask = GIMBALCLIENT_REQUESTWAITING_ALL; //this prevents it ever becomes initialized = true
     gimbalmanager.is_initialized = false;
 
 	gimbalmanager.updated = 0;
@@ -515,6 +744,9 @@ void MavlinkTelem::_resetGimbalManager(void)
 
     gimbalmanagerInfo.cap_flags = 0;
 	gimbalmanagerInfo.updated = 0;
+
+	gimbalmanagerStatus.flags = 0;
+	gimbalmanagerStatus.updated = 0;
 }
 
 

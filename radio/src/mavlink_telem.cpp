@@ -272,22 +272,17 @@ void MavlinkTelem::handleMessage(void)
     	     (	(payload.type == MAV_TYPE_GIMBAL) ||
     	    	((_msg.compid == MAV_COMP_ID_GIMBAL) ||
     	    	((_msg.compid >= MAV_COMP_ID_GIMBAL2) && (_msg.compid <= MAV_COMP_ID_GIMBAL6)))  )   ) {
-            _resetGimbalAndGimbalManager();
+            _resetGimbalAndGimbalClient();
     		gimbal.compid = _msg.compid;
-    		if (_iam_gimbalmanager) {
-        		gimbal.requests_triggered = 1; //we schedule them
-    		} else {
-    			gimbal.is_initialized = true; //no startup requests, so true
-    		}
+    		gimbal.is_initialized = true; //no startup requests, so true
     	}
     }
 
-    if (!_iam_gimbalmanager &&
-       (gimbalmanager.compid == 0) && (gimbal.compid > 0) && (_msg.msgid == MAVLINK_MSG_ID_GIMBAL_MANAGER_STATUS)) {
+    if ((gimbalmanager.compid == 0) && (gimbal.compid > 0) && (_msg.msgid == MAVLINK_MSG_ID_GIMBAL_MANAGER_STATUS)) {
 		mavlink_gimbal_manager_status_t payload;
 		mavlink_msg_gimbal_manager_status_decode(&_msg, &payload);
 		if (payload.gimbal_device_id == gimbal.compid) { //this is the gimbal's gimbal manager
-            _resetGimbalManager();
+            _resetGimbalClient();
     		gimbalmanager.compid = _msg.compid;
   			gimbalmanager.requests_triggered = 1; //we schedule them
     	}
@@ -338,7 +333,7 @@ void MavlinkTelem::handleMessage(void)
     	handleMessageGimbal();
     }
     if (gimbalmanager.compid && (_msg.compid == gimbalmanager.compid)) {
-    	handleMessageGimbalManager();
+    	handleMessageGimbalClient();
     }
 }
 
@@ -359,10 +354,6 @@ void MavlinkTelem::doTask(void)
 		_msg_rx_persec_cnt = 0;
 		bytes_rx_persec = _bytes_rx_persec_cnt;
 		_bytes_rx_persec_cnt = 0;
-
-		if (_iam_gimbalmanager) {
-			SETTASK(TASK_GIMBAL, TASK_SENDMSG_GIMBAL_MANAGER_STATUS);
-		}
 
 		tick_1Hz = true;
 	}
@@ -391,19 +382,18 @@ void MavlinkTelem::doTask(void)
     }
 
 	// we wait until at least one heartbeat was send out, and autopilot requests have been done
-    // which one has been triggered depends on _iam_gimbalmanager
     if (gimbal.compid && gimbal.requests_triggered && !autopilot.requests_triggered) {
 		if (tick_1Hz) gimbal.requests_triggered++;
 		if (gimbal.requests_triggered > 1) { // wait for the next heartbeat
 			gimbal.requests_triggered = 0;
-			setGimbalDeviceStartupRequests();
+			setGimbalStartupRequests();
 		}
     }
     if (gimbalmanager.compid && gimbalmanager.requests_triggered && !autopilot.requests_triggered) {
 		if (tick_1Hz) gimbalmanager.requests_triggered++;
 		if (gimbalmanager.requests_triggered > 1) { // wait for the next heartbeat
 			gimbalmanager.requests_triggered = 0;
-			setGimbalManagerStartupRequests();
+			setGimbalClientStartupRequests();
 		}
     }
 
@@ -455,7 +445,7 @@ void MavlinkTelem::doTask(void)
 
 		//other TASKS
 		if (doTaskAutopilot()) return;
-        if (doTaskGimbalAndGimbalManager()) return;
+        if (doTaskGimbalAndGimbalClient()) return;
         if (doTaskCamera()) return;
         if (doTaskAutopilotLowPriority()) return;
         if (doTaskCameraLowPriority()) return;
@@ -474,7 +464,6 @@ void MavlinkTelem::wakeup()
         mavlinkTelemDeInit();
         _interface_enabled = g_model.mavlinkEnabled;
         _interface_config = g_model.mavlinkConfig;
-        _iam_gimbalmanager = g_model.mavlinkIamGimbalManager;
         if (_interface_enabled) {
             switch (_interface_config) {
             case CONFIG_UART_A_115200: mavlinkTelemInit('A', 57600); break;
@@ -484,10 +473,6 @@ void MavlinkTelem::wakeup()
             default: mavlinkTelemDeInit(); // should never happen
             }
         }
-        _reset();
-    }
-    if (_iam_gimbalmanager != g_model.mavlinkIamGimbalManager) { // a change occurred
-        _iam_gimbalmanager = g_model.mavlinkIamGimbalManager;
         _reset();
     }
 
@@ -531,11 +516,11 @@ void MavlinkTelem::wakeup()
 	}
 	if (gimbal.is_receiving) {
 		gimbal.is_receiving--;
-		if (!gimbal.is_receiving) _resetGimbalAndGimbalManager();
+		if (!gimbal.is_receiving) _resetGimbalAndGimbalClient();
 	}
 	if (gimbalmanager.is_receiving) {
 		gimbalmanager.is_receiving--;
-		if (!gimbalmanager.is_receiving) _resetGimbalManager();
+		if (!gimbalmanager.is_receiving) _resetGimbalClient();
 	}
 	if (camera.is_receiving) {
 		camera.is_receiving--;
@@ -590,13 +575,9 @@ void MavlinkTelem::_reset(void)
     _taskFifo_tlast = 0;
     for (uint16_t i = 0; i < REQUESTLIST_MAX; i++) _requestList[i].task = 0;
 
-//    _iam_gimbalmanager = true;
-//    _iam_gimbalmanager = false;
-    _iam_gimbalmanager = g_model.mavlinkIamGimbalManager;
-
     _resetRadio();
 	_resetAutopilot();
-	_resetGimbalAndGimbalManager();
+	_resetGimbalAndGimbalClient();
 	_resetCamera();
 
 	// MAVLINK

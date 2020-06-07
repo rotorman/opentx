@@ -104,6 +104,8 @@ static int luaMavsdkGimbalGetAttYawDeg(lua_State *L)
 	return 1;
 }
 
+// gimbal protocol v0
+
 static int luaMavsdkGimbalSetNeutralMode(lua_State *L)
 {
 	mavlinkTelem.setGimbalTargetingMode(MAV_MOUNT_MODE_NEUTRAL);
@@ -142,50 +144,54 @@ static int luaMavsdkGimbalSetPitchYawDeg(lua_State *L)
 	return 0;
 }
 
-// -- GIMBAL DEVICE --
+// -- GIMBAL CLIENT -- gimbal protocol v1
 
-static int luaMavsdkIsGimbalManager(lua_State *L)
+static int luaMavsdkGimbalClientIsReceiving(lua_State *L)
 {
-    lua_pushboolean(L, mavlinkTelem._iam_gimbalmanager);
-	return 1;
+    bool flag = (mavlinkTelem.gimbalmanager.is_receiving > 0);
+    lua_pushboolean(L, flag);
+    return 1;
 }
 
-static int luaMavsdkGimbalDeviceGetInfo(lua_State *L)
+static int luaMavsdkGimbalClientIsInitialized(lua_State *L)
+{
+    bool flag = (mavlinkTelem.gimbalmanager.is_receiving > 0) && mavlinkTelem.gimbalmanager.is_initialized;
+    lua_pushboolean(L, flag);
+    return 1;
+}
+
+static int luaMavsdkGimbalClientGetInfo(lua_State *L)
 {
 	lua_newtable(L);
-	lua_pushtablestring(L, "vendor_name", mavlinkTelem.gimbaldeviceInfo.vendor_name);
-	lua_pushtablestring(L, "model_name", mavlinkTelem.gimbaldeviceInfo.model_name);
-	char s[32], ss[20]; s[0] = '\0';
-	if (mavlinkTelem.gimbaldeviceInfo.firmware_version) {
-		u8toBCDstr((mavlinkTelem.gimbaldeviceInfo.firmware_version >> 0) & 0xFF, ss); strcat(s, ss); strcat(s, ".");
-		u8toBCDstr((mavlinkTelem.gimbaldeviceInfo.firmware_version >> 8) & 0xFF, ss); strcat(s, ss); strcat(s, ".");
-		u8toBCDstr((mavlinkTelem.gimbaldeviceInfo.firmware_version >> 16) & 0xFF, ss); strcat(s, ss); strcat(s, ".");
-		u8toBCDstr((mavlinkTelem.gimbaldeviceInfo.firmware_version >> 24) & 0xFF, ss); strcat(s, ss);
-	}
-	lua_pushtablestring(L, "firmware_version", s);
-	lua_pushtableinteger(L, "capability_flags", mavlinkTelem.gimbaldeviceInfo.cap_flags);
+	lua_pushtableinteger(L, "gimbal_manager_id", mavlinkTelem.gimbalmanager.compid);
+	lua_pushtableinteger(L, "gimbal_device_id", mavlinkTelem.gimbal.compid);
+	lua_pushtableinteger(L, "capability_flags", mavlinkTelem.gimbalmanagerInfo.cap_flags);
 	return 1;
 }
 
-static int luaMavsdkGimbalDeviceGetStatus(lua_State *L)
+static int luaMavsdkGimbalClientGetStatus(lua_State *L)
 {
 	lua_newtable(L);
-	lua_pushtableinteger(L, "flags", mavlinkTelem.gimbalAtt.flags);
+	lua_pushtableinteger(L, "flags", mavlinkTelem.gimbalmanagerStatus.flags);
 	return 1;
 }
 
-static int luaMavsdkGimbalDeviceSetNeutral(lua_State *L)
+static int luaMavsdkGimbalClientSetMode(lua_State *L)
 {
-	mavlinkTelem.setGimbalDeviceNeutral();
+    int32_t mode = luaL_checkinteger(L, 1);
+    mavlinkTelem.setGimbalClientMode(mode);
+    return 0;
+}
+
+static int luaMavsdkGimbalClientSetPitchYawDeg(lua_State *L)
+{
+	float pitch = luaL_checknumber(L, 1);
+	float yaw = luaL_checknumber(L, 2);
+	mavlinkTelem.setGimbalManagerPitchYawDeg(pitch, yaw);
 	return 0;
 }
 
-static int luaMavsdkGimbalDeviceSetNormal(lua_State *L)
-{
-	mavlinkTelem.setGimbalDeviceNormal();
-	return 0;
-}
-
+// not for use, just for testing momentarily here
 static int luaMavsdkGimbalDeviceSetPitchYawDeg(lua_State *L)
 {
 	float pitch = luaL_checknumber(L, 1);
@@ -194,58 +200,8 @@ static int luaMavsdkGimbalDeviceSetPitchYawDeg(lua_State *L)
 	return 0;
 }
 
-// -- GIMBAL MANAGER --
-
-static int luaMavsdkGimbalHasManager(lua_State *L)
-{
-    bool flag = (mavlinkTelem.gimbalmanager.compid > 0);
-    lua_pushboolean(L, flag);
-	return 1;
-}
-
-static int luaMavsdkGimbalManagerIsReceiving(lua_State *L)
-{
-    bool flag = (mavlinkTelem.gimbalmanager.is_receiving > 0);
-    lua_pushboolean(L, flag);
-    return 1;
-}
-
-static int luaMavsdkGimbalManagerIsInitialized(lua_State *L)
-{
-    bool flag = (mavlinkTelem.gimbalmanager.is_receiving > 0) && mavlinkTelem.gimbalmanager.is_initialized;
-    lua_pushboolean(L, flag);
-    return 1;
-}
-
-static int luaMavsdkGimbalManagerGetInfo(lua_State *L)
-{
-	lua_newtable(L);
-	lua_pushtableinteger(L, "capability_flags", mavlinkTelem.gimbalmanagerInfo.cap_flags);
-	return 1;
-}
-
-static int luaMavsdkGimbalManagerGetStatus(lua_State *L)
-{
-	lua_newtable(L);
-	lua_pushtableinteger(L, "flags", mavlinkTelem.gimbalmanagerStatus.flags);
-	return 1;
-}
-
-static int luaMavsdkGimbalManagerSetNeutral(lua_State *L)
-{
-	//
-	return 0;
-}
-
-static int luaMavsdkGimbalManagerSetPitchYawDeg(lua_State *L)
-{
-	float pitch = luaL_checknumber(L, 1);
-	float yaw = luaL_checknumber(L, 2);
-	mavlinkTelem.setGimbalManagerPitchYawDegOverride(pitch, yaw);
-	return 0;
-}
-
-static int luaMavsdkGimbalManagerSetPitchYawDegCmd(lua_State *L)
+// not for use, just for testing momentarily here
+static int luaMavsdkGimbalClientCmdSetPitchYawDeg(lua_State *L)
 {
 	float pitch = luaL_checknumber(L, 1);
 	float yaw = luaL_checknumber(L, 2);
@@ -1113,29 +1069,23 @@ const luaL_Reg mavsdkLib[] = {
   { "gimbalGetAttRollDeg", luaMavsdkGimbalGetAttRollDeg },
   { "gimbalGetAttPitchDeg", luaMavsdkGimbalGetAttPitchDeg },
   { "gimbalGetAttYawDeg", luaMavsdkGimbalGetAttYawDeg },
-  //old
+  // gimbal protocol v0
   { "gimbalSetNeutralMode", luaMavsdkGimbalSetNeutralMode },
   { "gimbalSetMavlinkTargetingMode", luaMavsdkGimbalSetMavlinkTargetingMode },
   { "gimbalSetRcTargetingMode", luaMavsdkGimbalSetRcTargetingMode },
   { "gimbalSetGpsPointMode", luaMavsdkGimbalSetGpsPointMode },
   { "gimbalSetSysIdTargetingMode", luaMavsdkGimbalSetSysIdTargetingMode },
   { "gimbalSetPitchYawDeg", luaMavsdkGimbalSetPitchYawDeg },
-  //new: device
-  { "isGimbalManager", luaMavsdkIsGimbalManager },
-  { "gimbaldevGetInfo",luaMavsdkGimbalDeviceGetInfo },
-  { "gimbaldevGetStatus", luaMavsdkGimbalDeviceGetStatus },
-  { "gimbaldevSetNeutral", luaMavsdkGimbalDeviceSetNeutral },
-  { "gimbaldevSetNormal", luaMavsdkGimbalDeviceSetNormal },
-  { "gimbaldevSetPitchYawDeg", luaMavsdkGimbalDeviceSetPitchYawDeg },
-  //new: manager
-  { "gimbalHasManager", luaMavsdkGimbalHasManager },
-  { "gimbalmanIsReceiving", luaMavsdkGimbalManagerIsReceiving },
-  { "gimbalmanIsInitialized", luaMavsdkGimbalManagerIsInitialized },
-  { "gimbalmanGetInfo", luaMavsdkGimbalManagerGetInfo },
-  { "gimbalmanGetStatus", luaMavsdkGimbalManagerGetStatus },
-  { "gimbalmanSetNeutral", luaMavsdkGimbalManagerSetNeutral },
-  { "gimbalmanSetPitchYawDeg", luaMavsdkGimbalManagerSetPitchYawDeg },
-  { "gimbalmanSetPitchYawDegCmd", luaMavsdkGimbalManagerSetPitchYawDegCmd },
+  // gimbal protocol v1
+  { "gimbalClientIsReceiving", luaMavsdkGimbalClientIsReceiving },
+  { "gimbalClientIsInitialized", luaMavsdkGimbalClientIsInitialized },
+  { "gimbalClientGetInfo", luaMavsdkGimbalClientGetInfo },
+  { "gimbalClientGetStatus", luaMavsdkGimbalClientGetStatus },
+  { "gimbalClientSetMode", luaMavsdkGimbalClientSetMode },
+  { "gimbalClientSetPitchYawDeg", luaMavsdkGimbalClientSetPitchYawDeg },
+  //for testing only
+  { "gimbalDeviceSetPitchYawDeg", luaMavsdkGimbalDeviceSetPitchYawDeg },
+  { "gimbalClientCmdSetPitchYawDeg", luaMavsdkGimbalClientCmdSetPitchYawDeg },
 
   { "cameraIsReceiving", luaMavsdkCameraIsReceiving },
   { "cameraIsInitialized", luaMavsdkCameraIsInitialized },
@@ -1248,6 +1198,23 @@ const luaR_value_entry mavsdkConstants[] = {
   { "VEHICLECLASS_ROVER", MAVSDK_VEHICLECLASS_ROVER },
   { "VEHICLECLASS_BOAT", MAVSDK_VEHICLECLASS_BOAT },
   { "VEHICLECLASS_SUB", MAVSDK_VEHICLECLASS_SUB },
+
+  { "GMFLAGS_GCS_NUDGE", MavlinkTelem::GIMBAL_MANAGER_FLAGS_GCS_NUDGE },
+  { "GMFLAGS_GCS_OVERRIDE", MavlinkTelem::GIMBAL_MANAGER_FLAGS_GCS_OVERRIDE },
+  { "GMFLAGS_MISSION_NOTOVERRIDE", MavlinkTelem::GIMBAL_MANAGER_FLAGS_MISSION_NOTOVERRIDE },
+  { "GMFLAGS_MISSION_NUDGE", MavlinkTelem::GIMBAL_MANAGER_FLAGS_MISSION_NUDGE },
+  { "GMFLAGS_RC_NUDGE", MavlinkTelem::GIMBAL_MANAGER_FLAGS_RC_NUDGE },
+  { "GMFLAGS_RC_OVERRIDE", MavlinkTelem::GIMBAL_MANAGER_FLAGS_RC_OVERRIDE },
+  { "GMFLAGS_COMPANION_NUDGE", MavlinkTelem::GIMBAL_MANAGER_FLAGS_COMPANION_NUDGE },
+  { "GMFLAGS_COMPANION_OVERRIDE", MavlinkTelem::GIMBAL_MANAGER_FLAGS_COMPANION_OVERRIDE },
+
+  { "GIMBALCLIENTMODE_NONE", MavlinkTelem::GIMBALCLIENT_MODE_NONE },
+  { "GIMBALCLIENTMODE_RETRACT", MavlinkTelem::GIMBALCLIENT_MODE_RETRACT },
+  { "GIMBALCLIENTMODE_NEUTRAL", MavlinkTelem::GIMBALCLIENT_MODE_NEUTRAL },
+  { "GIMBALCLIENTMODE_OVERRIDE", MavlinkTelem::GIMBALCLIENT_MODE_OVERRIDE },
+  { "GIMBALCLIENTMODE_NUDGE", MavlinkTelem::GIMBALCLIENT_MODE_NUDGE },
+  { "GIMBALCLIENTMODE_RC_NUDGE", MavlinkTelem::GIMBALCLIENT_MODE_RC_NUDGE },
+  { "GIMBALCLIENTMODE_RC_OVERRIDE", MavlinkTelem::GIMBALCLIENT_MODE_RC_OVERRIDE },
 #endif
   { nullptr, 0 }  /* sentinel */
 };
