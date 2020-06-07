@@ -129,13 +129,12 @@ enum MenuModelSetupItems {
   ITEM_MODEL_SETUP_MAVLINK_CONFIGURATION,
   ITEM_MODEL_SETUP_MAVLINK_MIMICSENSORS,
   ITEM_MODEL_SETUP_MAVLINK_RCOVERRIDE,
-  ITEM_MODEL_SETUP_MAVLINK_GIMBALMANAGER,
 //OWEND
   ITEM_MODEL_SETUP_MAX
 };
 
 //OW
-#define MAVLINK_ROWS    LABEL(Mavlink), 0, 0, 0, 0, 0
+#define MAVLINK_ROWS    LABEL(Mavlink), 0, 0, 0, 0
 //OWEND
 
 #define MODEL_SETUP_2ND_COLUMN         200
@@ -1341,11 +1340,6 @@ bool menuModelSetup(event_t event)
       case ITEM_MODEL_SETUP_MAVLINK_RCOVERRIDE: {
         lcdDrawText(MENUS_MARGIN_LEFT + INDENT_WIDTH, y, "RC Override");
         g_model.mavlinkRcOverride = editCheckBox(g_model.mavlinkRcOverride, MODEL_SETUP_2ND_COLUMN, y, attr, event);
-      } break;
-
-      case ITEM_MODEL_SETUP_MAVLINK_GIMBALMANAGER: {
-        lcdDrawText(MENUS_MARGIN_LEFT + INDENT_WIDTH, y, "Gimbal Manager");
-        g_model.mavlinkIamGimbalManager = editCheckBox(g_model.mavlinkIamGimbalManager, MODEL_SETUP_2ND_COLUMN, y, attr, event);
       } break;
 //OWEND
 

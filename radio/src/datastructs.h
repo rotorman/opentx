@@ -627,7 +627,6 @@ PACK(struct ModelData {
   uint16_t mavlinkConfig:3; // allow space for 8 configs
   uint16_t mavlinkMimicSensors:3; // currently just off/on, but allow e.g. FrSky, CF, FrSky passthrough.
   uint16_t mavlinkRcOverride:1;
-  uint16_t mavlinkIamGimbalManager:1;
   uint16_t mavlinkLogging:1; // not currently used
   // needs to adapt CHKSIZE below //if not all are use compiled optiomizes to lowest size, which may raise error
 #endif
