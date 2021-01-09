@@ -28,10 +28,12 @@
 #include "opentx_helpers.h"
 
 //OW
-#define OWVERSIONSTR  "olliw-v19rc01"
+#define OWVERSIONSTR  "olliw-v19"
 //OWEND
 
 /*
+v19 2021-01-09:
+v2.3.11
 v18 2020-12-07:
 mavlink storm32.xml, qshots
 v17 2020-10-15:
