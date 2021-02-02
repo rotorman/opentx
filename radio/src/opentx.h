@@ -28,8 +28,8 @@
 #include "opentx_helpers.h"
 
 //OW
-#define OWVERSIONONLYSTR    "v21rc10"
-#define OWVERSIONSTR  "olliw-v21rc10"
+#define OWVERSIONONLYSTR    "v21"
+#define OWVERSIONSTR  "olliw-v21"
 //OWEND
 
 /*
