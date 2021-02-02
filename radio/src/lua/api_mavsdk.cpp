@@ -923,7 +923,7 @@ static int luaMavsdkGetBat1Remaining(lua_State *L)
 
 static int luaMavsdkGetBat1TimeRemaining(lua_State *L)
 {
-  if (mavlinkTelem.bat1.time_remaining != -1) {
+  if (mavlinkTelem.bat1.time_remaining != 0) {
     lua_pushinteger(L, mavlinkTelem.bat1.time_remaining);
   }
   else {
@@ -1029,7 +1029,7 @@ static int luaMavsdkGetBat2Remaining(lua_State *L)
 
 static int luaMavsdkGetBat2TimeRemaining(lua_State *L)
 {
-  if (mavlinkTelem.bat2.time_remaining != -1) {
+  if (mavlinkTelem.bat2.time_remaining != 0) {
     lua_pushinteger(L, mavlinkTelem.bat2.time_remaining);
   }
   else {
