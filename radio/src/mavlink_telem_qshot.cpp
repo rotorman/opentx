@@ -41,7 +41,7 @@ void MavlinkTelem::generateQShotStatus(uint8_t mode, uint8_t shot_state)
   mavlink_msg_qshot_status_pack(
       _my_sysid, _my_compid, &_msg_out,
       mode, shot_state);
-  _txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+  _msg_out_available = true;
 }
 
 void MavlinkTelem::generateButtonChange(uint8_t button_state)
@@ -51,7 +51,7 @@ void MavlinkTelem::generateButtonChange(uint8_t button_state)
       get_tmr10ms()*10, //uint32_t time_boot_ms,
       0,
       button_state);
-  _txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+  _msg_out_available = true;
 }
 
 // -- Mavsdk Convenience Task Wrapper --

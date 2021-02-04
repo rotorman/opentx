@@ -756,8 +756,8 @@ class MavlinkTelem
 
     mavlink_status_t _status;
     mavlink_message_t _msg;
+    bool _msg_out_available = false;
     mavlink_message_t _msg_out;
-    uint16_t _txcount = 0;
     uint8_t _txbuf[512]; //only needs to hold one MAVLink message, thus 512 is by construction large enough
 
     // STUFF

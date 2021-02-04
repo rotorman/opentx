@@ -271,7 +271,7 @@ void MavlinkTelem::_generateCmdLong(
       _my_sysid, _my_compid, &_msg_out,
       tsystem, tcomponent, cmd, 0, p1, p2, p3, p4, p5, p6, p7
       );
-  _txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+  _msg_out_available = true;
 }
 
 void MavlinkTelem::generateHeartbeat(uint8_t base_mode, uint32_t custom_mode, uint8_t system_status)
@@ -281,7 +281,7 @@ void MavlinkTelem::generateHeartbeat(uint8_t base_mode, uint32_t custom_mode, ui
       _my_sysid, _my_compid, &_msg_out,
       MAV_TYPE_GCS, MAV_AUTOPILOT_INVALID, base_mode, custom_mode, system_status
       );
-  _txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+  _msg_out_available = true;
 }
 
 void MavlinkTelem::generateParamRequestList(uint8_t tsystem, uint8_t tcomponent)
@@ -291,7 +291,7 @@ void MavlinkTelem::generateParamRequestList(uint8_t tsystem, uint8_t tcomponent)
       _my_sysid, _my_compid, &_msg_out,
       tsystem, tcomponent
       );
-  _txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+  _msg_out_available = true;
 }
 
 void MavlinkTelem::generateParamRequestRead(uint8_t tsystem, uint8_t tcomponent, const char* param_name)
@@ -304,7 +304,7 @@ char param_id[16];
       _my_sysid, _my_compid, &_msg_out,
       tsystem, tcomponent, param_id, -1
       );
-  _txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+  _msg_out_available = true;
 }
 
 void MavlinkTelem::generateRequestDataStream(
@@ -315,7 +315,7 @@ void MavlinkTelem::generateRequestDataStream(
       _my_sysid, _my_compid, &_msg_out,
       tsystem, tcomponent, data_stream, rate_hz, startstop
       );
-  _txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+  _msg_out_available = true;
 }
 
 //ArduPilot: ignores param7
@@ -539,8 +539,8 @@ void MavlinkTelem::doTask(void)
   }
 
   // handle pending tasks
-  // do only one task per loop
-  if ((_txcount == 0) && TASK_IS_PENDING()) {
+  // do only one task and hence one msg_out per loop
+  if (!_msg_out_available && TASK_IS_PENDING()) {
     //TASK_ME
     if (_task[TASK_ME] & TASK_SENDMYHEARTBEAT) {
       RESETTASK(TASK_ME,TASK_SENDMYHEARTBEAT);
@@ -574,24 +574,6 @@ uint8_t mavlinkTelem2Getc(uint8_t *c){ return 0; }
 bool mavlinkTelem2PutBuf(const uint8_t *buf, const uint16_t count){ return false; }
 #endif
 
-uint32_t _mavlinkTelemAvailable(void)
-{
-  if (g_eeGeneral.auxSerialMode == UART_MODE_MAVLINK) return mavlinkTelemAvailable();
-  return mavlinkTelem2Available();
-}
-
-uint8_t _mavlinkTelemGetc(uint8_t *c)
-{
-  if (g_eeGeneral.auxSerialMode == UART_MODE_MAVLINK) return mavlinkTelemGetc(c);
-  return mavlinkTelem2Getc(c);
-}
-
-bool _mavlinkTelemPutBuf(const uint8_t *buf, const uint16_t count)
-{
-  if (g_eeGeneral.auxSerialMode == UART_MODE_MAVLINK) return mavlinkTelemPutBuf(buf, count);
-  return mavlinkTelem2PutBuf(buf, count);
-}
-
 void MavlinkTelem::wakeup()
 {
   // check configuration
@@ -611,11 +593,11 @@ void MavlinkTelem::wakeup()
   if (!_serial1_enabled && !_serial2_enabled) return;
 
   // look for incoming messages, also do statistics
-  uint32_t available = _mavlinkTelemAvailable();
+  uint32_t available = (_serial1_enabled) ? mavlinkTelemAvailable() : mavlinkTelem2Available();
   if (available > 128) available = 128; //limit how much we read at once, shouldn't ever trigger, 11.1 ms @ 115200
   for (uint32_t i = 0; i < available; i++) {
     uint8_t c;
-    _mavlinkTelemGetc(&c);
+    if (_serial1_enabled) mavlinkTelemGetc(&c); else mavlinkTelem2Getc(&c);
     _bytes_rx_persec_cnt++;
     if (mavlink_parse_char(MAVLINK_COMM_0, c, &_msg, &_status)) {
       // check for lost messages by analyzing seq
@@ -636,9 +618,11 @@ void MavlinkTelem::wakeup()
   doTask();
 
   // send out any pending messages
-  if (_txcount) {
-    if (_mavlinkTelemPutBuf(_txbuf, _txcount)) {
-      _txcount = 0;
+  if (_msg_out_available) {
+    uint16_t count = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+    bool res = (_serial1_enabled) ? mavlinkTelemPutBuf(_txbuf, count) : mavlinkTelem2PutBuf(_txbuf, count);
+    if (res) {
+      _msg_out_available = false;
     }
   }
 }

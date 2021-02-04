@@ -67,7 +67,7 @@ void MavlinkTelem::generateMissionItemInt(uint8_t tsystem, uint8_t tcomponent,
       tsystem, tcomponent,
       0, frame, cmd, current, 0, 0.0f, 0.0f, 0.0f, 0.0f, lat, lon, alt_m, MAV_MISSION_TYPE_MISSION
       );
-  _txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+  _msg_out_available = true;
 }
 
 void MavlinkTelem::generateSetPositionTargetGlobalInt(uint8_t tsystem, uint8_t tcomponent,
@@ -82,7 +82,7 @@ void MavlinkTelem::generateSetPositionTargetGlobalInt(uint8_t tsystem, uint8_t t
       frame, type_mask,
       lat, lon, alt, vx, vy, vz, 0.0f, 0.0f, 0.0f, yaw_rad, yaw_rad_rate // alt in m, v in m/s, yaw in rad
       );
-  _txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+  _msg_out_available = true;
 }
 
 // yaw must be in range 0..360
@@ -101,7 +101,7 @@ void MavlinkTelem::generateRcChannelsOverride(uint8_t sysid, uint8_t tsystem, ui
       chan_raw[8], chan_raw[9], chan_raw[10], chan_raw[11], chan_raw[12], chan_raw[13], chan_raw[14], chan_raw[15],
       chan_raw[16], chan_raw[17]
       );
-  _txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+  _msg_out_available = true;
 }
 
 void MavlinkTelem::generateMissionRequestList(uint8_t tsystem, uint8_t tcomponent, uint8_t mission_type)
@@ -112,7 +112,7 @@ void MavlinkTelem::generateMissionRequestList(uint8_t tsystem, uint8_t tcomponen
       tsystem, tcomponent,
       mission_type
       );
-  _txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+  _msg_out_available = true;
 }
 
 void MavlinkTelem::generateMissionRequestInt(uint8_t tsystem, uint8_t tcomponent, uint16_t seq, uint8_t mission_type)
@@ -123,7 +123,7 @@ void MavlinkTelem::generateMissionRequestInt(uint8_t tsystem, uint8_t tcomponent
       tsystem, tcomponent,
       seq, mission_type
       );
-  _txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+  _msg_out_available = true;
 }
 
 // -- Mavsdk Convenience Task Wrapper --

@@ -154,7 +154,7 @@ float q[4];
       flags,
       q,
       NAN, NAN, NAN);
-  _txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+  _msg_out_available = true;
 }
 
 //STorM32 specific
@@ -187,7 +187,7 @@ float q[4];
       device_flags, manager_flags,
       q,
       NAN, NAN, NAN);
-  _txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+  _msg_out_available = true;
 }
 
 //STorM32 specific
@@ -203,7 +203,7 @@ void MavlinkTelem::generateStorm32GimbalManagerControlPitchYaw(uint8_t tsystem, 
       device_flags, manager_flags,
       pitch_deg*FDEGTORAD, yaw_deg*FDEGTORAD,
       NAN, NAN);
-  _txcount = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+  _msg_out_available = true;
 }
 
 //STorM32 specific
