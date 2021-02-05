@@ -28,10 +28,12 @@
 #include "opentx_helpers.h"
 
 //OW
-#define OWVERSIONSTR  "v22rc01"
+#define OWVERSIONSTR  "v22"
 //OWEND
 
 /*
+v22 2021-02-05:
+mavlink submodule changed to main git repo, 600xx storm32
 v20 2021-01-23:
 mavlink submodule changed to main git repo, file generator updated
 uart totally revised, uses now AUX_SERIAL and AUX2_SERIAL
