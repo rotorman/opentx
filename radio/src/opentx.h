@@ -28,7 +28,7 @@
 #include "opentx_helpers.h"
 
 //OW
-#define OWVERSIONSTR  "v22rc01"
+#define OWVERSIONSTR  "v23rc01"
 //OWEND
 
 /*
