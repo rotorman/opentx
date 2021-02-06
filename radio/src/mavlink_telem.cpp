@@ -152,7 +152,6 @@ bool MavlinkTelem::telemetryVoiceEnabled(void)
   if (g_model.mavlinkRssi && !radio.rssi_voice_disabled) return true;
 
   return false;
-  //return g_model.mavlinkRssi || !g_model.mavlinkMimicSensors;
 }
 
 // -- TASK handlers --

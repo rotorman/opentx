@@ -100,8 +100,10 @@ support LEFT, RIGHT CENTER also for drawFilledRectangle, drawRectangle, or bette
 ----
 
 STR_AUX_SERIAL_MODES
+MAVLINK_AUX_SERIAL_MODES
 INTERNAL_GPS
-TELEMETRY_MAVLINK  double
+BLUETOOTH
+TELEMETRY_MAVLINK
 
 rssi
 telemetryData.rssi
