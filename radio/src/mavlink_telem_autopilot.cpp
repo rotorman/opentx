@@ -343,8 +343,7 @@ bool MavlinkTelem::doTaskAutopilotLowPriority(void)
 
   if (_task[TASK_AUTOPILOT] & TASK_SENDCMD_REQUEST_ATTITUDE) {
     RESETTASK(TASK_AUTOPILOT,TASK_SENDCMD_REQUEST_ATTITUDE);
-    //generateCmdSetMessageInterval(_sysid, autopilot.compid, MAVLINK_MSG_ID_ATTITUDE, 100000, 1); // 100 ms = 10 Hz
-    generateCmdSetMessageInterval(_sysid, autopilot.compid, MAVLINK_MSG_ID_ATTITUDE, 200000, 1); // 200 ms = 5 Hz
+    generateCmdSetMessageInterval(_sysid, autopilot.compid, MAVLINK_MSG_ID_ATTITUDE, 100000, 1); // 100 ms = 10 Hz
     return true; //do only one per loop
   }
   if (_task[TASK_AUTOPILOT] & TASK_SENDCMD_REQUEST_GLOBAL_POSITION_INT) {
