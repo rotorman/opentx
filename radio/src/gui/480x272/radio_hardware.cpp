@@ -450,7 +450,7 @@ bool menuRadioHardware(event_t event)
 #endif
 #if defined(TELEMETRY_MAVLINK) && defined(AUX2_SERIAL)
       case ITEM_RADIO_HARDWARE_MAVLINK_BAUDRATE2:
-        lcdDrawText(MENUS_MARGIN_LEFT, y, "Mavlink baudrate2");
+        lcdDrawText(MENUS_MARGIN_LEFT, y, "Mavlink baudrate 2");
         g_eeGeneral.mavlinkBaudrate2 = editChoice(HW_SETTINGS_COLUMN2, y, MAVLINK_AUX_BAUDRATES, g_eeGeneral.mavlinkBaudrate2, 0, 3, attr, event);
         if (attr && checkIncDec_Ret) {
           aux2SerialInit(g_eeGeneral.aux2SerialMode, modelTelemetryProtocol());
