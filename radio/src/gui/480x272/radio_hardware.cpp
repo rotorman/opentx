@@ -406,7 +406,11 @@ bool menuRadioHardware(event_t event)
 #endif
 //OW
 //        g_eeGeneral.auxSerialMode = editChoice(HW_SETTINGS_COLUMN2, y, STR_AUX_SERIAL_MODES, g_eeGeneral.auxSerialMode, 0, UART_MODE_MAX, attr, event, isAux1ModeAvailable);
+#if defined(TELEMETRY_MAVLINK)
         g_eeGeneral.auxSerialMode = editChoice(HW_SETTINGS_COLUMN2, y, MAVLINK_AUX_SERIAL_MODES, g_eeGeneral.auxSerialMode, 0, UART_MODE_MAX, attr, event, isAux1ModeAvailable);
+#else
+        g_eeGeneral.auxSerialMode = editChoice(HW_SETTINGS_COLUMN2, y, STR_AUX_SERIAL_MODES, g_eeGeneral.auxSerialMode, 0, UART_MODE_MAX, attr, event, isAux1ModeAvailable);
+#endif
 //OWEND
         if (attr && checkIncDec_Ret) {
           auxSerialInit(g_eeGeneral.auxSerialMode, modelTelemetryProtocol());
@@ -422,7 +426,11 @@ bool menuRadioHardware(event_t event)
 #endif
 //OW
 //        g_eeGeneral.aux2SerialMode = editChoice(HW_SETTINGS_COLUMN2, y, STR_AUX_SERIAL_MODES, g_eeGeneral.aux2SerialMode, 0, UART_MODE_MAX, attr, event, isAux2ModeAvailable);
+#if defined(TELEMETRY_MAVLINK)
         g_eeGeneral.aux2SerialMode = editChoice(HW_SETTINGS_COLUMN2, y, MAVLINK_AUX_SERIAL_MODES, g_eeGeneral.aux2SerialMode, 0, UART_MODE_MAX, attr, event, isAux2ModeAvailable);
+#else
+        g_eeGeneral.aux2SerialMode = editChoice(HW_SETTINGS_COLUMN2, y, STR_AUX_SERIAL_MODES, g_eeGeneral.aux2SerialMode, 0, UART_MODE_MAX, attr, event, isAux2ModeAvailable);
+#endif
 //OWEND
         if (attr && checkIncDec_Ret) {
           aux2SerialInit(g_eeGeneral.aux2SerialMode, modelTelemetryProtocol());
