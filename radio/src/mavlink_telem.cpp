@@ -58,7 +58,7 @@ uint16_t mavlinkTaskLoad(void)
 void mavlinkTask(void * pdata)
 {
   while (true) {
-    int32_t start = (int32_t)RTOS_GET_TIME();
+//    int32_t start = (int32_t)RTOS_GET_TIME();
 
     uint16_t start_last = mavlinkTaskStat.start;
     mavlinkTaskStat.start = getTmr2MHz();
@@ -69,11 +69,12 @@ void mavlinkTask(void * pdata)
     if (mavlinkTaskStat.last > mavlinkTaskStat.max) mavlinkTaskStat.max = mavlinkTaskStat.last;
     mavlinkTaskStat.load = mavlinkTaskStat.last / (mavlinkTaskStat.start - start_last);
 
-    // if run-time was longer than a tick, then reduce wait, but leave 2 ticks to give lower-prio threads a chance
+/*    // if run-time was longer than a tick, then reduce wait, but leave 2 ticks to give lower-prio threads a chance
     int32_t runtime = (int32_t)RTOS_GET_TIME() - start;
     int32_t waittime = (int32_t)MAVLINK_TASK_PERIOD_TICKS - runtime;
     if (waittime < 2) waittime = 2;
-    RTOS_WAIT_TICKS(waittime);
+    RTOS_WAIT_TICKS(waittime); */
+    RTOS_WAIT_TICKS(2);
   }
 }
 
