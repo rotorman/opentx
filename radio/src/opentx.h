@@ -28,10 +28,11 @@
 #include "opentx_helpers.h"
 
 //OW
-#define OWVERSIONSTR  "v23rc01"
+#define OWVERSIONSTR  "v23"
 //OWEND
 
 /*
+v23 2021-02-06:
 v20 2021-01-23:
 mavlink submodule changed to main git repo, file generator updated
 uart totally revised, uses now AUX_SERIAL and AUX2_SERIAL
