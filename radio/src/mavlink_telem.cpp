@@ -560,38 +560,115 @@ void MavlinkTelem::wakeup()
   // skip out if not enabled
   if (!_serial1_enabled && !_serial2_enabled) return;
 
-  // look for incoming messages, also do statistics
-  uint32_t available = (_serial1_enabled) ? mavlinkTelemAvailable() : mavlinkTelem2Available();
-  if (available > 128) available = 128; //limit how much we read at once, shouldn't ever trigger, 11.1 ms @ 115200
-  for (uint32_t i = 0; i < available; i++) {
-    uint8_t c;
-    if (_serial1_enabled) mavlinkTelemGetc(&c); else mavlinkTelem2Getc(&c);
-    _bytes_rx_persec_cnt++;
-    if (mavlink_parse_char(MAVLINK_COMM_0, c, &_msg, &_status)) {
-      // check for lost messages by analyzing seq
-      if (_seq_rx_last >= 0) {
-        uint16_t seq = _msg.seq;
-        if (seq < _seq_rx_last) seq += 256;
-        _seq_rx_last++;
-        if (seq > _seq_rx_last) msg_rx_lost += (seq - _seq_rx_last);
+  if (_serial1_enabled && _serial2_enabled) {
+    //-- two serials are enabled => mavlink router --
+
+    // look for incoming messages on both channels
+    // only do one at a time
+    _selected_serial = (_selected_serial) ? 0 : 1;
+
+    // read serial1
+    uint32_t available1 = mavlinkTelemAvailable();
+    if (available1 > 128) available1 = 128; // 128 = 22 ms @ 57600bps
+    if (_selected_serial != 0) available1 = 0; //skip
+    for (uint32_t i = 0; i < available1; i++) {
+      uint8_t c;
+      mavlinkTelemGetc(&c);
+      if (mavlink_parse_char(MAVLINK_COMM_1, c, &_msg, &_status)) {
+        mavlinkRouter.handleMessage(1, &_msg);
+        if (mavlinkRouter.sendToLink(1)) {
+          // WE DO NOT REFLECT, SO THIS MUST NEVER HAPPEN !!
+        }
+        if (mavlinkRouter.sendToLink(2)) {
+          uint16_t count = mavlink_msg_to_send_buffer(_txbuf, &_msg);
+          mavlinkTelem2PutBuf(_txbuf, count);
+        }
+        if (mavlinkRouter.sendToLink(0)) {
+          handleMessage(); //checks _msg, and puts any result into a task queue
+          //break; //only do one per tick
+        }
       }
-      _seq_rx_last = _msg.seq;
-      handleMessage();
-      msg_rx_count++;
-      _msg_rx_persec_cnt++;
     }
-  }
 
-  // do tasks
-  doTask();
-
-  // send out any pending messages
-  if (_msg_out_available) {
-    uint16_t count = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
-    bool res = (_serial1_enabled) ? mavlinkTelemPutBuf(_txbuf, count) : mavlinkTelem2PutBuf(_txbuf, count);
-    if (res) {
-      _msg_out_available = false;
+    // read serial2
+    uint32_t available2 = mavlinkTelem2Available();
+    if (available2 > 128) available2 = 128;
+    if (_selected_serial != 1) available2 = 0; //skip
+    for (uint32_t i = 0; i < available2; i++) {
+      uint8_t c;
+      mavlinkTelem2Getc(&c);
+      if (mavlink_parse_char(MAVLINK_COMM_2, c, &_msg, &_status)) {
+        mavlinkRouter.handleMessage(2, &_msg);
+        if (mavlinkRouter.sendToLink(1)) {
+          uint16_t count = mavlink_msg_to_send_buffer(_txbuf, &_msg);
+          mavlinkTelemPutBuf(_txbuf, count);
+        }
+        if (mavlinkRouter.sendToLink(2)) {
+          // WE DO NOT REFLECT, SO THIS MUST NEVER HAPPEN !!
+        }
+        if (mavlinkRouter.sendToLink(0)) {
+          handleMessage(); //checks _msg, and puts any result into a task queue
+          //break; //only do one per tick
+        }
+      }
     }
+
+    // do tasks
+    doTask(); //checks task queue _msg, and puts one result into _msg_out
+
+    // send out any pending messages
+    if (_msg_out_available) {
+      mavlinkRouter.handleMessage(0, &_msg_out);
+      if (mavlinkRouter.sendToLink(1) || mavlinkRouter.sendToLink(2)) {
+        uint16_t count = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+        if (mavlinkTelemHasSpace(count) && mavlinkTelem2HasSpace(count)) { //only send if it can be send on both serials
+          if (mavlinkRouter.sendToLink(1)) mavlinkTelemPutBuf(_txbuf, count);
+          if (mavlinkRouter.sendToLink(2)) mavlinkTelem2PutBuf(_txbuf, count);
+          _msg_out_available = false;
+        }
+      } else {
+        _msg_out_available = false; //message is targeted at unknown component
+      }
+    }
+
+  } //----------
+  else {
+    //-- only one serial is enabled --
+
+    // look for incoming messages, also do statistics
+    uint32_t available = (_serial1_enabled) ? mavlinkTelemAvailable() : mavlinkTelem2Available();
+    if (available > 128) available = 128; //limit how much we read at once, shouldn't ever trigger, 11.1 ms @ 115200
+    for (uint32_t i = 0; i < available; i++) {
+      uint8_t c;
+      if (_serial1_enabled) mavlinkTelemGetc(&c); else mavlinkTelem2Getc(&c);
+     _bytes_rx_persec_cnt++;
+      if (mavlink_parse_char(MAVLINK_COMM_0, c, &_msg, &_status)) {
+        // check for lost messages by analyzing seq
+        if (_seq_rx_last >= 0) {
+          uint16_t seq = _msg.seq;
+          if (seq < _seq_rx_last) seq += 256;
+          _seq_rx_last++;
+          if (seq > _seq_rx_last) msg_rx_lost += (seq - _seq_rx_last);
+        }
+        _seq_rx_last = _msg.seq;
+        handleMessage();
+        msg_rx_count++;
+        _msg_rx_persec_cnt++;
+      }
+    }
+
+    // do tasks
+    doTask();
+
+    // send out any pending messages
+    if (_msg_out_available) {
+      uint16_t count = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+      bool send = (_serial1_enabled) ? mavlinkTelemPutBuf(_txbuf, count) : mavlinkTelem2PutBuf(_txbuf, count);
+      if (send) {
+        _msg_out_available = false;
+      }
+    }
+
   }
 }
 
@@ -645,7 +722,14 @@ void MavlinkTelem::_resetRadio35(void)
 
 void MavlinkTelem::_reset(void)
 {
-  mavlink_reset_channel_status(MAVLINK_COMM_0);
+#if !defined(AUX_SERIAL)
+  if (g_eeGeneral.auxSerialMode == UART_MODE_MAVLINK) g_eeGeneral.auxSerialMode = UART_MODE_NONE;
+#endif
+#if !defined(AUX2_SERIAL)
+  if (g_eeGeneral.aux2SerialMode == UART_MODE_MAVLINK) g_eeGeneral.aux2SerialMode = UART_MODE_NONE;
+#endif
+
+  for (uint8_t chan = MAVLINK_COMM_0; chan < MAVLINK_COMM_NUM_BUFFERS; chan++) mavlink_reset_channel_status(chan);
 
   _my_sysid = MAVLINK_TELEM_MY_SYSID;
   _my_compid = MAVLINK_TELEM_MY_COMPID;
@@ -680,7 +764,11 @@ void MavlinkTelem::_reset(void)
 
   _resetQShot();
 
+  mavlinkRouter.reset();
+  mavlinkRouter.addOurself(MAVLINK_TELEM_MY_SYSID, MAVLINK_TELEM_MY_COMPID);
+
   // MAVLINK
   //msgRxFifo.clear();
   //msgFifo_enabled = false;
 }
+

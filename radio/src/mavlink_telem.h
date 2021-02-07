@@ -11,7 +11,7 @@ uint16_t mavlinkTaskLoad(void);
 
 // -- main Mavlink stuff
 
-#define MAVLINK_COMM_NUM_BUFFERS      1 // 4
+#define MAVLINK_COMM_NUM_BUFFERS      3 // 4
 #define MAVLINK_MAX_SIGNING_STREAMS   1 // 16
 
 #include "thirdparty/Mavlink/out/mavlink_types.h"
@@ -31,6 +31,8 @@ uint16_t mavlinkTaskLoad(void);
 //COMMENT:
 //  except of where noted, functions/structs use units of the MAVLink message
 //  the mavsdk caller/setter functions however use native units, and deg, whenever possible
+
+#include "mavlink_router.h"
 
 class MavlinkTelem
 {
@@ -736,7 +738,10 @@ class MavlinkTelem
     mavlink_status_t _status;
     mavlink_message_t _msg;
     bool _msg_out_available = false;
-    mavlink_message_t _msg_out;
+    mavlink_message_t _msg_out; //size is 292 bytes
+
+    uint16_t _selected_serial = 1;
+    MavlinkRouter mavlinkRouter;
     uint8_t _txbuf[512]; //only needs to hold one MAVLink message, which is 280 max, thus 512 is by construction large enough
 
     // STUFF
