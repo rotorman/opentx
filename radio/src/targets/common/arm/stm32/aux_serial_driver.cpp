@@ -28,12 +28,12 @@ extern Fifo<uint8_t, 32> trainerSbusFifo;
 //OW
 #if defined(TELEMETRY_MAVLINK)
 #if defined(AUX_SERIAL)
-  MAVLINK_SECTION Fifo<uint8_t, 512> auxSerialTxFifo;
-  MAVLINK_SECTION Fifo<uint8_t, 512> auxSerialRxFifo_4MavlinkTelem;
+  MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> auxSerialTxFifo;
+  MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> auxSerialRxFifo_4MavlinkTelem;
 #endif
 #if defined(AUX2_SERIAL)
-  MAVLINK_SECTION Fifo<uint8_t, 512> aux2SerialTxFifo;
-  MAVLINK_SECTION Fifo<uint8_t, 512> aux2SerialRxFifo_4MavlinkTelem;
+  MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> aux2SerialTxFifo;
+  MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> aux2SerialRxFifo_4MavlinkTelem;
 #endif
 
 uint32_t _cvtMavlinkBaud(uint16_t baud)

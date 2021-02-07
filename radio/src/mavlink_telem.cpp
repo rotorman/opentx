@@ -4,7 +4,7 @@
 
 #include "opentx.h"
 
-MAVLINK_SECTION MavlinkTelem mavlinkTelem;
+MAVLINK_RAM_SECTION MavlinkTelem mavlinkTelem;
 
 // -- CoOS RTOS mavlink task handlers --
 

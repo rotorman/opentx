@@ -2,7 +2,7 @@
  * (c) www.olliw.eu, OlliW, OlliW42
  */
 
-#define MAVLINK_SECTION __attribute__((section (".ram")))
+#define MAVLINK_RAM_SECTION  __attribute__((section (".ram")))
 
 void mavlinkStart();
 uint16_t mavlinkTaskRunTime(void);
