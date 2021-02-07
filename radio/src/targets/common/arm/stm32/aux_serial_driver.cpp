@@ -532,6 +532,12 @@ uint8_t mavlinkTelemGetc(uint8_t *c)
   return auxSerialRxFifo_4MavlinkTelem.pop(*c);
 }
 
+bool mavlinkTelemHasSpace(uint16_t count)
+{
+  if (auxSerialMode != UART_MODE_MAVLINK) return false;
+  return auxSerialTxFifo.hasSpace(count);
+}
+
 bool mavlinkTelemPutBuf(const uint8_t *buf, const uint16_t count)
 {
   if (auxSerialMode != UART_MODE_MAVLINK || !buf || !auxSerialTxFifo.hasSpace(count)) {
@@ -559,6 +565,12 @@ uint32_t mavlinkTelem2Available(void)
 uint8_t mavlinkTelem2Getc(uint8_t *c)
 {
   return aux2SerialRxFifo_4MavlinkTelem.pop(*c);
+}
+
+bool mavlinkTelem2HasSpace(uint16_t count)
+{
+  if (aux2SerialMode != UART_MODE_MAVLINK) return false;
+  return aux2SerialTxFifo.hasSpace(count);
 }
 
 bool mavlinkTelem2PutBuf(const uint8_t *buf, const uint16_t count)

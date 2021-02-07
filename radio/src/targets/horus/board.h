@@ -713,11 +713,13 @@ void bluetoothDisable();
 #if defined(AUX_SERIAL)
   uint32_t mavlinkTelemAvailable(void);
   uint8_t mavlinkTelemGetc(uint8_t *c);
+  bool mavlinkTelemHasSpace(uint16_t count);
   bool mavlinkTelemPutBuf(const uint8_t *buf, const uint16_t count);
 #endif
 #if defined(AUX2_SERIAL)
   uint32_t mavlinkTelem2Available(void);
   uint8_t mavlinkTelem2Getc(uint8_t *c);
+  bool mavlinkTelem2HasSpace(uint16_t count);
   bool mavlinkTelem2PutBuf(const uint8_t *buf, const uint16_t count);
 #endif
 #endif
