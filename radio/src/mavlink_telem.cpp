@@ -216,19 +216,12 @@ void MavlinkTelem::do_requests(void)
 
 // -- MAVLink stuff --
 
-bool MavlinkTelem::isInVersionV2(void)
-{
-  return (_status.flags & MAVLINK_STATUS_FLAG_IN_MAVLINK1) ? false : true;
-}
-
 void MavlinkTelem::setOutVersionV2(void)
 {
   _status.flags &=~ MAVLINK_STATUS_FLAG_OUT_MAVLINK1;
-}
 
-void MavlinkTelem::setOutVersionV1(void)
-{
-  _status.flags |= MAVLINK_STATUS_FLAG_OUT_MAVLINK1;
+  //THIS IS A BUG, RIGHT? should be
+  //mavlink_set_proto_version(uint8_t chan, unsigned int version);
 }
 
 // -- Generate MAVLink messages --

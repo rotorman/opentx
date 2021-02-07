@@ -42,9 +42,7 @@ class MavlinkTelem
 
     // SOME MAVLINK stuff
 
-    bool isInVersionV2(void); // not used
     void setOutVersionV2(void);
-    void setOutVersionV1(void);
 
     // GENERATE MAVLink messages
 
