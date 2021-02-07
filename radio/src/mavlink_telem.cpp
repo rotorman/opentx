@@ -1,23 +1,4 @@
 /*
- * Copyright (C) OpenTX
- *
- * Based on code named
- *   th9x - http://code.google.com/p/th9x
- *   er9x - http://code.google.com/p/er9x
- *   gruvin9x - http://code.google.com/p/gruvin9x
- *
- * License GPLv2: http://www.gnu.org/licenses/gpl-2.0.html
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- */
-/*
  * (c) www.olliw.eu, OlliW, OlliW42
  */
 
@@ -29,8 +10,6 @@ MAVLINK_SECTION MavlinkTelem mavlinkTelem;
 
 RTOS_TASK_HANDLE mavlinkTaskId;
 RTOS_DEFINE_STACK(mavlinkStack, MAVLINK_STACK_SIZE);
-
-#define MAVLINK_TASK_PERIOD_TICKS  (10 / RTOS_MS_PER_TICK) // 10ms
 
 struct MavlinkTaskStat {
   uint16_t start = 0;
@@ -58,8 +37,6 @@ uint16_t mavlinkTaskLoad(void)
 void mavlinkTask(void * pdata)
 {
   while (true) {
-//    int32_t start = (int32_t)RTOS_GET_TIME();
-
     uint16_t start_last = mavlinkTaskStat.start;
     mavlinkTaskStat.start = getTmr2MHz();
 
@@ -69,11 +46,6 @@ void mavlinkTask(void * pdata)
     if (mavlinkTaskStat.last > mavlinkTaskStat.max) mavlinkTaskStat.max = mavlinkTaskStat.last;
     mavlinkTaskStat.load = mavlinkTaskStat.last / (mavlinkTaskStat.start - start_last);
 
-/*    // if run-time was longer than a tick, then reduce wait, but leave 2 ticks to give lower-prio threads a chance
-    int32_t runtime = (int32_t)RTOS_GET_TIME() - start;
-    int32_t waittime = (int32_t)MAVLINK_TASK_PERIOD_TICKS - runtime;
-    if (waittime < 2) waittime = 2;
-    RTOS_WAIT_TICKS(waittime); */
     RTOS_WAIT_TICKS(2);
   }
 }
