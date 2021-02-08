@@ -497,6 +497,22 @@
   #undef AUX2_SERIAL_PWR_GPIO
   #undef AUX2_SERIAL_PWR_GPIO_PIN
 #endif
+#if defined(RADIO_T16) && defined(INTERNAL_GPS)
+  #define GPS_RCC_AHB1Periph                   (RCC_AHB1Periph_GPIOB | RCC_AHB1Periph_GPIOG)
+  #define GPS_RCC_APB1Periph                   0
+  #define GPS_RCC_APB2Periph                   RCC_APB2Periph_USART6
+  #define GPS_USART                            USART6
+  #define GPS_GPIO_AF                          GPIO_AF_USART6
+  #define GPS_USART_IRQn                       USART6_IRQn
+  #define GPS_USART_IRQHandler                 USART6_IRQHandler
+  #define GPS_UART_GPIO                        GPIOG
+  #define GPS_TX_GPIO_PIN                      GPIO_Pin_14 // PG.14
+  #define GPS_RX_GPIO_PIN                      GPIO_Pin_9  // PG.09
+  #define GPS_TX_GPIO_PinSource                GPIO_PinSource14
+  #define GPS_RX_GPIO_PinSource                GPIO_PinSource9
+  #define GPS_PWR_GPIO                         GPIOB
+  #define GPS_PWR_GPIO_PIN                     GPIO_Pin_0  // PB.00
+#endif
 //OWEND
 
 // Telemetry
