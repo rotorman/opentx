@@ -57,6 +57,27 @@ void mavlinkStart()
 
 // -- SERIAL and USB CDC handlers --
 
+uint32_t _cvtBaudrate(uint16_t baud)
+{
+  switch (baud) {
+    case 0: return 57600;
+    case 1: return 115200;
+    case 2: return 38400;
+    case 3: return 19200;
+  }
+  return 57600;
+}
+
+uint32_t mavlinkTelemBaudrate(void)
+{
+  return _cvtBaudrate(g_eeGeneral.mavlinkBaudrate);
+}
+
+uint32_t mavlinkTelemBaudrate2(void)
+{
+  return _cvtBaudrate(g_eeGeneral.mavlinkBaudrate2);
+}
+
 #if !defined(AUX_SERIAL)
 uint32_t mavlinkTelemAvailable(void){ return 0; }
 uint8_t mavlinkTelemGetc(uint8_t *c){ return 0; }
@@ -78,9 +99,85 @@ bool mavlinkTelem3HasSpace(uint16_t count){ return false; }
 bool mavlinkTelem3PutBuf(const uint8_t *buf, const uint16_t count){ return false; }
 #endif
 
-MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> mavlinkTelemUsbRxFifo;
+#if defined(AUX_SERIAL)
+
+MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> auxSerialTxFifo;
+MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> auxSerialRxFifo_4MavlinkTelem;
+
+uint32_t mavlinkTelemAvailable(void)
+{
+  if (auxSerialMode != UART_MODE_MAVLINK) return 0;
+  return auxSerialRxFifo_4MavlinkTelem.size();
+}
+
+// call only after check with mavlinkTelem2Available()
+uint8_t mavlinkTelemGetc(uint8_t *c)
+{
+  return auxSerialRxFifo_4MavlinkTelem.pop(*c);
+}
+
+bool mavlinkTelemHasSpace(uint16_t count)
+{
+  if (auxSerialMode != UART_MODE_MAVLINK) return false;
+  return auxSerialTxFifo.hasSpace(count);
+}
+
+bool mavlinkTelemPutBuf(const uint8_t *buf, const uint16_t count)
+{
+  if (auxSerialMode != UART_MODE_MAVLINK || !buf || !auxSerialTxFifo.hasSpace(count)) {
+    return false;
+  }
+  for (uint16_t i = 0; i < count; i++) {
+    uint8_t c = buf[i];
+    auxSerialTxFifo.push(c);
+  }
+  USART_ITConfig(AUX_SERIAL_USART, USART_IT_TXE, ENABLE);
+  return true;
+}
+
+#endif
+
+#if defined(AUX2_SERIAL)
+
+MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> aux2SerialTxFifo;
+MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> aux2SerialRxFifo_4MavlinkTelem;
+
+uint32_t mavlinkTelem2Available(void)
+{
+  if (aux2SerialMode != UART_MODE_MAVLINK) return 0;
+  return aux2SerialRxFifo_4MavlinkTelem.size();
+}
+
+// call only after check with mavlinkTelem2Available()
+uint8_t mavlinkTelem2Getc(uint8_t *c)
+{
+  return aux2SerialRxFifo_4MavlinkTelem.pop(*c);
+}
+
+bool mavlinkTelem2HasSpace(uint16_t count)
+{
+  if (aux2SerialMode != UART_MODE_MAVLINK) return false;
+  return aux2SerialTxFifo.hasSpace(count);
+}
+
+bool mavlinkTelem2PutBuf(const uint8_t *buf, const uint16_t count)
+{
+  if (aux2SerialMode != UART_MODE_MAVLINK || !buf || !aux2SerialTxFifo.hasSpace(count)) {
+    return false;
+  }
+  for (uint16_t i = 0; i < count; i++) {
+    uint8_t c = buf[i];
+    aux2SerialTxFifo.push(c);
+  }
+  USART_ITConfig(AUX2_SERIAL_USART, USART_IT_TXE, ENABLE);
+  return true;
+}
+
+#endif
 
 #if defined(USB_SERIAL)
+
+MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> mavlinkTelemUsbRxFifo;
 
 uint32_t mavlinkTelem3Available(void)
 {

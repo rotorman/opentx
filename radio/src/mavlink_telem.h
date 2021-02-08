@@ -11,9 +11,24 @@ uint16_t mavlinkTaskRunTime(void);
 uint16_t mavlinkTaskRunTimeMax(void);
 uint16_t mavlinkTaskLoad(void);
 
-// -- USB CDC handlers --
+// -- SERIAL and USB CDC handlers --
 
+uint32_t mavlinkTelemBaudrate(void);
+uint32_t mavlinkTelemBaudrate2(void);
+
+#if defined(AUX_SERIAL)
+extern Fifo<uint8_t, 2*512> auxSerialTxFifo;
+extern Fifo<uint8_t, 2*512> auxSerialRxFifo_4MavlinkTelem;
+#endif
+
+#if defined(AUX2_SERIAL)
+extern Fifo<uint8_t, 2*512> aux2SerialTxFifo;
+extern Fifo<uint8_t, 2*512> aux2SerialRxFifo_4MavlinkTelem;
+#endif
+
+#if defined(USB_SERIAL)
 extern Fifo<uint8_t, 2*512> mavlinkTelemUsbRxFifo;
+#endif
 
 // -- main Mavlink stuff
 
