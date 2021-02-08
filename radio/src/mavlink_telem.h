@@ -746,7 +746,7 @@ class MavlinkTelem
     bool _msg_out_available = false;
     mavlink_message_t _msg_out; //size is 292 bytes
 
-    uint16_t _selected_serial = 1;
+    uint16_t _scheduled_serial = 0;
     MavlinkRouter mavlinkRouter;
     uint8_t _txbuf[512]; //only needs to hold one MAVLink message, which is 280 max, thus 512 is by construction large enough
 
