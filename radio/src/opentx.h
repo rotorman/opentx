@@ -48,10 +48,12 @@ modified files in radio/src/
     datastructs.h:    3x
     keys.cpp:         2x
     keys.h:           1x
+    main.cpp:         3x
     opentx.cpp:       1x
     opentx.h:         2x
     options.h:        1x
-    tasks.cpp:        1x
+    tasks.cpp:        2x
+    tasks.h:          1x
     gui/480x272/lcd.cpp:             1x
     gui/480x272/lcd.h:               1x
     gui/480x272/model_setup.cpp:     3x
@@ -59,15 +61,22 @@ modified files in radio/src/
     gui/gui_common.cpp:              2x
     lua/api_general.cpp:    3x
     lua/api_lcd.cpp:        2x
-    targets/common/arm/stm32/aux_serial_driver.cpp:  7x
+    targets/common/arm/stm32/aux_serial_driver.cpp:  8x
+    targets/common/arm/stm32/usb_driver.cpp:         1x
+    targets/common/arm/stm32/usb_driver.h:           1x
+    targets/common/arm/stm32/usbd_cdc.cpp:           1x
+    targets/common/arm/stm32/usbd_dec.cpp:           4x
     targets/horus/board.h:           1x
     targets/horus/hal.h:             1x
     targets/horus/CMakeList.txt:     2x
+    telemetry/telemetry.cpp:         2x
+    telemetry/telemetry.h:           1x
     thirdparty/Lua/src/lauxlib.h:    1x
     thirdparty/Lua/src/linit.c:      1x
     thirdparty/Lua/src/lrotable.h:   1x
 
 added files in radio/src/
+    mavlink_router.h
     mavlink_telem_autopilot.cpp
     mavlink_telem_camera.cpp
     mavlink_telem_gimbal.cpp
@@ -97,7 +106,6 @@ perMain() in main.cpp, where GPS is:
 
 idea:
 support LEFT, RIGHT CENTER also for drawFilledRectangle, drawRectangle, or better LEFT,RIGHT,XCENTER,TOP,BOTTOM,YCENTER
-
 
 ----
 
@@ -133,7 +141,6 @@ opentxLib -> lauxlib.h, limit.c
 opentxConstants -> limit.c, lrotable.h
 lcdLib -> lauxlib.h, limit.c
 modelLib -> lauxlib.h, limit.c
-
 
 ----
 BOARD_NAME
@@ -183,7 +190,6 @@ bool UNEXPECTED_SHUTDOWN()
   WAS_RESET_BY_WATCHDOG -> true
   WAS_RESET_BY_SOFTWARE -> check BKP
   else -> checks BKP
-
 
 ----
 on T16:
