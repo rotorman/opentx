@@ -28,7 +28,7 @@
 #include "opentx_helpers.h"
 
 //OW
-#define OWVERSIONSTR  "v23rc01"
+#define OWVERSIONSTR  "v24rc04"
 //OWEND
 
 /*
@@ -98,6 +98,15 @@ perMain() in main.cpp, where GPS is:
 idea:
 support LEFT, RIGHT CENTER also for drawFilledRectangle, drawRectangle, or better LEFT,RIGHT,XCENTER,TOP,BOTTOM,YCENTER
 
+
+----
+
+TASK_FUNCTION(menusTask) -> perMain() -> handleUsbConnection()
+g_eeGeneral.USBMode
+USB_UNSELECTED_MODE
+USB_JOYSTICK_MODE
+USB_MASS_STORAGE_MODE
+USB_SERIAL_MODE   if defined(USB_SERIAL) usbd_cdc_core  TR_USBMODES
 
 ----
 
