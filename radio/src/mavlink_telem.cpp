@@ -55,6 +55,63 @@ void mavlinkStart()
   RTOS_CREATE_TASK(mavlinkTaskId, mavlinkTask, "mavlink", mavlinkStack, MAVLINK_STACK_SIZE, MAVLINK_TASK_PRIO);
 }
 
+// -- SERIAL and USB CDC handlers --
+
+#if !defined(AUX_SERIAL)
+uint32_t mavlinkTelemAvailable(void){ return 0; }
+uint8_t mavlinkTelemGetc(uint8_t *c){ return 0; }
+bool mavlinkTelemHasSpace(uint16_t count){ return false; }
+bool mavlinkTelemPutBuf(const uint8_t *buf, const uint16_t count){ return false; }
+#endif
+
+#if !defined(AUX2_SERIAL)
+uint32_t mavlinkTelem2Available(void){ return 0; }
+uint8_t mavlinkTelem2Getc(uint8_t *c){ return 0; }
+bool mavlinkTelem2HasSpace(uint16_t count){ return false; }
+bool mavlinkTelem2PutBuf(const uint8_t *buf, const uint16_t count){ return false; }
+#endif
+
+#if !defined(USB_SERIAL)
+uint32_t mavlinkTelem3Available(void){ return 0; }
+uint8_t mavlinkTelem3Getc(uint8_t *c){ return 0; }
+bool mavlinkTelem3HasSpace(uint16_t count){ return false; }
+bool mavlinkTelem3PutBuf(const uint8_t *buf, const uint16_t count){ return false; }
+#endif
+
+MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> mavlinkTelemUsbRxFifo;
+
+#if defined(USB_SERIAL)
+
+uint32_t mavlinkTelem3Available(void)
+{
+  if (getSelectedUsbMode() != USB_MAVLINK_MODE) return 0;
+  return mavlinkTelemUsbRxFifo.size();
+}
+
+// call only after check with mavlinkTelem2Available()
+uint8_t mavlinkTelem3Getc(uint8_t *c)
+{
+  return mavlinkTelemUsbRxFifo.pop(*c);
+}
+
+bool mavlinkTelem3HasSpace(uint16_t count)
+{
+  if (getSelectedUsbMode() != USB_MAVLINK_MODE) return 0;
+  return true; //??
+}
+
+bool mavlinkTelem3PutBuf(const uint8_t *buf, const uint16_t count)
+{
+  if (getSelectedUsbMode() != USB_MAVLINK_MODE || !buf) {
+    return false;
+  }
+  for (uint16_t i = 0; i < count; i++) {
+    usbSerialPutc(buf[i]);
+  }
+  return true;
+}
+#endif
+
 // -- Miscellaneous stuff --
 
 void MavlinkTelem::telemetrySetValue(uint16_t id, uint8_t subId, uint8_t instance, int32_t value, uint32_t unit, uint32_t prec)
@@ -529,24 +586,17 @@ void MavlinkTelem::doTask(void)
 // -- Wakeup call from OpenTx --
 // this is the main entry point
 
-#if !defined(AUX_SERIAL)
-uint32_t mavlinkTelemAvailable(void){ return 0; }
-uint8_t mavlinkTelemGetc(uint8_t *c){ return 0; }
-bool mavlinkTelemHasSpace(uint16_t count){ return false; }
-bool mavlinkTelemPutBuf(const uint8_t *buf, const uint16_t count){ return false; }
-#endif
-#if !defined(AUX2_SERIAL)
-uint32_t mavlinkTelem2Available(void){ return 0; }
-uint8_t mavlinkTelem2Getc(uint8_t *c){ return 0; }
-bool mavlinkTelem2HasSpace(uint16_t count){ return false; }
-bool mavlinkTelem2PutBuf(const uint8_t *buf, const uint16_t count){ return false; }
-#endif
+// ourself = link 0   MAVLINK_COMM_0
+// serial1 = link 1   MAVLINK_COMM_1
+// serial2 = link 2   MAVLINK_COMM_2
+// usb     = link 3   MAVLINK_COMM_3
 
 void MavlinkTelem::wakeup()
 {
   // check configuration
   bool serial1_enabled = g_eeGeneral.auxSerialMode == UART_MODE_MAVLINK;
   bool serial2_enabled = g_eeGeneral.aux2SerialMode == UART_MODE_MAVLINK;
+  bool serial3_enabled = getSelectedUsbMode() == USB_MAVLINK_MODE;
 
   if ((_serial1_enabled != serial1_enabled) || (_serial2_enabled != serial2_enabled) ||
       (_serial1_baudrate != g_eeGeneral.mavlinkBaudrate) || (_serial2_baudrate != g_eeGeneral.mavlinkBaudrate2)) {
@@ -557,118 +607,123 @@ void MavlinkTelem::wakeup()
     _reset();
   }
 
-  // skip out if not enabled
+  if (_serial3_enabled != serial3_enabled) {
+    _serial3_enabled = serial3_enabled;
+    mavlinkRouter.clearoutLink(3);
+  }
+
+  // skip out if not one of the serials is enabled
   if (!_serial1_enabled && !_serial2_enabled) return;
 
-  if (_serial1_enabled && _serial2_enabled) {
-    //-- two serials are enabled => mavlink router --
+  // look for incoming messages on both channels
+  // only do one at a time
+  _selected_serial++;
+  if (_selected_serial > 2) _selected_serial = 0;
 
-    // look for incoming messages on both channels
-    // only do one at a time
-    _selected_serial = (_selected_serial) ? 0 : 1;
-
-    // read serial1
-    uint32_t available1 = mavlinkTelemAvailable();
-    if (available1 > 128) available1 = 128; // 128 = 22 ms @ 57600bps
-    if (_selected_serial != 0) available1 = 0; //skip
-    for (uint32_t i = 0; i < available1; i++) {
-      uint8_t c;
-      mavlinkTelemGetc(&c);
-      if (mavlink_parse_char(MAVLINK_COMM_1, c, &_msg, &_status)) {
-        mavlinkRouter.handleMessage(1, &_msg);
-        if (mavlinkRouter.sendToLink(1)) {
-          // WE DO NOT REFLECT, SO THIS MUST NEVER HAPPEN !!
-        }
-        if (mavlinkRouter.sendToLink(2)) {
-          uint16_t count = mavlink_msg_to_send_buffer(_txbuf, &_msg);
-          mavlinkTelem2PutBuf(_txbuf, count);
-        }
-        if (mavlinkRouter.sendToLink(0)) {
-          handleMessage(); //checks _msg, and puts any result into a task queue
-          //break; //only do one per tick
-        }
+  // read serial1
+  uint32_t available1 = mavlinkTelemAvailable();
+  if (available1 > 128) available1 = 128; // 128 = 22 ms @ 57600bps
+  if (_selected_serial != 0) available1 = 0; //skip
+  for (uint32_t i = 0; i < available1; i++) {
+    uint8_t c;
+    mavlinkTelemGetc(&c);
+    if (mavlink_parse_char(MAVLINK_COMM_1, c, &_msg, &_status)) {
+      mavlinkRouter.handleMessage(1, &_msg);
+      uint16_t count = 0;
+      if (mavlinkRouter.sendToLink(2) || mavlinkRouter.sendToLink(3)) {
+        count = mavlink_msg_to_send_buffer(_txbuf, &_msg);
+      }
+      if (mavlinkRouter.sendToLink(1)) {
+        // WE DO NOT REFLECT, SO THIS MUST NEVER HAPPEN !!
+      }
+      if (mavlinkRouter.sendToLink(2)) {
+        mavlinkTelem2PutBuf(_txbuf, count);
+      }
+      if (mavlinkRouter.sendToLink(3)) {
+        mavlinkTelem3PutBuf(_txbuf, count);
+      }
+      if (mavlinkRouter.sendToLink(0)) {
+        handleMessage(); //checks _msg, and puts any result into a task queue
+        //break; //only do one per tick
       }
     }
+  }
 
-    // read serial2
-    uint32_t available2 = mavlinkTelem2Available();
-    if (available2 > 128) available2 = 128;
-    if (_selected_serial != 1) available2 = 0; //skip
-    for (uint32_t i = 0; i < available2; i++) {
-      uint8_t c;
-      mavlinkTelem2Getc(&c);
-      if (mavlink_parse_char(MAVLINK_COMM_2, c, &_msg, &_status)) {
-        mavlinkRouter.handleMessage(2, &_msg);
-        if (mavlinkRouter.sendToLink(1)) {
-          uint16_t count = mavlink_msg_to_send_buffer(_txbuf, &_msg);
-          mavlinkTelemPutBuf(_txbuf, count);
-        }
-        if (mavlinkRouter.sendToLink(2)) {
-          // WE DO NOT REFLECT, SO THIS MUST NEVER HAPPEN !!
-        }
-        if (mavlinkRouter.sendToLink(0)) {
-          handleMessage(); //checks _msg, and puts any result into a task queue
-          //break; //only do one per tick
-        }
+  // read serial2
+  uint32_t available2 = mavlinkTelem2Available();
+  if (available2 > 128) available2 = 128;
+  if (_selected_serial != 1) available2 = 0; //skip
+  for (uint32_t i = 0; i < available2; i++) {
+    uint8_t c;
+    mavlinkTelem2Getc(&c);
+    if (mavlink_parse_char(MAVLINK_COMM_2, c, &_msg, &_status)) {
+      mavlinkRouter.handleMessage(2, &_msg);
+      uint16_t count = 0;
+      if (mavlinkRouter.sendToLink(1) || mavlinkRouter.sendToLink(3)) {
+        count = mavlink_msg_to_send_buffer(_txbuf, &_msg);
+      }
+      if (mavlinkRouter.sendToLink(1)) {
+        mavlinkTelemPutBuf(_txbuf, count);
+      }
+      if (mavlinkRouter.sendToLink(2)) {
+        // WE DO NOT REFLECT, SO THIS MUST NEVER HAPPEN !!
+      }
+      if (mavlinkRouter.sendToLink(3)) {
+        mavlinkTelem3PutBuf(_txbuf, count);
+      }
+      if (mavlinkRouter.sendToLink(0)) {
+        handleMessage(); //checks _msg, and puts any result into a task queue
+        //break; //only do one per tick
       }
     }
+  }
 
-    // do tasks
-    doTask(); //checks task queue _msg, and puts one result into _msg_out
-
-    // send out any pending messages
-    if (_msg_out_available) {
-      mavlinkRouter.handleMessage(0, &_msg_out);
+  // read usb = serial3
+  uint32_t available3 = mavlinkTelem3Available();
+  if (available3 > 128) available3 = 128;
+  if (_selected_serial != 2) available3 = 0; //skip
+  for (uint32_t i = 0; i < available3; i++) {
+    uint8_t c;
+    mavlinkTelem3Getc(&c);
+    if (mavlink_parse_char(MAVLINK_COMM_3, c, &_msg, &_status)) {
+      mavlinkRouter.handleMessage(3, &_msg);
+      uint16_t count = 0;
       if (mavlinkRouter.sendToLink(1) || mavlinkRouter.sendToLink(2)) {
-        uint16_t count = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
-        if (mavlinkTelemHasSpace(count) && mavlinkTelem2HasSpace(count)) { //only send if it can be send on both serials
-          if (mavlinkRouter.sendToLink(1)) mavlinkTelemPutBuf(_txbuf, count);
-          if (mavlinkRouter.sendToLink(2)) mavlinkTelem2PutBuf(_txbuf, count);
-          _msg_out_available = false;
-        }
-      } else {
-        _msg_out_available = false; //message is targeted at unknown component
+        count = mavlink_msg_to_send_buffer(_txbuf, &_msg);
+      }
+      if (mavlinkRouter.sendToLink(1)) {
+        mavlinkTelemPutBuf(_txbuf, count);
+      }
+      if (mavlinkRouter.sendToLink(2)) {
+        mavlinkTelem2PutBuf(_txbuf, count);
+      }
+      if (mavlinkRouter.sendToLink(3)) {
+        // WE DO NOT REFLECT, SO THIS MUST NEVER HAPPEN !!
+      }
+      if (mavlinkRouter.sendToLink(0)) {
+        handleMessage(); //checks _msg, and puts any result into a task queue
+        //break; //only do one per tick
       }
     }
+  }
 
-  } //----------
-  else {
-    //-- only one serial is enabled --
+  // do tasks
+  doTask(); //checks task queue _msg, and puts one result into _msg_out
 
-    // look for incoming messages, also do statistics
-    uint32_t available = (_serial1_enabled) ? mavlinkTelemAvailable() : mavlinkTelem2Available();
-    if (available > 128) available = 128; //limit how much we read at once, shouldn't ever trigger, 11.1 ms @ 115200
-    for (uint32_t i = 0; i < available; i++) {
-      uint8_t c;
-      if (_serial1_enabled) mavlinkTelemGetc(&c); else mavlinkTelem2Getc(&c);
-     _bytes_rx_persec_cnt++;
-      if (mavlink_parse_char(MAVLINK_COMM_0, c, &_msg, &_status)) {
-        // check for lost messages by analyzing seq
-        if (_seq_rx_last >= 0) {
-          uint16_t seq = _msg.seq;
-          if (seq < _seq_rx_last) seq += 256;
-          _seq_rx_last++;
-          if (seq > _seq_rx_last) msg_rx_lost += (seq - _seq_rx_last);
-        }
-        _seq_rx_last = _msg.seq;
-        handleMessage();
-        msg_rx_count++;
-        _msg_rx_persec_cnt++;
-      }
-    }
-
-    // do tasks
-    doTask();
-
-    // send out any pending messages
-    if (_msg_out_available) {
+  // send out any pending messages
+  if (_msg_out_available) {
+    mavlinkRouter.handleMessage(0, &_msg_out);
+    if (mavlinkRouter.sendToLink(1) || mavlinkRouter.sendToLink(2) || mavlinkRouter.sendToLink(3)) {
       uint16_t count = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
-      bool send = (_serial1_enabled) ? mavlinkTelemPutBuf(_txbuf, count) : mavlinkTelem2PutBuf(_txbuf, count);
-      if (send) {
+      if (mavlinkTelemHasSpace(count) && mavlinkTelem2HasSpace(count) && mavlinkTelem3HasSpace(count)) { //only send if it can be send on both serials
+        if (mavlinkRouter.sendToLink(1)) mavlinkTelemPutBuf(_txbuf, count);
+        if (mavlinkRouter.sendToLink(2)) mavlinkTelem2PutBuf(_txbuf, count);
+        if (mavlinkRouter.sendToLink(3)) mavlinkTelem3PutBuf(_txbuf, count);
         _msg_out_available = false;
       }
+    } else {
+      _msg_out_available = false; //message is targeted at unknown component
     }
-
   }
 }
 

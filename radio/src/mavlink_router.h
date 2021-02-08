@@ -3,7 +3,7 @@
  */
 
 
-#define MAVLINK_ROUTER_LINKS_MAX  3
+#define MAVLINK_ROUTER_LINKS_MAX  4
 #define MAVLINK_ROUTER_COMPONENTS_MAX  12
 
 
@@ -63,6 +63,21 @@ class MavlinkRouter
     void addOurself(uint8_t sysid, uint8_t compid)
     {
       addComponent(0, sysid, compid); //we always add ourself as link 0
+    }
+
+    void clearoutLink(uint8_t link)
+    {
+      if (link > MAVLINK_ROUTER_LINKS_MAX) return;
+
+      for (uint8_t i = 0; i < MAVLINK_ROUTER_COMPONENTS_MAX; i++) {
+        if (!componentList[i].valid) continue;
+        if (componentList[i].link == link) { //clear out
+          componentList[i].valid = false;
+          componentList[i].link = 0;
+          componentList[i].sysid = 0;
+          componentList[i].compid = 0;
+        }
+      }
     }
 
   private:

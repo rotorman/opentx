@@ -4,14 +4,20 @@
 
 #define MAVLINK_RAM_SECTION  __attribute__((section (".ram")))
 
+// -- CoOS RTOS mavlink task handlers --
+
 void mavlinkStart();
 uint16_t mavlinkTaskRunTime(void);
 uint16_t mavlinkTaskRunTimeMax(void);
 uint16_t mavlinkTaskLoad(void);
 
+// -- USB CDC handlers --
+
+extern Fifo<uint8_t, 2*512> mavlinkTelemUsbRxFifo;
+
 // -- main Mavlink stuff
 
-#define MAVLINK_COMM_NUM_BUFFERS      3 // 4
+#define MAVLINK_COMM_NUM_BUFFERS      4 // 4
 #define MAVLINK_MAX_SIGNING_STREAMS   1 // 16
 
 #include "thirdparty/Mavlink/out/mavlink_types.h"
@@ -750,6 +756,7 @@ class MavlinkTelem
     uint32_t _serial1_baudrate = UINT32_MAX; //to enforce change
     bool _serial2_enabled = false;
     uint32_t _serial2_baudrate = UINT32_MAX; //to enforce change
+    bool _serial3_enabled = false;
 
     bool _storm32_gimbal_protocol_v2 = false;
 };
