@@ -193,7 +193,7 @@ uint8_t mavlinkTelem3Getc(uint8_t *c)
 
 bool mavlinkTelem3HasSpace(uint16_t count)
 {
-  if (getSelectedUsbMode() != USB_MAVLINK_MODE) return 0;
+  if (getSelectedUsbMode() != USB_MAVLINK_MODE) return false;
   return true; //??
 }
 
@@ -735,7 +735,7 @@ void MavlinkTelem::wakeup()
   if (_scheduled_serial == 0) {
     for (uint32_t i = 0; i < available; i++) {
       uint8_t c;
-      mavlinkTelemGetc(&c);
+      if (!mavlinkTelemGetc(&c)) break;
       if (mavlink_parse_char(MAVLINK_COMM_1, c, &_msg, &_status)) {
         mavlinkRouter.handleMessage(1, &_msg);
         uint16_t count = 0;
@@ -762,7 +762,7 @@ void MavlinkTelem::wakeup()
   if (_scheduled_serial == 1) {
     for (uint32_t i = 0; i < available; i++) {
       uint8_t c;
-      mavlinkTelem2Getc(&c);
+      if (!mavlinkTelem2Getc(&c)) break;
       if (mavlink_parse_char(MAVLINK_COMM_2, c, &_msg, &_status)) {
         mavlinkRouter.handleMessage(2, &_msg);
         uint16_t count = 0;
@@ -789,7 +789,7 @@ void MavlinkTelem::wakeup()
   if (_scheduled_serial == 2) {
     for (uint32_t i = 0; i < available; i++) {
       uint8_t c;
-      mavlinkTelem3Getc(&c);
+      if (!mavlinkTelem3Getc(&c)) break;
       if (mavlink_parse_char(MAVLINK_COMM_3, c, &_msg, &_status)) {
         mavlinkRouter.handleMessage(3, &_msg);
         uint16_t count = 0;
