@@ -26,6 +26,12 @@ uint8_t currentBacklightBright = 0;
 uint8_t requiredBacklightBright = 0;
 uint8_t mainRequestFlags = 0;
 
+//OW
+#if defined(TELEMETRY_MAVLINK) && defined(USB_SERIAL)
+const char STR_USB_MAVLINK[] = "USB Mavlink (VCP)";
+#endif
+//OWEND
+
 #if defined(STM32)
 void onUSBConnectMenu(const char *result)
 {
@@ -38,6 +44,13 @@ void onUSBConnectMenu(const char *result)
   else if (result == STR_USB_SERIAL) {
     setSelectedUsbMode(USB_SERIAL_MODE);
   }
+//OW
+#if defined(TELEMETRY_MAVLINK) && defined(USB_SERIAL)
+  else if (result == STR_USB_MAVLINK) {
+    setSelectedUsbMode(USB_MAVLINK_MODE);
+  }
+#endif
+//OWEND
 }
 #endif
 
@@ -52,6 +65,11 @@ void handleUsbConnection()
 #if defined(DEBUG)
         POPUP_MENU_ADD_ITEM(STR_USB_SERIAL);
 #endif
+//OW
+#if defined(TELEMETRY_MAVLINK) && defined(USB_SERIAL)
+        POPUP_MENU_ADD_ITEM(STR_USB_MAVLINK);
+#endif
+//OWEND
         POPUP_MENU_TITLE(STR_SELECT_MODE);
         POPUP_MENU_START(onUSBConnectMenu);
       }
