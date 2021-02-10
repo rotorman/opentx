@@ -67,10 +67,10 @@ class MavlinkRouter
 
     void clearoutLink(uint8_t link)
     {
-      if (link > MAVLINK_ROUTER_LINKS_MAX) return;
+      if (link >= MAVLINK_ROUTER_LINKS_MAX) return;
 
       for (uint8_t i = 0; i < MAVLINK_ROUTER_COMPONENTS_MAX; i++) {
-        if (!componentList[i].valid) continue;
+        if (!componentList[i].valid) continue; //empty entry
         if (componentList[i].link == link) { //clear out
           componentList[i].valid = false;
           componentList[i].link = 0;
@@ -144,7 +144,7 @@ class MavlinkRouter
 
     bool addComponent(uint8_t link, uint8_t sysid, uint8_t compid)
     {
-      if (link > MAVLINK_ROUTER_LINKS_MAX) return false;
+      if (link >= MAVLINK_ROUTER_LINKS_MAX) return false;
 
       for (uint8_t i = 0; i < MAVLINK_ROUTER_COMPONENTS_MAX; i++) {
         if (componentList[i].valid) continue; //already occupied
