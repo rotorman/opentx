@@ -54,10 +54,13 @@ modified files in radio/src/
     options.h:        1x
     tasks.cpp:        2x
     tasks.h:          1x
+    gui/480x272/bitmap.cpp:          1x
+    gui/480x272/bitmap.h:            1x
     gui/480x272/lcd.cpp:             1x
     gui/480x272/lcd.h:               1x
     gui/480x272/model_setup.cpp:     3x
     gui/480x272/radio_hardware.cpp:  6x
+    gui/480x272/topbar.cpp:          2x
     gui/gui_common.cpp:              2x
     lua/api_general.cpp:    3x
     lua/api_lcd.cpp:        2x
