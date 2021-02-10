@@ -634,7 +634,7 @@ PACK(struct ModelData {
   uint16_t _mavlinkDummy:2; // not currently used
   uint16_t mavlinkMimicSensors:3; // currently just off/on, but allow e.g. FrSky, CF, FrSky passthrough.
   uint16_t mavlinkRcOverride:1;
-  uint16_t _mavlinkLogging:1; // not currently used
+  uint16_t mavlinkGpsIcon:1;
   uint8_t  mavlinkRssiScale;
   uint8_t  _mavlinkDummy2; // not currently used
   // needs to adapt CHKSIZE below //if not all are use compiled optiomizes to lowest size, which may raise error
