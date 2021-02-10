@@ -34,7 +34,7 @@ uint16_t mavlinkTaskLoad(void)
   return mavlinkTaskStat.load;
 }
 
-void mavlinkTask(void * pdata)
+TASK_FUNCTION(mavlinkTask)
 {
   while (true) {
     uint16_t start_last = mavlinkTaskStat.start;
