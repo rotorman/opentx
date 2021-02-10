@@ -714,27 +714,21 @@ void MavlinkTelem::wakeup()
 
   // look for incoming messages on all channels
   // only do one at a time
-  // try to provide a fair share
   #define INCc(x,p)  {x++; if(x >= p) x = 0;}
 
+  INCc(_scheduled_serial, 3);
   uint8_t currently_scheduled_serial = _scheduled_serial;
-  INCc(_scheduled_serial, 3); //schedule the next serial in the next tick
 
-  uint32_t available = 0; //check if scheduled serial has anything to do, if not, give the others a chance instead
-  for (uint8_t i = 0; i < 3; i++) {
-    INCc(currently_scheduled_serial, 3); //in the first cycle this aligns it with _scheduled_serial
-    switch (currently_scheduled_serial) {
-      case 0: available = mavlinkTelemAvailable(); break;
-      case 1: available = mavlinkTelem2Available(); break;
-      case 2: available = mavlinkTelem3Available(); break;
-    }
-    if (available) break; //ok, get out, the scheduled serial has something to do
+  uint32_t available = 0;
+  switch (currently_scheduled_serial) {
+    case 0: available = mavlinkTelemAvailable(); break;
+    case 1: available = mavlinkTelem2Available(); break;
+    case 2: available = mavlinkTelem3Available(); break;
   }
-
   if (available > 128) available = 128; // 128 = 22 ms @ 57600bps
 
   // read serial1
-  if (currently_scheduled_serial == 0 && available) {
+  if (currently_scheduled_serial == 0) {
     for (uint32_t i = 0; i < available; i++) {
       uint8_t c;
       if (!mavlinkTelemGetc(&c)) break;
@@ -761,7 +755,7 @@ void MavlinkTelem::wakeup()
   }
 
   // read serial2
-  if (currently_scheduled_serial == 1 && available) {
+  if (currently_scheduled_serial == 1) {
     for (uint32_t i = 0; i < available; i++) {
       uint8_t c;
       if (!mavlinkTelem2Getc(&c)) break;
@@ -788,7 +782,7 @@ void MavlinkTelem::wakeup()
   }
 
   // read usb = serial3
-  if (currently_scheduled_serial == 2 && available) {
+  if (currently_scheduled_serial == 2) {
     for (uint32_t i = 0; i < available; i++) {
       uint8_t c;
       if (!mavlinkTelem3Getc(&c)) break;
