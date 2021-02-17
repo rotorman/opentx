@@ -372,10 +372,12 @@ void MavlinkTelem::do_requests(void)
 
 void MavlinkTelem::setOutVersionV2(void)
 {
+#ifdef MAVLINK_COMMAND_24BIT //this indicates that std mavlink is installed
   _status.flags &=~ MAVLINK_STATUS_FLAG_OUT_MAVLINK1;
 
   //THIS IS A BUG, RIGHT? should be
   //mavlink_set_proto_version(uint8_t chan, unsigned int version);
+#endif
 }
 
 // -- Generate MAVLink messages --

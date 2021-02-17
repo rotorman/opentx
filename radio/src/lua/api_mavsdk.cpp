@@ -25,7 +25,9 @@
 #include <stdio.h>
 #include "opentx.h"
 #include "lua_api.h"
-#include "thirdparty/Mavlink/out/opentx/mavlink.h"
+//XX #include "thirdparty/Mavlink/out/opentx/mavlink.h"
+#include "fastmavlink/out/opentx/mavlink.h"
+
 
 constexpr float FPI = 3.141592653589793f;
 constexpr float FDEGTORAD = FPI/180.0f;

@@ -25,7 +25,9 @@
 #include <stdio.h>
 #include "opentx.h"
 #include "lua_api.h"
-#include "thirdparty/Mavlink/out/opentx/mavlink.h"
+//XX #include "thirdparty/Mavlink/out/opentx/mavlink.h"
+#include "fastmavlink/out/opentx/mavlink.h"
+
 
 static int luaMavlinkGetVersion(lua_State * L)
 {
@@ -34,6 +36,7 @@ static int luaMavlinkGetVersion(lua_State * L)
   return 2;
 }
 
+/*
 static int luaMavlinkGetChannelStatus(lua_State * L)
 {
   //mavlink_status_t* status = mavlink_get_channel_status(MAVLINK_COMM_0);
@@ -57,7 +60,6 @@ static int luaMavlinkGetChannelStatus(lua_State * L)
   return 1;
 }
 
-/*
 static int luaMavlinkMsgAvailable(lua_State * L)
 {
   uint32_t size = mavlinkTelem.msgRxFifo.size();
@@ -1344,7 +1346,7 @@ mavlink_message_t msg; // FIXME: should be a reference/pointer to save stack, bu
 
 const luaL_Reg mavlinkLib[] = {
   { "getVersion", luaMavlinkGetVersion },
-  { "getChannelStatus", luaMavlinkGetChannelStatus },
+//  { "getChannelStatus", luaMavlinkGetChannelStatus },
 //  { "available", luaMavlinkMsgAvailable },
 //  { "probeHeader", luaMavlinkMsgProbeHeader },
 //  { "popAndDiscard", luaMavlinkMsgPopAndDiscard },
