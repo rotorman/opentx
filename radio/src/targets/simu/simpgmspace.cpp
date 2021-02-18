@@ -225,6 +225,9 @@ void StopSimu()
 
   pthread_join(mixerTaskId, nullptr);
   pthread_join(menusTaskId, nullptr);
+#if defined(TELEMETRY_MAVLINK)
+  pthread_join(mavlinkTaskId, nullptr);
+#endif	
 
   simu_running = false;
 }

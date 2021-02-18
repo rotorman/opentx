@@ -145,12 +145,18 @@ bool menuStatsDebug(event_t event)
   y += FH;
 
   lcdDrawText(MENUS_MARGIN_LEFT, y, STR_FREE_STACK);
-  lcdDrawText(MENU_STATS_COLUMN1, y+1, "[Menus]", HEADER_COLOR|SMLSIZE);
+  lcdDrawText(MENU_STATS_COLUMN1, y+1, "[M]", HEADER_COLOR|SMLSIZE);
   lcdDrawNumber(lcdNextPos+5, y, menusStack.available(), LEFT);
-  lcdDrawText(lcdNextPos+20, y+1, "[Mix]", HEADER_COLOR|SMLSIZE);
+  lcdDrawText(lcdNextPos+2, y+1, "[X]", HEADER_COLOR|SMLSIZE);
   lcdDrawNumber(lcdNextPos+5, y, mixerStack.available(), LEFT);
-  lcdDrawText(lcdNextPos+20, y+1, "[Audio]", HEADER_COLOR|SMLSIZE);
+  lcdDrawText(lcdNextPos+2, y+1, "[A]", HEADER_COLOR|SMLSIZE);
   lcdDrawNumber(lcdNextPos+5, y, audioStack.available(), LEFT);
+#if defined(TELEMETRY_MAVLINK)
+  lcdDrawText(lcdNextPos+2, y+1, "[T]", HEADER_COLOR|SMLSIZE);
+  lcdDrawNumber(lcdNextPos, y, mavlinkStack.available(), LEFT);
+#endif	
+  lcdDrawText(lcdNextPos+2, y+1, "[I]", HEADER_COLOR|SMLSIZE);
+  lcdDrawNumber(lcdNextPos, y, stackAvailable(), LEFT);
   y += FH;
 
 #if defined(DISK_CACHE) && defined(DEBUG)

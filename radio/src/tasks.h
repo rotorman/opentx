@@ -38,6 +38,13 @@
 #define MENUS_TASK_PRIO        10
 #define CLI_TASK_PRIO          10
 
+//OW
+#if defined(TELEMETRY_MAVLINK)
+#define MAVLINK_STACK_SIZE       512 // consumes 4x, value is first estimate and needs to be evaluated
+#define MAVLINK_TASK_PRIO        8
+#endif
+//OWEND
+
 extern RTOS_TASK_HANDLE menusTaskId;
 extern RTOS_DEFINE_STACK(menusStack, MENUS_STACK_SIZE);
 
@@ -52,9 +59,6 @@ extern RTOS_FLAG_HANDLE openTxInitCompleteFlag;
 
 //OW
 #if defined(TELEMETRY_MAVLINK)
-#define MAVLINK_STACK_SIZE       500 //consumes 4x
-#define MAVLINK_TASK_PRIO        8
-
 extern RTOS_TASK_HANDLE mavlinkTaskId;
 extern RTOS_DEFINE_STACK(mavlinkStack, MAVLINK_STACK_SIZE);
 #endif
