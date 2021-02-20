@@ -92,7 +92,7 @@ bool mavlinkTelem2HasSpace(uint16_t count){ return false; }
 bool mavlinkTelem2PutBuf(const uint8_t *buf, const uint16_t count){ return false; }
 #endif
 
-#if !defined(USB_SERIAL)
+#if !defined(TELEMETRY_MAVLINK_USB_SERIAL)
 uint32_t mavlinkTelem3Available(void){ return 0; }
 uint8_t mavlinkTelem3Getc(uint8_t *c){ return 0; }
 bool mavlinkTelem3HasSpace(uint16_t count){ return false; }
@@ -175,7 +175,7 @@ bool mavlinkTelem2PutBuf(const uint8_t *buf, const uint16_t count)
 
 #endif
 
-#if defined(USB_SERIAL)
+#if defined(TELEMETRY_MAVLINK_USB_SERIAL)
 
 MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> mavlinkTelemUsbRxFifo;
 
@@ -695,7 +695,7 @@ void MavlinkTelem::wakeup()
   // check configuration
   bool serial1_enabled = (g_eeGeneral.auxSerialMode == UART_MODE_MAVLINK);
   bool serial2_enabled = (g_eeGeneral.aux2SerialMode == UART_MODE_MAVLINK);
-#if defined(USB_SERIAL)
+#if defined(TELEMETRY_MAVLINK_USB_SERIAL)
   bool serial3_enabled = (getSelectedUsbMode() == USB_MAVLINK_MODE);
 #else
   bool serial3_enabled = false;
@@ -793,6 +793,7 @@ void MavlinkTelem::wakeup()
   // do tasks
   doTask(); //checks task queue _msg, and puts one result into _msg_out
 
+  // send out pending message
   if (_msg_out_available) {
     mavlinkRouter.handleMessage(0, &_msg_out);
     if (mavlinkRouter.sendToLink(1) || mavlinkRouter.sendToLink(2) || mavlinkRouter.sendToLink(3)) {
@@ -810,7 +811,6 @@ void MavlinkTelem::wakeup()
       _msg_out_available = false; //message is targeted at unknown component
     }
   }
-
 }
 
 // -- 10 ms tick --

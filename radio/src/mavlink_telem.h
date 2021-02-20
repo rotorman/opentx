@@ -26,7 +26,7 @@ extern Fifo<uint8_t, 2*512> aux2SerialTxFifo;
 extern Fifo<uint8_t, 2*512> aux2SerialRxFifo_4MavlinkTelem;
 #endif
 
-#if defined(USB_SERIAL)
+#if defined(TELEMETRY_MAVLINK_USB_SERIAL)
 extern Fifo<uint8_t, 2*512> mavlinkTelemUsbRxFifo;
 #endif
 
@@ -34,7 +34,6 @@ extern Fifo<uint8_t, 2*512> mavlinkTelemUsbRxFifo;
 
 #define MAVLINK_COMM_NUM_BUFFERS      4 // 4
 #define MAVLINK_MAX_SIGNING_STREAMS   1 // 16
-
 
 // checking for lost frames by analyzing seq won't work if we use common and not ardupilotmega
 #include "thirdparty/Mavlink/out/mavlink_types.h"
