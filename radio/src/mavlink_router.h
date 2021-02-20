@@ -14,6 +14,38 @@ class MavlinkRouter
 
     void reset(void) { _reset(); }
 
+#if !defined(MAVLINK_COMMAND_24BIT)
+    void handleMessage(uint8_t link_of_msg, fmav_result_t* result)
+    {
+      if (link_of_msg >= MAVLINK_ROUTER_LINKS_MAX) {
+        for(uint8_t link = 0; link < MAVLINK_ROUTER_LINKS_MAX; link++) _send_to_link[link] = false;
+        return;
+      }
+
+      // keep list of available components by spying heartbeats
+      // heartbeats are always send to all links
+      if (result->msgid == MAVLINK_MSG_ID_HEARTBEAT) {
+        for(uint8_t link = 0; link < MAVLINK_ROUTER_LINKS_MAX; link++) _send_to_link[link] = true;
+        _send_to_link[link_of_msg] = false; //origin of msg, don't reflect it back
+        findOrAddComponent(link_of_msg, result->sysid, result->compid);
+        return;
+      }
+
+      // determine to which links it has to be send
+      for (uint8_t link = 0; link < MAVLINK_ROUTER_LINKS_MAX; link++) {
+        _send_to_link[link] = false;
+
+        if (link == link_of_msg) continue; //origin of msg, don't reflect it back
+
+        if (accept(link, result->target_sysid, result->target_compid)) {
+          _send_to_link[link] = true;
+          continue;
+        }
+      }
+    }
+#endif
+
+#if defined(FASTMAVLINK_PYMAVLINK_ENABLED) or defined(MAVLINK_COMMAND_24BIT)
     void handleMessage(uint8_t link_of_msg, mavlink_message_t* msg)
     {
       if (link_of_msg >= MAVLINK_ROUTER_LINKS_MAX) {
@@ -53,6 +85,7 @@ class MavlinkRouter
         }
       }
     }
+#endif
 
     bool sendToLink(uint8_t link)
     {

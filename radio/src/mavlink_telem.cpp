@@ -733,6 +733,7 @@ void MavlinkTelem::wakeup()
   }
   if (available > 128) available = 128; // 128 = 22 ms @ 57600 bps
 
+#if 0
   // read serial1
   if (currently_scheduled_serial == 0) {
     for (uint32_t i = 0; i < available; i++) {
@@ -747,7 +748,7 @@ void MavlinkTelem::wakeup()
         if (mavlinkRouter.sendToLink(1)) {} // WE DO NOT REFLECT, SO THIS MUST NEVER HAPPEN !!
         if (mavlinkRouter.sendToLink(2)) { mavlinkTelem2PutBuf(_txbuf, count); }
         if (mavlinkRouter.sendToLink(3)) { mavlinkTelem3PutBuf(_txbuf, count); }
-        if (mavlinkRouter.sendToLink(0)) { handleMessage(); } // checks _msg, and puts any result into a task queue
+//XX        if (mavlinkRouter.sendToLink(0)) { handleMessage(); } // checks _msg, and puts any result into a task queue
       }
     }
   }
@@ -766,7 +767,7 @@ void MavlinkTelem::wakeup()
         if (mavlinkRouter.sendToLink(1)) { mavlinkTelemPutBuf(_txbuf, count); }
         if (mavlinkRouter.sendToLink(2)) {} // WE DO NOT REFLECT, SO THIS MUST NEVER HAPPEN !!
         if (mavlinkRouter.sendToLink(3)) { mavlinkTelem3PutBuf(_txbuf, count); }
-        if (mavlinkRouter.sendToLink(0)) { handleMessage(); } // checks _msg, and puts any result into a task queue
+//XX        if (mavlinkRouter.sendToLink(0)) { handleMessage(); } // checks _msg, and puts any result into a task queue
       }
     }
   }
@@ -785,10 +786,67 @@ void MavlinkTelem::wakeup()
         if (mavlinkRouter.sendToLink(1)) { mavlinkTelemPutBuf(_txbuf, count); }
         if (mavlinkRouter.sendToLink(2)) { mavlinkTelem2PutBuf(_txbuf, count); }
         if (mavlinkRouter.sendToLink(3)) {} // WE DO NOT REFLECT, SO THIS MUST NEVER HAPPEN !!
-        if (mavlinkRouter.sendToLink(0)) { handleMessage(); } // checks _msg, and puts any result into a task queue
+//XX        if (mavlinkRouter.sendToLink(0)) { handleMessage(); } // checks _msg, and puts any result into a task queue
       }
     }
   }
+
+#else
+
+  uint8_t c;
+  fmav_result_t result;
+
+  // read serial1
+  if (currently_scheduled_serial == 0) {
+    for (uint32_t i = 0; i < available; i++) {
+      if (!mavlinkTelemGetc(&c)) break;
+      if (fmav_parse_and_check_to_frame_buf(&result, _rxbuf1, &_status1, c)) {
+        mavlinkRouter.handleMessage(1, &result);
+        if (mavlinkRouter.sendToLink(1)) {} // WE DO NOT REFLECT, SO THIS MUST NEVER HAPPEN !!
+        if (mavlinkRouter.sendToLink(2)) { mavlinkTelem2PutBuf(_rxbuf1, result.frame_len); }
+        if (mavlinkRouter.sendToLink(3)) { mavlinkTelem3PutBuf(_rxbuf1, result.frame_len); }
+        if (result.res == FASTMAVLINK_PARSE_RESULT_OK && mavlinkRouter.sendToLink(0)) {
+          fmav_frame_buf_to_msg(&_msg, &result, _rxbuf1);
+          handleMessage(); // checks _msg, and puts any result into a task queue
+        }
+      }
+    }
+  }
+
+  // read serial2
+  if (currently_scheduled_serial == 1) {
+    for (uint32_t i = 0; i < available; i++) {
+      if (!mavlinkTelem2Getc(&c)) break;
+      if (fmav_parse_and_check_to_frame_buf(&result, _rxbuf2, &_status2, c)) {
+        mavlinkRouter.handleMessage(2, &result);
+        if (mavlinkRouter.sendToLink(1)) { mavlinkTelemPutBuf(_rxbuf2, result.frame_len); }
+        if (mavlinkRouter.sendToLink(2)) {} // WE DO NOT REFLECT, SO THIS MUST NEVER HAPPEN !!
+        if (mavlinkRouter.sendToLink(3)) { mavlinkTelem3PutBuf(_rxbuf2, result.frame_len); }
+        if (result.res == FASTMAVLINK_PARSE_RESULT_OK && mavlinkRouter.sendToLink(0)) {
+          fmav_frame_buf_to_msg(&_msg, &result, _rxbuf2);
+          handleMessage(); // checks _msg, and puts any result into a task queue
+        }
+      }
+    }
+  }
+
+  // read usb = serial3
+  if (currently_scheduled_serial == 2) {
+    for (uint32_t i = 0; i < available; i++) {
+      if (!mavlinkTelem3Getc(&c)) break;
+      if (fmav_parse_and_check_to_frame_buf(&result, _rxbuf3, &_status3, c)) {
+        mavlinkRouter.handleMessage(3, &result);
+        if (mavlinkRouter.sendToLink(1)) { mavlinkTelemPutBuf(_rxbuf3, result.frame_len); }
+        if (mavlinkRouter.sendToLink(2)) { mavlinkTelem2PutBuf(_rxbuf3, result.frame_len); }
+        if (mavlinkRouter.sendToLink(3)) {} // WE DO NOT REFLECT, SO THIS MUST NEVER HAPPEN !!
+        if (result.res == FASTMAVLINK_PARSE_RESULT_OK && mavlinkRouter.sendToLink(0)) {
+          fmav_frame_buf_to_msg(&_msg, &result, _rxbuf3);
+          handleMessage(); // checks _msg, and puts any result into a task queue
+        }
+      }
+    }
+  }
+#endif
 
   // do tasks
   doTask(); //checks task queue _msg, and puts one result into _msg_out
