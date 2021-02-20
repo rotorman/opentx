@@ -83,9 +83,8 @@ void usbStart()
       USBD_Init(&USB_OTG_dev, USB_OTG_FS_CORE_ID, &USR_desc, &USBD_CDC_cb, &USR_cb);
       break;
 //OW
-#if defined(TELEMETRY_MAVLINK) && defined(USB_SERIAL)
+#if defined(TELEMETRY_MAVLINK_USB_SERIAL)
     case USB_MAVLINK_MODE:
-      //usbDriverStarted = false;
       USBD_Init(&USB_OTG_dev, USB_OTG_FS_CORE_ID, &USR_desc, &USBD_CDC_cb, &USR_cb);
       break;
 #endif
