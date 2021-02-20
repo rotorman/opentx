@@ -733,7 +733,7 @@ void MavlinkTelem::wakeup()
   }
   if (available > 128) available = 128; // 128 = 22 ms @ 57600 bps
 
-#if 0
+#if defined(MAVLINK_COMMAND_24BIT)
   // read serial1
   if (currently_scheduled_serial == 0) {
     for (uint32_t i = 0; i < available; i++) {
@@ -748,7 +748,7 @@ void MavlinkTelem::wakeup()
         if (mavlinkRouter.sendToLink(1)) {} // WE DO NOT REFLECT, SO THIS MUST NEVER HAPPEN !!
         if (mavlinkRouter.sendToLink(2)) { mavlinkTelem2PutBuf(_txbuf, count); }
         if (mavlinkRouter.sendToLink(3)) { mavlinkTelem3PutBuf(_txbuf, count); }
-//XX        if (mavlinkRouter.sendToLink(0)) { handleMessage(); } // checks _msg, and puts any result into a task queue
+        if (mavlinkRouter.sendToLink(0)) { handleMessage(); } // checks _msg, and puts any result into a task queue
       }
     }
   }
@@ -767,7 +767,7 @@ void MavlinkTelem::wakeup()
         if (mavlinkRouter.sendToLink(1)) { mavlinkTelemPutBuf(_txbuf, count); }
         if (mavlinkRouter.sendToLink(2)) {} // WE DO NOT REFLECT, SO THIS MUST NEVER HAPPEN !!
         if (mavlinkRouter.sendToLink(3)) { mavlinkTelem3PutBuf(_txbuf, count); }
-//XX        if (mavlinkRouter.sendToLink(0)) { handleMessage(); } // checks _msg, and puts any result into a task queue
+        if (mavlinkRouter.sendToLink(0)) { handleMessage(); } // checks _msg, and puts any result into a task queue
       }
     }
   }
@@ -786,7 +786,7 @@ void MavlinkTelem::wakeup()
         if (mavlinkRouter.sendToLink(1)) { mavlinkTelemPutBuf(_txbuf, count); }
         if (mavlinkRouter.sendToLink(2)) { mavlinkTelem2PutBuf(_txbuf, count); }
         if (mavlinkRouter.sendToLink(3)) {} // WE DO NOT REFLECT, SO THIS MUST NEVER HAPPEN !!
-//XX        if (mavlinkRouter.sendToLink(0)) { handleMessage(); } // checks _msg, and puts any result into a task queue
+        if (mavlinkRouter.sendToLink(0)) { handleMessage(); } // checks _msg, and puts any result into a task queue
       }
     }
   }
@@ -814,7 +814,6 @@ void MavlinkTelem::wakeup()
   }
 
 #else
-
   uint8_t c;
   fmav_result_t result;
 
@@ -950,8 +949,6 @@ void MavlinkTelem::_reset(void)
   if (g_eeGeneral.aux2SerialMode == UART_MODE_MAVLINK) g_eeGeneral.aux2SerialMode = UART_MODE_NONE;
 #endif
 
-  for (uint8_t chan = MAVLINK_COMM_0; chan < MAVLINK_COMM_NUM_BUFFERS; chan++) mavlink_reset_channel_status(chan);
-
   _my_sysid = MAVLINK_TELEM_MY_SYSID;
   _my_compid = MAVLINK_TELEM_MY_COMPID;
 
@@ -985,6 +982,12 @@ void MavlinkTelem::_reset(void)
 
   _resetQShot();
 
+  for (uint8_t chan = MAVLINK_COMM_0; chan < MAVLINK_COMM_NUM_BUFFERS; chan++) mavlink_reset_channel_status(chan);
+#if !defined(MAVLINK_COMMAND_24BIT)
+  fmav_status_reset(&_status1);
+  fmav_status_reset(&_status2);
+  fmav_status_reset(&_status3);
+#endif
   mavlinkRouter.reset();
   mavlinkRouter.addOurself(MAVLINK_TELEM_MY_SYSID, MAVLINK_TELEM_MY_COMPID);
 
