@@ -691,9 +691,13 @@ void MavlinkTelem::doTask(void)
 void MavlinkTelem::wakeup()
 {
   // check configuration
-  bool serial1_enabled = g_eeGeneral.auxSerialMode == UART_MODE_MAVLINK;
-  bool serial2_enabled = g_eeGeneral.aux2SerialMode == UART_MODE_MAVLINK;
-  bool serial3_enabled = getSelectedUsbMode() == USB_MAVLINK_MODE;
+  bool serial1_enabled = (g_eeGeneral.auxSerialMode == UART_MODE_MAVLINK);
+  bool serial2_enabled = (g_eeGeneral.aux2SerialMode == UART_MODE_MAVLINK);
+#if defined(USB_SERIAL)
+  bool serial3_enabled = (getSelectedUsbMode() == USB_MAVLINK_MODE);
+#else
+  bool serial3_enabled = false;
+#endif
 
   if ((_serial1_enabled != serial1_enabled) || (_serial2_enabled != serial2_enabled) ||
       (_serial1_baudrate != g_eeGeneral.mavlinkBaudrate) || (_serial2_baudrate != g_eeGeneral.mavlinkBaudrate2)) {
@@ -816,10 +820,13 @@ void MavlinkTelem::wakeup()
     mavlinkRouter.handleMessage(0, &_msg_out);
     if (mavlinkRouter.sendToLink(1) || mavlinkRouter.sendToLink(2) || mavlinkRouter.sendToLink(3)) {
       uint16_t count = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
-      if (mavlinkTelemHasSpace(count) && mavlinkTelem2HasSpace(count) && mavlinkTelem3HasSpace(count)) { //only send if it can be send on both serials
-        if (mavlinkRouter.sendToLink(1)) mavlinkTelemPutBuf(_txbuf, count);
-        if (mavlinkRouter.sendToLink(2)) mavlinkTelem2PutBuf(_txbuf, count);
-        if (mavlinkRouter.sendToLink(3)) mavlinkTelem3PutBuf(_txbuf, count);
+      // check that message can be send to all enabled serials
+      if ((!serial1_enabled || mavlinkTelemHasSpace(count)) &&
+          (!serial2_enabled || mavlinkTelem2HasSpace(count)) &&
+          (!serial3_enabled || mavlinkTelem3HasSpace(count))) {
+        if (serial1_enabled && mavlinkRouter.sendToLink(1)) mavlinkTelemPutBuf(_txbuf, count);
+        if (serial2_enabled && mavlinkRouter.sendToLink(2)) mavlinkTelem2PutBuf(_txbuf, count);
+        if (serial3_enabled && mavlinkRouter.sendToLink(3)) mavlinkTelem3PutBuf(_txbuf, count);
         _msg_out_available = false;
       }
     } else {
