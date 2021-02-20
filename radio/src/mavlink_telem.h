@@ -32,8 +32,10 @@ extern Fifo<uint8_t, 2*512> mavlinkTelemUsbRxFifo;
 
 // -- main Mavlink stuff
 
-#define MAVLINK_COMM_NUM_BUFFERS      4 // 4
-#define MAVLINK_MAX_SIGNING_STREAMS   1 // 16
+#define FASTMAVLINK_RAM_SECTION  static MAVLINK_RAM_SECTION
+
+#define MAVLINK_COMM_NUM_BUFFERS  4 // 4 // we only use status for COMM1, but optimization is doing it for us
+#define MAVLINK_MAX_SIGNING_STREAMS  1 // 16
 
 #define FASTMAVLINK_ROUTER_LINKS_MAX  4
 #define FASTMAVLINK_ROUTER_COMPONENTS_MAX  12
@@ -43,7 +45,6 @@ extern Fifo<uint8_t, 2*512> mavlinkTelemUsbRxFifo;
 //XX #include "thirdparty/Mavlink/out/opentx/mavlink.h"
 #include "thirdparty/fastMavlink/out/opentx/mavlink.h"
 //#include "thirdparty/fastMavlink/out/opentx/opentx.h"
-#include "thirdparty/fastMavlink/out/fastmavlink_router.h"
 
 
 #define MAVLINK_TELEM_MY_SYSID        254 //MissionPlanner is 255, QGroundControl is 255
@@ -769,10 +770,10 @@ class MavlinkTelem
 
     uint16_t _scheduled_serial = 0;
     MavlinkRouter mavlinkRouter;
-    uint8_t _txbuf[512]; //only needs to hold one MAVLink message, which is 280 max, thus 512 is by construction large enough
+    uint8_t _txbuf[296]; //only needs to hold one MAVLink message, which is 280 max, thus 512 is by construction large enough
 
     fmav_status_t _status1, _status2, _status3;
-    uint8_t _rxbuf1[512], _rxbuf2[512], _rxbuf3[512];
+    uint8_t _rxbuf1[296], _rxbuf2[296], _rxbuf3[296];
 
     // STUFF
 

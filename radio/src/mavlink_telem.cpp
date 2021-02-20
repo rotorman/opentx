@@ -791,6 +791,28 @@ void MavlinkTelem::wakeup()
     }
   }
 
+  // do tasks
+  doTask(); //checks task queue _msg, and puts one result into _msg_out
+
+  // send out pending message
+  if (_msg_out_available) {
+    mavlinkRouter.handleMessage(0, &_msg_out);
+    if (mavlinkRouter.sendToLink(1) || mavlinkRouter.sendToLink(2) || mavlinkRouter.sendToLink(3)) {
+      uint16_t count = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+      // check that message can be send to all enabled serials
+      if ((!serial1_enabled || mavlinkTelemHasSpace(count)) &&
+          (!serial2_enabled || mavlinkTelem2HasSpace(count)) &&
+          (!serial3_enabled || mavlinkTelem3HasSpace(count))) {
+        if (serial1_enabled && mavlinkRouter.sendToLink(1)) mavlinkTelemPutBuf(_txbuf, count);
+        if (serial2_enabled && mavlinkRouter.sendToLink(2)) mavlinkTelem2PutBuf(_txbuf, count);
+        if (serial3_enabled && mavlinkRouter.sendToLink(3)) mavlinkTelem3PutBuf(_txbuf, count);
+        _msg_out_available = false;
+      }
+    } else {
+      _msg_out_available = false; //message is targeted at unknown component
+    }
+  }
+
 #else
 
   uint8_t c;
@@ -846,7 +868,6 @@ void MavlinkTelem::wakeup()
       }
     }
   }
-#endif
 
   // do tasks
   doTask(); //checks task queue _msg, and puts one result into _msg_out
@@ -869,6 +890,7 @@ void MavlinkTelem::wakeup()
       _msg_out_available = false; //message is targeted at unknown component
     }
   }
+#endif
 }
 
 // -- 10 ms tick --
