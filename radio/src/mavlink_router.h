@@ -105,27 +105,24 @@ class MavlinkRouter
 
     bool accept(uint8_t target_link, uint8_t target_sysid, uint8_t target_compid)
     {
-      // target_sysid is broadcast
-      if (target_sysid == 0) {
-        return true;
-      }
-
       // go through all components on the link and see if the one we are targeting at is there
       for (uint8_t i = 0; i < MAVLINK_ROUTER_COMPONENTS_MAX; i++) {
         if (!componentList[i].valid) continue;
 
         if (componentList[i].link != target_link) continue; //not our link
 
-        if (componentList[i].sysid != target_sysid) continue; //not our system
-
-        // target_sysid is on the link, and target_compid is broadcast
-        if (target_compid == 0) {
+        if (target_sysid == 0) { //target link has seen at least one component, and target_sysid is broadcast, so ok
           return true;
         }
 
-        // target_sysid and target_compid is on the link
-        if (componentList[i].compid == target_compid) {
-          return  true;
+        if (componentList[i].sysid != target_sysid) continue; //not our system
+
+        if (target_compid == 0) { //target_sysid is on the link, and target_compid is broadcast
+          return true;
+        }
+
+        if (componentList[i].compid == target_compid) { //target_sysid and target_compid is on the link
+          return true;
         }
       }
 

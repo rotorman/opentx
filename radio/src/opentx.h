@@ -94,6 +94,7 @@ added files in radio/src/
 
 TODO:
 - mavlink api
+- mavlink router: wipeout&reassign when link changes? wipeout after timeout?
 
 COMMENTS:
 perMain() in main.cpp, where GPS is:

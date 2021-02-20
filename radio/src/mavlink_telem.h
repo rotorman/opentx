@@ -35,12 +35,11 @@ extern Fifo<uint8_t, 2*512> mavlinkTelemUsbRxFifo;
 #define MAVLINK_COMM_NUM_BUFFERS      4 // 4
 #define MAVLINK_MAX_SIGNING_STREAMS   1 // 16
 
-/*
-#include "thirdparty/Mavlink/out/mavlink_types.h"
+
 // checking for lost frames by analyzing seq won't work if we use common and not ardupilotmega
+#include "thirdparty/Mavlink/out/mavlink_types.h"
 #include "thirdparty/Mavlink/out/opentx/mavlink.h"
-*/
-#include "fastmavlink/out/opentx/mavlink.h"
+//#include "fastmavlink/out/opentx/mavlink.h"
 
 
 #define MAVLINK_TELEM_MY_SYSID        254 //MissionPlanner is 255, QGroundControl is 255
