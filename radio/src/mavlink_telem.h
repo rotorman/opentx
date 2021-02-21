@@ -16,6 +16,11 @@ uint16_t mavlinkTaskLoad(void);
 uint32_t mavlinkTelemBaudrate(void);
 uint32_t mavlinkTelemBaudrate2(void);
 
+uint32_t mavlinkTelem3Available(void);
+uint8_t mavlinkTelem3Getc(uint8_t *c);
+bool mavlinkTelem3HasSpace(uint16_t count);
+bool mavlinkTelem3PutBuf(const uint8_t *buf, const uint16_t count);
+
 #if defined(AUX_SERIAL)
 extern Fifo<uint8_t, 2*512> auxSerialTxFifo;
 extern Fifo<uint8_t, 2*512> auxSerialRxFifo_4MavlinkTelem;
