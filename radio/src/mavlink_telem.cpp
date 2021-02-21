@@ -372,7 +372,7 @@ void MavlinkTelem::do_requests(void)
 
 void MavlinkTelem::setOutVersionV2(void)
 {
-#ifdef MAVLINK_COMMAND_24BIT //this indicates that std mavlink is installed
+#if !defined(FASTMAVLINK_IN_USE) //this indicates that std mavlink is installed
   _status.flags &=~ MAVLINK_STATUS_FLAG_OUT_MAVLINK1;
 
   //THIS IS A BUG, RIGHT? should be
@@ -733,7 +733,7 @@ void MavlinkTelem::wakeup()
   }
   if (available > 128) available = 128; // 128 = 22 ms @ 57600 bps
 
-#if defined(MAVLINK_COMMAND_24BIT)
+#if !defined(FASTMAVLINK_IN_USE)
   // read serial1
   if (currently_scheduled_serial == 0) {
     for (uint32_t i = 0; i < available; i++) {
@@ -983,7 +983,7 @@ void MavlinkTelem::_reset(void)
   _resetQShot();
 
   for (uint8_t chan = MAVLINK_COMM_0; chan < MAVLINK_COMM_NUM_BUFFERS; chan++) mavlink_reset_channel_status(chan);
-#if !defined(MAVLINK_COMMAND_24BIT)
+#if defined(FASTMAVLINK_IN_USE)
   fmav_status_reset(&_status1);
   fmav_status_reset(&_status2);
   fmav_status_reset(&_status3);

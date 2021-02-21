@@ -2,7 +2,7 @@
  * (c) www.olliw.eu, OlliW, OlliW42
  */
 
-#if !defined(MAVLINK_COMMAND_24BIT)
+#if defined(FASTMAVLINK_IN_USE)
 
 
 #include "thirdparty/Mavlink/out/fastmavlink_router.h"
