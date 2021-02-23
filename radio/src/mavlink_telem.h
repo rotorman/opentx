@@ -16,6 +16,16 @@ uint16_t mavlinkTaskLoad(void);
 uint32_t mavlinkTelemBaudrate(void);
 uint32_t mavlinkTelemBaudrate2(void);
 
+uint32_t mavlinkTelemAvailable(void);
+uint8_t mavlinkTelemGetc(uint8_t *c);
+bool mavlinkTelemHasSpace(uint16_t count);
+bool mavlinkTelemPutBuf(const uint8_t *buf, const uint16_t count);
+
+uint32_t mavlinkTelem2Available(void);
+uint8_t mavlinkTelem2Getc(uint8_t *c);
+bool mavlinkTelem2HasSpace(uint16_t count);
+bool mavlinkTelem2PutBuf(const uint8_t *buf, const uint16_t count);
+
 uint32_t mavlinkTelem3Available(void);
 uint8_t mavlinkTelem3Getc(uint8_t *c);
 bool mavlinkTelem3HasSpace(uint16_t count);
