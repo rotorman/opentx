@@ -1,18 +1,20 @@
 #!/usr/bin/env python
 '''
-mavgenerate_dialect.py
-calls mavlink generator for C header files
+fmavgenerate_dialect.py
+calls fastMavlink generator for C header files
 (c) olliw, olliw42
 '''
 
 #options to set
 
-#mavlinkdialect = "storm32"
+#mavlinkpathtorepository = r'C:\Users\Olli\Documents\GitHub\fastmavlink'
+mavlinkpathtorepository = r'fastmavlink'
+
+#mavlinkdialect = "\..\mavlink\external\dialects\storm32"
 mavlinkdialect = "opentx"
 
 mavlinkoutputdirectory = 'out'
-
-mavlinkpathtorepository = r'fastmavlink'
+#mavlinkoutputdirectory = 'v2.0'
 
 
 '''
@@ -23,11 +25,16 @@ import shutil
 import re
 import sys
 
-#we may have not installed it or have different pymavlink, so set things straight
+#import pkgutil
+#search_path = [mavlinkpathtorepository] # set to None to see all modules importable from sys.path
+#all_modules = [x[1] for x in pkgutil.iter_modules(path=search_path)]
+#print(all_modules)
+
+#we may have not installed it or have different fastMavlink, so set things straight
 sys.path.insert(0,mavlinkpathtorepository)
 
 from fastmavlink.generator import fmavgen
-
+from fastmavlink.generator.modules import fmavflags
 
 '''
 Generates the header files and place them in the output directory.
@@ -35,7 +42,8 @@ Generates the header files and place them in the output directory.
 
 outdir = mavlinkoutputdirectory
         
-xmfile = mavlinkdialect+'.xml'        
+#xmfile = os.path.abspath(mavlinkpathtorepository + mavlinkdialect+'.xml')
+xmfile = mavlinkdialect+'.xml'
 
 #recreate out directory
 print('----------')
@@ -48,7 +56,7 @@ os.mkdir(outdir)
 print('----------')
 
 if True:
-        opts = fmavgen.Opts(outdir)
+        opts = fmavgen.Opts(outdir, warning_flags=fmavflags.WARNING_FLAGS_ENUM_VALUE_MISSING)
         args = [xmfile]
         try:
             fmavgen.fmavgen(opts,args)
