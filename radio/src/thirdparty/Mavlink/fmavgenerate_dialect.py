@@ -8,7 +8,8 @@ calls fastMavlink generator for C header files
 #options to set
 
 #mavlinkpathtorepository = r'C:\Users\Olli\Documents\GitHub\fastmavlink'
-mavlinkpathtorepository = r'fastmavlink'
+#mavlinkpathtorepository = r'..\..\..\..\..\..\GitHub\fastmavlink'
+mavlinkpathtorepository = r'..\..\..\..\..\fastmavlink'
 
 #mavlinkdialect = "\..\mavlink\external\dialects\storm32"
 mavlinkdialect = "opentx"
@@ -33,8 +34,8 @@ import sys
 #we may have not installed it or have different fastMavlink, so set things straight
 sys.path.insert(0,mavlinkpathtorepository)
 
-from fastmavlink.generator import fmavgen
-from fastmavlink.generator.modules import fmavflags
+from generator import fmavgen
+from generator.modules import fmavflags
 
 '''
 Generates the header files and place them in the output directory.
@@ -56,7 +57,7 @@ os.mkdir(outdir)
 print('----------')
 
 if True:
-        opts = fmavgen.Opts(outdir, warning_flags=fmavflags.WARNING_FLAGS_ENUM_VALUE_MISSING)
+        opts = fmavgen.Opts(outdir, parse_flags=fmavflags.PARSE_FLAGS_WARNING_ENUM_VALUE_MISSING)
         args = [xmfile]
         try:
             fmavgen.fmavgen(opts,args)
