@@ -132,4 +132,4 @@ if [[ $PAUSEAFTEREACHLINE == "true" ]]; then
   echo "Step finished."
 fi
 
-echo "Finished setting up OpenTX v2.3 development environment."
+echo "Finished setting up OpenTX v2.3 development environment. Please reboot the computer."
