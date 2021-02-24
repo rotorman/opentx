@@ -49,20 +49,20 @@ xmfile = mavlinkdialect+'.xml'
 print('----------')
 print('kill out dir')
 try:
-shutil.rmtree(outdir)
+    shutil.rmtree(outdir)
 except:
-pass    
+    pass    
 os.mkdir(outdir)
 print('----------')
 
 opts = fmavgen.Opts(outdir, parse_flags=fmavflags.PARSE_FLAGS_WARNING_ENUM_VALUE_MISSING)
 args = [xmfile]
 try:
-fmavgen.fmavgen(opts,args)
-print('Successfully Generated Headers', 'Headers generated successfully.')
+    fmavgen.fmavgen(opts,args)
+    print('Successfully Generated Headers', 'Headers generated successfully.')
 
 except Exception as ex:
-exStr = str(ex)
-print('Error Generating Headers','{0!s}'.format(exStr))
-exit()
+    exStr = str(ex)
+    print('Error Generating Headers','{0!s}'.format(exStr))
+    exit()
 
