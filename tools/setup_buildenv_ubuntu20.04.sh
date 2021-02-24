@@ -93,21 +93,28 @@ if [[ $PAUSEAFTEREACHLINE == "true" ]]; then
   read
 fi
 
-echo "=== Step 10: Fetching USB DFU host utility ==="
+echo "=== Step 10: Removing modemmanager (conflicts with DFU) ==="
+sudo apt-get -y remove modemmanager
+if [[ $PAUSEAFTEREACHLINE == "true" ]]; then
+  echo "Step finished. Please check the output above and press Enter to continue or Ctrl+C to stop."
+  read
+fi
+
+echo "=== Step 11: Fetching USB DFU host utility ==="
 wget http://dfu-util.sourceforge.net/releases/dfu-util-0.9.tar.gz
 if [[ $PAUSEAFTEREACHLINE == "true" ]]; then
   echo "Step finished. Please check the output above and press Enter to continue or Ctrl+C to stop."
   read
 fi
 
-echo "=== Step 11: Unpacking USB DFU host utility ==="
+echo "=== Step 12: Unpacking USB DFU host utility ==="
 tar xzvf dfu-util-0.9.tar.gz
 if [[ $PAUSEAFTEREACHLINE == "true" ]]; then
   echo "Step finished. Please check the output above and press Enter to continue or Ctrl+C to stop."
   read
 fi
 
-echo "=== Step 12: Building and Installing USB DFU host utility ==="
+echo "=== Step 13: Building and Installing USB DFU host utility ==="
 cd dfu-util-0.9/
 ./configure 
 make
@@ -118,7 +125,7 @@ if [[ $PAUSEAFTEREACHLINE == "true" ]]; then
   read
 fi
 
-echo "=== Step 13: Removing the downloaded archive and build folder of USB DFU host utility ==="
+echo "=== Step 14: Removing the downloaded archive and build folder of USB DFU host utility ==="
 rm dfu-util-0.9.tar.gz
 rm -rf dfu-util-0.9
 if [[ $PAUSEAFTEREACHLINE == "true" ]]; then
