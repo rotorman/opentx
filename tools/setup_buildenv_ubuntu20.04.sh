@@ -49,7 +49,7 @@ if [[ $PAUSEAFTEREACHLINE == "true" ]]; then
 fi
 
 echo "=== Step 5: Fetching GNU Arm Embedded Toolchain ==="
-# wget -q https://launchpad.net/gcc-arm-embedded/4.7/4.7-2013-q3-update/+download/gcc-arm-none-eabi-4_7-2013q3-20130916-linux.tar.bz2
+wget -q https://launchpad.net/gcc-arm-embedded/4.7/4.7-2013-q3-update/+download/gcc-arm-none-eabi-4_7-2013q3-20130916-linux.tar.bz2
 # for debugging need gdb-py, not available for 4.7
 wget -q https://launchpad.net/gcc-arm-embedded/4.9/4.9-2015-q2-update/+download/gcc-arm-none-eabi-4_9-2015q2-20150609-linux.tar.bz2
 #wget -q https://developer.arm.com/-/media/Files/downloads/gnu-rm/10-2020q4/gcc-arm-none-eabi-10-2020-q4-major-x86_64-linux.tar.bz2
@@ -59,7 +59,7 @@ if [[ $PAUSEAFTEREACHLINE == "true" ]]; then
 fi
 
 echo "=== Step 6: Unpacking GNU Arm Embedded Toolchain ==="
-#tar xjf gcc-arm-none-eabi-4_7-2013q3-20130916-linux.tar.bz2
+tar xjf gcc-arm-none-eabi-4_7-2013q3-20130916-linux.tar.bz2
 tar xjf gcc-arm-none-eabi-4_9-2015q2-20150609-linux.tar.bz2
 #tar xjf gcc-arm-none-eabi-10-2020-q4-major-x86_64-linux.tar.bz2
 if [[ $PAUSEAFTEREACHLINE == "true" ]]; then
@@ -68,7 +68,7 @@ if [[ $PAUSEAFTEREACHLINE == "true" ]]; then
 fi
 
 echo "=== Step 7: Removing the downloaded archive ==="
-#rm gcc-arm-none-eabi-4_7-2013q3-20130916-linux.tar.bz2
+rm gcc-arm-none-eabi-4_7-2013q3-20130916-linux.tar.bz2
 rm gcc-arm-none-eabi-4_9-2015q2-20150609-linux.tar.bz2
 #rm gcc-arm-none-eabi-10-2020-q4-major-x86_64-linux.tar.bz2
 if [[ $PAUSEAFTEREACHLINE == "true" ]]; then
@@ -77,8 +77,8 @@ if [[ $PAUSEAFTEREACHLINE == "true" ]]; then
 fi
 
 echo "=== Step 8: Moving GNU Arm Embedded Toolchain to /opt ==="
-#sudo mv gcc-arm-none-eabi-4_7-2013q3 /opt/gcc-arm-none-eabi
-sudo mv gcc-arm-none-eabi-4_9-2015q2 /opt/gcc-arm-none-eabi
+sudo mv gcc-arm-none-eabi-4_7-2013q3 /opt/gcc-arm-none-eabi
+sudo mv gcc-arm-none-eabi-4_9-2015q2 /opt/gcc-arm-none-eabi-4_9-2015q2
 #sudo mv gcc-arm-none-eabi-10-2020-q4-major /opt/gcc-arm-none-eabi
 if [[ $PAUSEAFTEREACHLINE == "true" ]]; then
   echo "Step finished. Please press Enter to continue or Ctrl+C to stop."
