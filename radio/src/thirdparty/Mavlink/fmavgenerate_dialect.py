@@ -12,11 +12,9 @@ import sys
 
 #options to set
 
-#mavlinkpathtorepository = os.path.join("C:/",'Users','Olli','Documents','GitHub','fastmavlink')
 mavlinkpathtorepository = os.path.join('fastmavlink')
 
-#mavlinkdialect = "\..\mavlink\external\dialects\storm32"
-mavlinkdialect = "opentx"
+mavlinkdialect = "opentx.xml"
 
 mavlinkoutputdirectory = 'out'
 
@@ -24,12 +22,7 @@ mavlinkoutputdirectory = 'out'
 '''
 Imports
 '''
-#import pkgutil
-#search_path = [mavlinkpathtorepository] # set to None to see all modules importable from sys.path
-#all_modules = [x[1] for x in pkgutil.iter_modules(path=search_path)]
-#print(all_modules)
 
-#we may have not installed it or have different fastMavlink, so set things straight
 sys.path.insert(0,mavlinkpathtorepository)
 
 from generator import fmavgen
@@ -41,8 +34,7 @@ Generates the header files and place them in the output directory.
 
 outdir = mavlinkoutputdirectory
 
-#xmfile = os.path.abspath(os.path.join(mavlinkpathtorepository, mavlinkdialect+'.xml'))
-xmfile = mavlinkdialect+'.xml'
+xmfile = mavlinkdialect
 
 #recreate out directory
 print('----------')
