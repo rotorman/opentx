@@ -13,13 +13,12 @@ import sys
 #options to set
 
 #mavlinkpathtorepository = os.path.join("C:/",'Users','Olli','Documents','GitHub','fastmavlink')
-mavlinkpathtorepository = os.path.join('..','..','..','..','..','fastmavlink')
+mavlinkpathtorepository = os.path.join('fastmavlink')
 
 #mavlinkdialect = "\..\mavlink\external\dialects\storm32"
 mavlinkdialect = "opentx"
 
 mavlinkoutputdirectory = 'out'
-#mavlinkoutputdirectory = 'v2.0'
 
 
 '''
