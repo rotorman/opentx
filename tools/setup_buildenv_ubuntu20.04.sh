@@ -48,38 +48,35 @@ if [[ $PAUSEAFTEREACHLINE == "true" ]]; then
   read
 fi
 
-echo "=== Step 5: Fetching GNU Arm Embedded Toolchain ==="
+echo "=== Step 5: Fetching GNU Arm Embedded Toolchains ==="
+# OpenTX currently does not build correctly with newer version than 4.7 q3
 wget -q https://launchpad.net/gcc-arm-embedded/4.7/4.7-2013-q3-update/+download/gcc-arm-none-eabi-4_7-2013q3-20130916-linux.tar.bz2
-# for debugging need gdb-py, not available for 4.7
-wget -q https://launchpad.net/gcc-arm-embedded/4.9/4.9-2015-q2-update/+download/gcc-arm-none-eabi-4_9-2015q2-20150609-linux.tar.bz2
-#wget -q https://developer.arm.com/-/media/Files/downloads/gnu-rm/10-2020q4/gcc-arm-none-eabi-10-2020-q4-major-x86_64-linux.tar.bz2
+# for debugging with Qt Creator need gdb-py, was introduced from 4.9 upwards, we get 4.9 q3
+wget -q https://launchpad.net/gcc-arm-embedded/4.9/4.9-2015-q3-update/+download/gcc-arm-none-eabi-4_9-2015q3-20150921-linux.tar.bz2
 if [[ $PAUSEAFTEREACHLINE == "true" ]]; then
   echo "Step finished. Please press Enter to continue or Ctrl+C to stop."
   read
 fi
 
-echo "=== Step 6: Unpacking GNU Arm Embedded Toolchain ==="
+echo "=== Step 6: Unpacking GNU Arm Embedded Toolchains ==="
 tar xjf gcc-arm-none-eabi-4_7-2013q3-20130916-linux.tar.bz2
-tar xjf gcc-arm-none-eabi-4_9-2015q2-20150609-linux.tar.bz2
-#tar xjf gcc-arm-none-eabi-10-2020-q4-major-x86_64-linux.tar.bz2
+tar xjf gcc-arm-none-eabi-4_9-2015q3-20150921-linux.tar.bz2
 if [[ $PAUSEAFTEREACHLINE == "true" ]]; then
   echo "Step finished. Please press Enter to continue or Ctrl+C to stop."
   read
 fi
 
-echo "=== Step 7: Removing the downloaded archive ==="
+echo "=== Step 7: Removing the downloaded archives ==="
 rm gcc-arm-none-eabi-4_7-2013q3-20130916-linux.tar.bz2
-rm gcc-arm-none-eabi-4_9-2015q2-20150609-linux.tar.bz2
-#rm gcc-arm-none-eabi-10-2020-q4-major-x86_64-linux.tar.bz2
+rm gcc-arm-none-eabi-4_9-2015q3-20150921-linux.tar.bz2
 if [[ $PAUSEAFTEREACHLINE == "true" ]]; then
   echo "Step finished. Please press Enter to continue or Ctrl+C to stop."
   read
 fi
 
-echo "=== Step 8: Moving GNU Arm Embedded Toolchain to /opt ==="
+echo "=== Step 8: Moving GNU Arm Embedded Toolchains to /opt ==="
 sudo mv gcc-arm-none-eabi-4_7-2013q3 /opt/gcc-arm-none-eabi
-sudo mv gcc-arm-none-eabi-4_9-2015q2 /opt/gcc-arm-none-eabi-4_9-2015q2
-#sudo mv gcc-arm-none-eabi-10-2020-q4-major /opt/gcc-arm-none-eabi
+sudo mv gcc-arm-none-eabi-4_9-2015q3 /opt/gcc-arm-none-eabi-4_9-2015q3
 if [[ $PAUSEAFTEREACHLINE == "true" ]]; then
   echo "Step finished. Please press Enter to continue or Ctrl+C to stop."
   read
