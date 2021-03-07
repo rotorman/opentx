@@ -28,11 +28,11 @@
 #include "opentx_helpers.h"
 
 //OW
-#define OWVERSIONSTR  "v25rc03"
+#define OWVERSIONSTR  "v25"
 //OWEND
 
 /*
-v25 2021-02-23
+v25 2021-03-07
 v24 2021-02-11
 v22 2021-02-5:
 mavlink submodule changeg to main git repo, 600xx storm32
