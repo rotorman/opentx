@@ -461,7 +461,7 @@ void MavlinkTelem::wakeup()
 
   if (_serial3_enabled != serial3_enabled) {
     _serial3_enabled = serial3_enabled;
-    mavlinkRouter.clearoutLink(3);
+    fmav_router_clearout_link(3);
   }
 
   // skip out if not one of the AUX,AUX2 serials is enabled
@@ -490,11 +490,11 @@ void MavlinkTelem::wakeup()
     for (uint32_t i = 0; i < available; i++) {
       if (!mavlinkTelemGetc(&c)) break;
       if (fmav_parse_and_check_to_frame_buf(&result, _rxbuf1, &_status1, c)) {
-        mavlinkRouter.handleMessage(1, &result);
-        if (mavlinkRouter.sendToLink(1)) {} // WE DO NOT REFLECT, SO THIS MUST NEVER HAPPEN !!
-        if (mavlinkRouter.sendToLink(2)) { mavlinkTelem2PutBuf(_rxbuf1, result.frame_len); }
-        if (mavlinkRouter.sendToLink(3)) { mavlinkTelem3PutBuf(_rxbuf1, result.frame_len); }
-        if (result.res == FASTMAVLINK_PARSE_RESULT_OK && mavlinkRouter.sendToLink(0)) {
+        fmav_router_handle_message(1, &result);
+        if (fmav_router_send_to_link(1)) {} // WE DO NOT REFLECT, SO THIS MUST NEVER HAPPEN !!
+        if (fmav_router_send_to_link(2)) { mavlinkTelem2PutBuf(_rxbuf1, result.frame_len); }
+        if (fmav_router_send_to_link(3)) { mavlinkTelem3PutBuf(_rxbuf1, result.frame_len); }
+        if (result.res == FASTMAVLINK_PARSE_RESULT_OK && fmav_router_send_to_link(0)) {
           fmav_frame_buf_to_msg(&_msg, &result, _rxbuf1);
           handleMessage(); // checks _msg, and puts any result into a task queue
         }
@@ -507,11 +507,11 @@ void MavlinkTelem::wakeup()
     for (uint32_t i = 0; i < available; i++) {
       if (!mavlinkTelem2Getc(&c)) break;
       if (fmav_parse_and_check_to_frame_buf(&result, _rxbuf2, &_status2, c)) {
-        mavlinkRouter.handleMessage(2, &result);
-        if (mavlinkRouter.sendToLink(1)) { mavlinkTelemPutBuf(_rxbuf2, result.frame_len); }
-        if (mavlinkRouter.sendToLink(2)) {} // WE DO NOT REFLECT, SO THIS MUST NEVER HAPPEN !!
-        if (mavlinkRouter.sendToLink(3)) { mavlinkTelem3PutBuf(_rxbuf2, result.frame_len); }
-        if (result.res == FASTMAVLINK_PARSE_RESULT_OK && mavlinkRouter.sendToLink(0)) {
+        fmav_router_handle_message(2, &result);
+        if (fmav_router_send_to_link(1)) { mavlinkTelemPutBuf(_rxbuf2, result.frame_len); }
+        if (fmav_router_send_to_link(2)) {} // WE DO NOT REFLECT, SO THIS MUST NEVER HAPPEN !!
+        if (fmav_router_send_to_link(3)) { mavlinkTelem3PutBuf(_rxbuf2, result.frame_len); }
+        if (result.res == FASTMAVLINK_PARSE_RESULT_OK && fmav_router_send_to_link(0)) {
           fmav_frame_buf_to_msg(&_msg, &result, _rxbuf2);
           handleMessage(); // checks _msg, and puts any result into a task queue
         }
@@ -524,11 +524,11 @@ void MavlinkTelem::wakeup()
     for (uint32_t i = 0; i < available; i++) {
       if (!mavlinkTelem3Getc(&c)) break;
       if (fmav_parse_and_check_to_frame_buf(&result, _rxbuf3, &_status3, c)) {
-        mavlinkRouter.handleMessage(3, &result);
-        if (mavlinkRouter.sendToLink(1)) { mavlinkTelemPutBuf(_rxbuf3, result.frame_len); }
-        if (mavlinkRouter.sendToLink(2)) { mavlinkTelem2PutBuf(_rxbuf3, result.frame_len); }
-        if (mavlinkRouter.sendToLink(3)) {} // WE DO NOT REFLECT, SO THIS MUST NEVER HAPPEN !!
-        if (result.res == FASTMAVLINK_PARSE_RESULT_OK && mavlinkRouter.sendToLink(0)) {
+        fmav_router_handle_message(3, &result);
+        if (fmav_router_send_to_link(1)) { mavlinkTelemPutBuf(_rxbuf3, result.frame_len); }
+        if (fmav_router_send_to_link(2)) { mavlinkTelem2PutBuf(_rxbuf3, result.frame_len); }
+        if (fmav_router_send_to_link(3)) {} // WE DO NOT REFLECT, SO THIS MUST NEVER HAPPEN !!
+        if (result.res == FASTMAVLINK_PARSE_RESULT_OK && fmav_router_send_to_link(0)) {
           fmav_frame_buf_to_msg(&_msg, &result, _rxbuf3);
           handleMessage(); // checks _msg, and puts any result into a task queue
         }
@@ -541,16 +541,16 @@ void MavlinkTelem::wakeup()
 
   // send out pending message
   if (_msg_out_available) {
-    mavlinkRouter.handleMessage(0, &_msg_out);
-    if (mavlinkRouter.sendToLink(1) || mavlinkRouter.sendToLink(2) || mavlinkRouter.sendToLink(3)) {
+    fmav_router_handle_message_by_msg(0, &_msg_out);
+    if (fmav_router_send_to_link(1) || fmav_router_send_to_link(2) || fmav_router_send_to_link(3)) {
       uint16_t count = fmav_msg_to_frame_buf(_txbuf, &_msg_out);
       // check that message can be send to all enabled serials
       if ((!serial1_enabled || mavlinkTelemHasSpace(count)) &&
           (!serial2_enabled || mavlinkTelem2HasSpace(count)) &&
           (!serial3_enabled || mavlinkTelem3HasSpace(count))) {
-        if (serial1_enabled && mavlinkRouter.sendToLink(1)) mavlinkTelemPutBuf(_txbuf, count);
-        if (serial2_enabled && mavlinkRouter.sendToLink(2)) mavlinkTelem2PutBuf(_txbuf, count);
-        if (serial3_enabled && mavlinkRouter.sendToLink(3)) mavlinkTelem3PutBuf(_txbuf, count);
+        if (serial1_enabled && fmav_router_send_to_link(1)) mavlinkTelemPutBuf(_txbuf, count);
+        if (serial2_enabled && fmav_router_send_to_link(2)) mavlinkTelem2PutBuf(_txbuf, count);
+        if (serial3_enabled && fmav_router_send_to_link(3)) mavlinkTelem3PutBuf(_txbuf, count);
         _msg_out_available = false;
         msg_tx_count++;
         _msg_tx_persec_cnt++;
@@ -648,8 +648,8 @@ void MavlinkTelem::_reset(void)
   fmav_status_reset(&_status2);
   fmav_status_reset(&_status3);
   fmav_status_reset(&_status_out);
-  mavlinkRouter.reset();
-  mavlinkRouter.addOurself(MAVLINK_TELEM_MY_SYSID, MAVLINK_TELEM_MY_COMPID);
+  fmav_router_reset();
+  fmav_router_add_ourself(MAVLINK_TELEM_MY_SYSID, MAVLINK_TELEM_MY_COMPID);
 
   msg_rx_count = 0;
   msg_rx_persec = 0;

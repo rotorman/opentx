@@ -45,15 +45,17 @@ extern Fifo<uint8_t, 2*512> aux2SerialRxFifo_4MavlinkTelem;
 extern Fifo<uint8_t, 2*512> mavlinkTelemUsbRxFifo;
 #endif
 
-// -- main Mavlink stuff
+// -- fastMavlink --
 
 #define FASTMAVLINK_RAM_SECTION  static MAVLINK_RAM_SECTION
 
 #define FASTMAVLINK_ROUTER_LINKS_MAX        4
 #define FASTMAVLINK_ROUTER_COMPONENTS_MAX   12
 
-// checking for lost frames by analyzing seq won't work if we use a too "small" dialect
 #include "thirdparty/Mavlink/out/opentx/opentx.h"
+#include "thirdparty/Mavlink/out/fastmavlink_router.h"
+
+// -- main Mavlink stuff
 
 #define MAVLINK_TELEM_MY_SYSID        254 //MissionPlanner is 255, QGroundControl is 255
 #define MAVLINK_TELEM_MY_COMPID       (MAV_COMP_ID_MISSIONPLANNER + 4) //191 is companion, 194 is free
@@ -67,8 +69,6 @@ extern Fifo<uint8_t, 2*512> mavlinkTelemUsbRxFifo;
 //COMMENT:
 //  except of where noted, functions/structs use units of the MAVLink message
 //  the mavsdk caller/setter functions however use native units, and deg, whenever possible
-
-#include "mavlink_router.h"
 
 class MavlinkTelem
 {
@@ -774,12 +774,11 @@ class MavlinkTelem
     uint32_t _msg_tx_persec_cnt;
     uint32_t _bytes_tx_persec_cnt;
 
+    uint16_t _scheduled_serial = 0;
+
     fmav_status_t _status1, _status2, _status3;
     uint8_t _rxbuf1[296], _rxbuf2[296], _rxbuf3[296];
     fmav_message_t _msg;
-
-    uint16_t _scheduled_serial = 0;
-    MavlinkRouter mavlinkRouter;
 
     fmav_status_t _status_out;
     bool _msg_out_available = false;
