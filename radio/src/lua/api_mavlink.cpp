@@ -34,30 +34,19 @@ static int luaMavlinkGetVersion(lua_State * L)
   return 1;
 }
 
-/*
+
 static int luaMavlinkGetChannelStatus(lua_State * L)
 {
-  //mavlink_status_t* status = mavlink_get_channel_status(MAVLINK_COMM_0);
-  const mavlink_status_t* status = mavlinkTelem.getChannelStatus();
-
-  lua_createtable(L, 0, 13);
-  lua_pushtableinteger(L, "msg_received", status->msg_received);
-  lua_pushtableinteger(L, "buffer_overrun", status->buffer_overrun);
-  lua_pushtableinteger(L, "parse_error", status->parse_error);
-  lua_pushtableinteger(L, "parse_state", (uint8_t)status->parse_state);
-  lua_pushtableinteger(L, "packet_idx", status->packet_idx);
-  lua_pushtableinteger(L, "current_rx_seq", status->current_rx_seq);
-  lua_pushtableinteger(L, "current_tx_seq", status->current_tx_seq);
-  lua_pushtableinteger(L, "packet_rx_success_count", status->packet_rx_success_count);
-  lua_pushtableinteger(L, "packet_rx_drop_count", status->packet_rx_drop_count);
-
+  lua_createtable(L, 0, 6);
   lua_pushtableinteger(L, "msg_rx_count", mavlinkTelem.msg_rx_count);
   lua_pushtableinteger(L, "msg_rx_per_sec", mavlinkTelem.msg_rx_persec);
   lua_pushtableinteger(L, "bytes_rx_per_sec", mavlinkTelem.bytes_rx_persec);
-  lua_pushtableinteger(L, "msg_rx_lost", mavlinkTelem.msg_rx_lost);
+  lua_pushtableinteger(L, "msg_tx_count", mavlinkTelem.msg_tx_count);
+  lua_pushtableinteger(L, "msg_tx_per_sec", mavlinkTelem.msg_tx_persec);
+  lua_pushtableinteger(L, "bytes_tx_per_sec", mavlinkTelem.bytes_tx_persec);
   return 1;
 }
-
+/*
 static int luaMavlinkMsgAvailable(lua_State * L)
 {
   uint32_t size = mavlinkTelem.msgRxFifo.size();
@@ -1344,7 +1333,7 @@ mavlink_message_t msg; // FIXME: should be a reference/pointer to save stack, bu
 
 const luaL_Reg mavlinkLib[] = {
   { "getVersion", luaMavlinkGetVersion },
-//  { "getChannelStatus", luaMavlinkGetChannelStatus },
+  { "getChannelStatus", luaMavlinkGetChannelStatus },
 //  { "available", luaMavlinkMsgAvailable },
 //  { "probeHeader", luaMavlinkMsgProbeHeader },
 //  { "popAndDiscard", luaMavlinkMsgPopAndDiscard },

@@ -608,7 +608,9 @@ class MavlinkTelem
     uint32_t msg_rx_count;
     uint32_t msg_rx_persec;
     uint32_t bytes_rx_persec;
-    uint32_t msg_rx_lost;
+    uint32_t msg_tx_count;
+    uint32_t msg_tx_persec;
+    uint32_t bytes_tx_persec;
 
   // PROTECTED FIELDS and METHODS
   protected:
@@ -769,19 +771,20 @@ class MavlinkTelem
 
     uint32_t _msg_rx_persec_cnt;
     uint32_t _bytes_rx_persec_cnt;
-    int16_t _seq_rx_last = -1;
-
-    fmav_status_t _status_out;
-    bool _msg_out_available = false;
-    fmav_message_t _msg_out; //size is 292 bytes
-
-    uint16_t _scheduled_serial = 0;
-    MavlinkRouter mavlinkRouter;
-    uint8_t _txbuf[296]; //only needs to hold one MAVLink message, which is 280 max, thus 512 is by construction large enough
+    uint32_t _msg_tx_persec_cnt;
+    uint32_t _bytes_tx_persec_cnt;
 
     fmav_status_t _status1, _status2, _status3;
     uint8_t _rxbuf1[296], _rxbuf2[296], _rxbuf3[296];
     fmav_message_t _msg;
+
+    uint16_t _scheduled_serial = 0;
+    MavlinkRouter mavlinkRouter;
+
+    fmav_status_t _status_out;
+    bool _msg_out_available = false;
+    fmav_message_t _msg_out; // size is 292 bytes
+    uint8_t _txbuf[296]; // only needs to hold one MAVLink message, which is 280 max
 
     // STUFF
 

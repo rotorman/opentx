@@ -186,6 +186,15 @@ void MavlinkTelem::generateCmdSetMessageInterval(uint8_t tsystem, uint8_t tcompo
 
 // -- Main handler for incoming MAVLink messages --
 
+uint16_t fmav_msg_frame_len(fmav_message_t* msg)
+{
+    return (uint16_t)msg->len +
+           ((msg->magic == FASTMAVLINK_MAGIC_V2) ? FASTMAVLINK_HEADER_V2_LEN : FASTMAVLINK_HEADER_V1_LEN) +
+           FASTMAVLINK_CHECKSUM_LEN +
+           ((msg->incompat_flags & FASTMAVLINK_INCOMPAT_FLAGS_SIGNED) ? FASTMAVLINK_SIGNATURE_LEN : 0);
+}
+
+
 void MavlinkTelem::handleMessage(void)
 {
   if (_msg.sysid == 0) return; //this can't be anything meaningful
@@ -206,6 +215,10 @@ void MavlinkTelem::handleMessage(void)
     }
     if (!isSystemIdValid()) return;
   }
+
+  msg_rx_count++;
+  _msg_rx_persec_cnt++;
+  _bytes_rx_persec_cnt += fmav_msg_frame_len(&_msg);
 
   // discoverers
   // somewhat inefficient, lots of heartbeat decodes, we probably want a separate heartbeat handler
@@ -306,9 +319,14 @@ void MavlinkTelem::doTask(void)
     SETTASK(TASK_ME, TASK_SENDMYHEARTBEAT);
 
     msg_rx_persec = _msg_rx_persec_cnt;
-    _msg_rx_persec_cnt = 0;
     bytes_rx_persec = _bytes_rx_persec_cnt;
+    _msg_rx_persec_cnt = 0;
     _bytes_rx_persec_cnt = 0;
+
+    msg_tx_persec = _msg_tx_persec_cnt;
+    bytes_tx_persec = _bytes_tx_persec_cnt;
+    _msg_tx_persec_cnt = 0;
+    _bytes_tx_persec_cnt = 0;
 
     tick_1Hz = true;
   }
@@ -534,6 +552,9 @@ void MavlinkTelem::wakeup()
         if (serial2_enabled && mavlinkRouter.sendToLink(2)) mavlinkTelem2PutBuf(_txbuf, count);
         if (serial3_enabled && mavlinkRouter.sendToLink(3)) mavlinkTelem3PutBuf(_txbuf, count);
         _msg_out_available = false;
+        msg_tx_count++;
+        _msg_tx_persec_cnt++;
+        _bytes_tx_persec_cnt += count;
       }
     } else {
       _msg_out_available = false; // message is targeted at unknown component
@@ -601,14 +622,6 @@ void MavlinkTelem::_reset(void)
   _my_sysid = MAVLINK_TELEM_MY_SYSID;
   _my_compid = MAVLINK_TELEM_MY_COMPID;
 
-  msg_rx_count = 0;
-  msg_rx_lost = 0;
-  msg_rx_persec = 0;
-  bytes_rx_persec = 0;
-  _msg_rx_persec_cnt = 0;
-  _bytes_rx_persec_cnt = 0;
-  _seq_rx_last = -1;
-
   _sysid = 0;
   autopilottype = MAV_AUTOPILOT_GENERIC; //TODO: shouldn't these be in _resetAutopilot() ??
   vehicletype = MAV_TYPE_GENERIC;
@@ -637,6 +650,18 @@ void MavlinkTelem::_reset(void)
   fmav_status_reset(&_status_out);
   mavlinkRouter.reset();
   mavlinkRouter.addOurself(MAVLINK_TELEM_MY_SYSID, MAVLINK_TELEM_MY_COMPID);
+
+  msg_rx_count = 0;
+  msg_rx_persec = 0;
+  bytes_rx_persec = 0;
+  _msg_rx_persec_cnt = 0;
+  _bytes_rx_persec_cnt = 0;
+
+  msg_tx_count = 0;
+  msg_tx_persec = 0;
+  bytes_tx_persec = 0;
+  _msg_tx_persec_cnt = 0;
+  _bytes_tx_persec_cnt = 0;
 
   // MAVLINK
   //msgRxFifo.clear();
