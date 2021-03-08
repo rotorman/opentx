@@ -38,13 +38,13 @@ void MavlinkTelem::set_request(uint8_t idx, uint32_t task, uint8_t retry, tmr10m
 
   _request_is_waiting[idx] |= task;
 
-  if (retry == 0) return; //well, if there would be another pending we would not kill it
+  if (retry == 0) return; // well, if there would be another pending we would not kill it
 
   int8_t empty_i = -1;
 
   // first check if request is already pending, at the same time find free slot, to avoid having to loop twice
   for (uint16_t i = 0; i < REQUESTLIST_MAX; i++) {
-    // TODO: should we modify the retry & rate of the pending task?
+    //TODO: should we modify the retry & rate of the pending task?
     if ((_requestList[i].idx == idx) && (_requestList[i].task == task)) return; // already pending, we can get out of here
     if ((empty_i < 0) && !_requestList[i].task) empty_i = i; // free slot
   }
@@ -69,7 +69,7 @@ void MavlinkTelem::clear_request(uint8_t idx, uint32_t task)
   }
 }
 
-//what happens if a clear never comes?
+// what happens if a clear never comes?
 // well, this is what retry = UINT8_MAX says, right
 
 void MavlinkTelem::do_requests(void)
@@ -170,7 +170,7 @@ void MavlinkTelem::generateRequestDataStream(
   _msg_out_available = true;
 }
 
-//ArduPilot: ignores param7
+// ArduPilot: ignores param7
 void MavlinkTelem::generateCmdSetMessageInterval(uint8_t tsystem, uint8_t tcomponent, uint8_t msgid, int32_t period_us, uint8_t startstop)
 {
   _generateCmdLong(tsystem, tcomponent, MAV_CMD_SET_MESSAGE_INTERVAL, msgid, (startstop) ? period_us : -1.0f);
@@ -201,7 +201,7 @@ void MavlinkTelem::handleMessage(void)
         vehicletype = payload.type;
         _resetAutopilot();
         autopilot.compid = _msg.compid;
-        autopilot.requests_triggered = 1; //we need to postpone and schedule them
+        autopilot.requests_triggered = 1; // we need to postpone and schedule them
       }
     }
     if (!isSystemIdValid()) return;
@@ -400,7 +400,7 @@ void MavlinkTelem::doTask(void)
       uint8_t system_status = MAV_STATE_UNINIT | MAV_STATE_ACTIVE;
       uint32_t custom_mode = 0;
       generateHeartbeat(base_mode, custom_mode, system_status);
-      return; //do only one per loop
+      return; // do only one per loop
     }
 
     //other TASKS
@@ -519,7 +519,7 @@ void MavlinkTelem::wakeup()
   }
 
   // do tasks
-  doTask(); //checks task queue _msg, and puts one result into _msg_out
+  doTask(); // checks task queue _msg, and puts one result into _msg_out
 
   // send out pending message
   if (_msg_out_available) {
@@ -536,7 +536,7 @@ void MavlinkTelem::wakeup()
         _msg_out_available = false;
       }
     } else {
-      _msg_out_available = false; //message is targeted at unknown component
+      _msg_out_available = false; // message is targeted at unknown component
     }
   }
 }

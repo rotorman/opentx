@@ -176,14 +176,14 @@ class MavlinkTelem
     }
 
     struct Radio {
-      uint16_t is_receiving; //RADIO_STATUS has priority
+      uint16_t is_receiving; // RADIO_STATUS has priority
       uint8_t rssi;
       uint8_t remrssi;
       uint8_t noise;
       uint8_t remnoise;
-      uint16_t is_receiving65; //msg 65 has priority over 35
+      uint16_t is_receiving65; // msg 65 has priority over 35
       uint8_t rssi65;
-      uint16_t is_receiving35; //msg 35 is last resort
+      uint16_t is_receiving35; // msg 35 is last resort
       uint8_t rssi35;
       uint8_t rssi_scaled;
       bool rssi_voice_disabled;
@@ -215,7 +215,7 @@ class MavlinkTelem
     struct Comp autopilot;
     struct Comp gimbal;
     struct Comp camera;
-    struct Comp gimbalmanager; //it's not exactly a component, can be the autopilot or the companion or the gimbal
+    struct Comp gimbalmanager; // it's not exactly a component, can be the autopilot or the companion or the gimbal
 
     // MAVSDK AUTOPILOT
 
@@ -236,8 +236,8 @@ class MavlinkTelem
       uint8_t sat; // UINT8_MAX if unknown
       uint16_t hdop; // UINT16_MAX if unknown
       uint16_t vdop; // UINT16_MAX if unknown
-      int32_t lat; // (WGS84), in degrees * 1E7*/
-      int32_t lon; // (WGS84), in degrees * 1E7*/
+      int32_t lat; // (WGS84), in degrees * 1E7
+      int32_t lon; // (WGS84), in degrees * 1E7
       int32_t alt_mm; // (AMSL, NOT WGS84), in meters * 1000
       uint16_t vel_cmps; // m/s * 100, UINT16_MAX if unknown
       uint16_t cog_cdeg; // degrees * 100, 0.0..359.99 degrees, UINT16_MAX if unknown
@@ -248,8 +248,8 @@ class MavlinkTelem
     uint8_t gps_instancemask;
 
     struct GlobalPositionInt {
-      int32_t lat; // in degrees * 1E7*/
-      int32_t lon; // in degrees * 1E7*/
+      int32_t lat; // in degrees * 1E7
+      int32_t lon; // in degrees * 1E7
       int32_t alt_mm; // (MSL), in mm
       int32_t relative_alt_mm; // in mm
       int16_t vx_cmps; // (Latitude, positive north), in cm/s
@@ -277,11 +277,11 @@ class MavlinkTelem
       int16_t temperature_cC; // centi-degrees C°, INT16_MAX if not known
       uint32_t voltage_mV; // mV
       int16_t current_cA; // 10*mA, -1 if not known
-      int8_t remaining_pct; //(0%: 0, 100%: 100), -1 if not known
-      int32_t time_remaining; //0 if not known
-      uint8_t charge_state; //0 if not known
+      int8_t remaining_pct; // (0%: 0, 100%: 100), -1 if not known
+      int32_t time_remaining; // 0 if not known
+      uint8_t charge_state; // 0 if not known
       uint32_t fault_bitmask;
-      int8_t cellcount; //-1 if not known
+      int8_t cellcount; // -1 if not known
       uint8_t updated;
     };
     struct Bat bat1;
@@ -330,7 +330,7 @@ class MavlinkTelem
     };
     struct Mission mission;
 
-    struct MissionItem { //the INT version of it
+    struct MissionItem { // the INT version of it
       //comment: we don't really need the other fields
       uint16_t seq; // Waypoint ID (sequence number). Starts at zero. Increases monotonically for each waypoint, no gaps in the sequence (0,1,2,3,4).
       uint8_t frame; // The coordinate system of the waypoint.
@@ -351,13 +351,13 @@ class MavlinkTelem
 
     // this is very flight stack dependent
     struct Parameters {
-      int16_t number;     //we use -1 to indicate it wasn't obtained
-      int32_t BATT_CAPACITY;  //type int32 //we use -1 to indicate it wasn't obtained
-      int32_t BATT2_CAPACITY; //type int32 //we use -1 to indicate it wasn't obtained
-      float WPNAV_SPEED;    //type = float //we use NAN to indicate it wasn't obtained
-      float WPNAV_ACCEL;    //type = float //we use NAN to indicate it wasn't obtained
-      float WPNAV_ACCEL_Z;  //type = float //we use NAN to indicate it wasn't obtained
-      int16_t SYSID_MYGCS;  //we use -1 to indicate it wasn't obtained
+      int16_t number; // we use -1 to indicate it wasn't obtained
+      int32_t BATT_CAPACITY; // type int32 //we use -1 to indicate it wasn't obtained
+      int32_t BATT2_CAPACITY; // type int32 //we use -1 to indicate it wasn't obtained
+      float WPNAV_SPEED; // type = float //we use NAN to indicate it wasn't obtained
+      float WPNAV_ACCEL; // type = float //we use NAN to indicate it wasn't obtained
+      float WPNAV_ACCEL_Z; // type = float //we use NAN to indicate it wasn't obtained
+      int16_t SYSID_MYGCS; // we use -1 to indicate it wasn't obtained
     };
     struct Parameters param;
 
@@ -368,7 +368,7 @@ class MavlinkTelem
       return (ekf.flags & MAVAP_EKF_POS_HORIZ_ABS) && (ekf.flags & MAVAP_EKF_VELOCITY_HORIZ);
     }
 
-    //some tasks need some additional data
+    // some tasks need some additional data
     char _prr_param_id[16+1];
 
     uint8_t _tcsm_base_mode;
@@ -393,7 +393,7 @@ class MavlinkTelem
     uint16_t _tovr_chan_raw[18];
     uint16_t _tmri_seq, _tmri_missiontype;
 
-    //convenience task wrapper
+    // convenience task wrapper
     void setTaskParamRequestList(void)
     {
       SETTASK(TASK_AUTOPILOT, TASK_SENDMSG_PARAM_REQUEST_LIST);
@@ -414,7 +414,7 @@ class MavlinkTelem
     void apSimpleGotoPosAlt(int32_t lat, int32_t lon, float alt);
     void apGotoPosAltYawDeg(int32_t lat, int32_t lon, float alt, float yaw);
     void apGotoPosAltVel(int32_t lat, int32_t lon, float alt, float vx, float vy, float vz);
-    void apSetYawDeg(float yaw, bool relative); //note, we can enter negative yaw here, sign determines direction
+    void apSetYawDeg(float yaw, bool relative); // note, we can enter negative yaw here, sign determines direction
 
     void apRequestBanner(void)
     {
@@ -468,11 +468,11 @@ class MavlinkTelem
       float available_capacity_MiB; // NAN if not known
       uint32_t recording_time_ms;
       float battery_voltage_V; // NAN if not known
-      int8_t battery_remaining_pct; //(0%: 0, 100%: 100), -1 if not known
+      int8_t battery_remaining_pct; // (0%: 0, 100%: 100), -1 if not known
     };
     struct CameraStatus cameraStatus; // Status: variable data
 
-    //convenience task wrapper
+    // convenience task wrapper
     void sendCameraSetVideoMode(void)
     {
       SETTASK(TASK_CAMERA, TASK_SENDCMD_SET_CAMERA_VIDEO_MODE);
@@ -505,11 +505,11 @@ class MavlinkTelem
     };
     struct GimbalAtt gimbalAtt;
 
-    //some tasks need some additional data
+    // some tasks need some additional data
     uint8_t _t_gimbal_mode;
     float _t_gimbal_pitch_deg, _t_gimbal_yaw_deg;
 
-    //convenience task wrapper
+    // convenience task wrapper
     void sendGimbalTargetingMode(uint8_t mode);
     void sendGimbalPitchYawDeg(float pitch, float yaw);
 
@@ -542,7 +542,7 @@ class MavlinkTelem
     };
     struct Storm32GimbalManagerStatus gimbalmanagerStatus;
 
-    //some tasks need some additional data
+    // some tasks need some additional data
     float _t_storm32GD_pitch_deg, _t_storm32GD_yaw_deg;
     uint16_t _t_storm32GD_flags;
     float _t_storm32GM_pitch_deg, _t_storm32GM_yaw_deg;
@@ -552,14 +552,14 @@ class MavlinkTelem
     float _t_storm32GM_cmd_pitch_deg, _t_storm32GM_cmd_yaw_deg;
     uint16_t _t_storm32GM_cmd_gdflags, _t_storm32GM_cmd_gmflags;
 
-    //convenience task wrapper
+    // convenience task wrapper
     void sendStorm32GimbalDevicePitchYawDeg(float pitch, float yaw);
     void sendStorm32GimbalManagerPitchYawDeg(float pitch, float yaw);
     void sendStorm32GimbalManagerControlPitchYawDeg(float pitch, float yaw);
     void sendStorm32GimbalManagerCmdPitchYawDeg(float pitch, float yaw);
 
-    struct GimbalManagerOut { //collective structure to handle gimbalmanager outgoing flags
-      uint8_t mount_mode; //copy of the mount_mode
+    struct GimbalManagerOut { // collective structure to handle gimbalmanager outgoing flags
+      uint8_t mount_mode; // copy of the mount_mode
       uint16_t device_flags;
       uint16_t manager_flags;
     };
@@ -571,7 +571,7 @@ class MavlinkTelem
     void setStorm32GimbalClientLock(bool roll_lock, bool pitch_lock, bool yaw_lock);
     void setStorm32GimbalClientFlags(uint16_t manager_flags);
 
-    //gimbal protocol v1 vs v2
+    // gimbal protocol v1 vs v2
     void setStorm32GimbalProtocolV2(bool flag)
     {
       _storm32_gimbal_protocol_v2 = flag;
@@ -588,12 +588,12 @@ class MavlinkTelem
     };
     struct QShot qshot;
 
-    //some tasks need some additional data
+    // some tasks need some additional data
     uint8_t _t_qshot_mode, _t_qshot_shot_state;
     uint8_t _t_qshot_cmd_mode, _t_qshot_cmd_shot_state;
     uint8_t _t_qshot_button_state;
 
-    //convenience task wrapper
+    // convenience task wrapper
     void sendQShotCmdConfigure(uint8_t mode, uint8_t shot_state);
     void sendQShotStatus(uint8_t mode, uint8_t shot_state);
     void sendQShotButtonState(uint8_t button_state);
@@ -700,16 +700,16 @@ class MavlinkTelem
       TASK_SENDCMD_VIDEO_STOP_CAPTURE             = 0x00000080,
       TASK_SENDCMD_IMAGE_START_CAPTURE            = 0x00000100,
       // gimbal & gimbal client
-      TASK_SENDCMD_DO_MOUNT_CONFIGURE             = 0x00000001, //this goes to the autopilot
-      TASK_SENDCMD_DO_MOUNT_CONTROL               = 0x00000002, //this goes to the autopilot
+      TASK_SENDCMD_DO_MOUNT_CONFIGURE             = 0x00000001, // this goes to the autopilot
+      TASK_SENDCMD_DO_MOUNT_CONTROL               = 0x00000002, // this goes to the autopilot
 
-      TASK_SENDREQUEST_GIMBAL_DEVICE_INFORMATION  = 0x00000008, //this goes to the gimbal device
+      TASK_SENDREQUEST_GIMBAL_DEVICE_INFORMATION  = 0x00000008, // this goes to the gimbal device
 
-      TASK_SENDMSG_GIMBAL_DEVICE_CONTROL              = 0x00000010, //this goes to the storm32 gimbal device
-      TASK_SENDREQUEST_GIMBAL_MANAGER_INFORMATION     = 0x00000020, //this goes to the storm32 gimbal manager
-      TASK_SENDMSG_GIMBAL_MANAGER_CONTROL             = 0x00000040, //this goes to the storm32 gimbal manager
-      TASK_SENDMSG_GIMBAL_MANAGER_CONTROL_PITCHYAW    = 0x00000080, //this goes to the storm32 gimbal manager
-      TASK_SENDCMD_DO_GIMBAL_MANAGER_CONTROL_PITCHYAW = 0x00000100, //this goes to the storm32 gimbal manager
+      TASK_SENDMSG_GIMBAL_DEVICE_CONTROL              = 0x00000010, // this goes to the storm32 gimbal device
+      TASK_SENDREQUEST_GIMBAL_MANAGER_INFORMATION     = 0x00000020, // this goes to the storm32 gimbal manager
+      TASK_SENDMSG_GIMBAL_MANAGER_CONTROL             = 0x00000040, // this goes to the storm32 gimbal manager
+      TASK_SENDMSG_GIMBAL_MANAGER_CONTROL_PITCHYAW    = 0x00000080, // this goes to the storm32 gimbal manager
+      TASK_SENDCMD_DO_GIMBAL_MANAGER_CONTROL_PITCHYAW = 0x00000100, // this goes to the storm32 gimbal manager
     };
 
     uint32_t _task[TASKIDX_MAX];
@@ -786,9 +786,9 @@ class MavlinkTelem
     // STUFF
 
     bool _serial1_enabled = false;
-    uint32_t _serial1_baudrate = UINT32_MAX; //to enforce change
+    uint32_t _serial1_baudrate = UINT32_MAX; // to enforce change
     bool _serial2_enabled = false;
-    uint32_t _serial2_baudrate = UINT32_MAX; //to enforce change
+    uint32_t _serial2_baudrate = UINT32_MAX; // to enforce change
     bool _serial3_enabled = false;
 
     bool _storm32_gimbal_protocol_v2 = false;
