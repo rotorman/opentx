@@ -12,26 +12,31 @@ void MavlinkTelem::generateCmdDoQShotConfigure(uint8_t tsystem, uint8_t tcompone
 {
   _generateCmdLong(tsystem, tcomponent,
       MAV_CMD_QSHOT_DO_CONFIGURE,
-      mode, shot_state, 0,0,0,0,0);
+      mode, shot_state, 0,0,0,0,0
+      );
 }
 
 //STorM32 specific
 void MavlinkTelem::generateQShotStatus(uint8_t mode, uint8_t shot_state)
 {
   setOutVersionV2();
-  mavlink_msg_qshot_status_pack(
-      _my_sysid, _my_compid, &_msg_out,
-      mode, shot_state);
+  fmav_msg_qshot_status_pack(
+      &_msg_out, _my_sysid, _my_compid,
+      mode, shot_state,
+      &_status_out
+      );
   _msg_out_available = true;
 }
 
 void MavlinkTelem::generateButtonChange(uint8_t button_state)
 {
-  mavlink_msg_button_change_pack(
-      _my_sysid, _my_compid, &_msg_out,
+  fmav_msg_button_change_pack(
+      &_msg_out, _my_sysid, _my_compid,
       get_tmr10ms()*10, //uint32_t time_boot_ms,
       0,
-      button_state);
+      button_state,
+      &_status_out
+      );
   _msg_out_available = true;
 }
 
@@ -90,9 +95,9 @@ bool MavlinkTelem::doTaskQShot(void)
 void MavlinkTelem::handleMessageQShot(void)
 {
   switch (_msg.msgid) {
-    case MAVLINK_MSG_ID_QSHOT_STATUS: {
-      mavlink_qshot_status_t payload;
-      mavlink_msg_qshot_status_decode(&_msg, &payload);
+    case FASTMAVLINK_MSG_ID_QSHOT_STATUS: {
+      fmav_qshot_status_t payload;
+      fmav_msg_qshot_status_decode(&payload, &_msg);
       qshot.mode = payload.mode;
       qshot.shot_state = payload.shot_state;
       break;

@@ -104,12 +104,6 @@ void MavlinkTelem::do_requests(void)
 
 void MavlinkTelem::setOutVersionV2(void)
 {
-#if !defined(FASTMAVLINK_IN_USE) //this indicates that std mavlink is installed
-  _status.flags &=~ MAVLINK_STATUS_FLAG_OUT_MAVLINK1;
-
-  //THIS IS A BUG, RIGHT? should be
-  //mavlink_set_proto_version(uint8_t chan, unsigned int version);
-#endif
 }
 
 // -- Generate MAVLink messages --
@@ -120,9 +114,10 @@ void MavlinkTelem::_generateCmdLong(
     float p1, float p2, float p3, float p4, float p5, float p6, float p7)
 {
   setOutVersionV2();
-  mavlink_msg_command_long_pack(
-      _my_sysid, _my_compid, &_msg_out,
-      tsystem, tcomponent, cmd, 0, p1, p2, p3, p4, p5, p6, p7
+  fmav_msg_command_long_pack(
+      &_msg_out, _my_sysid, _my_compid,
+      tsystem, tcomponent, cmd, 0, p1, p2, p3, p4, p5, p6, p7,
+      &_status_out
       );
   _msg_out_available = true;
 }
@@ -130,9 +125,10 @@ void MavlinkTelem::_generateCmdLong(
 void MavlinkTelem::generateHeartbeat(uint8_t base_mode, uint32_t custom_mode, uint8_t system_status)
 {
   setOutVersionV2();
-  mavlink_msg_heartbeat_pack(
-      _my_sysid, _my_compid, &_msg_out,
-      MAV_TYPE_GCS, MAV_AUTOPILOT_INVALID, base_mode, custom_mode, system_status
+  fmav_msg_heartbeat_pack(
+      &_msg_out, _my_sysid, _my_compid,
+      MAV_TYPE_GCS, MAV_AUTOPILOT_INVALID, base_mode, custom_mode, system_status,
+      &_status_out
       );
   _msg_out_available = true;
 }
@@ -140,9 +136,10 @@ void MavlinkTelem::generateHeartbeat(uint8_t base_mode, uint32_t custom_mode, ui
 void MavlinkTelem::generateParamRequestList(uint8_t tsystem, uint8_t tcomponent)
 {
   setOutVersionV2();
-  mavlink_msg_param_request_list_pack(
-      _my_sysid, _my_compid, &_msg_out,
-      tsystem, tcomponent
+  fmav_msg_param_request_list_pack(
+      &_msg_out, _my_sysid, _my_compid,
+      tsystem, tcomponent,
+      &_status_out
       );
   _msg_out_available = true;
 }
@@ -153,9 +150,10 @@ char param_id[16];
 
   strncpy(param_id, param_name, 16);
   setOutVersionV2();
-  mavlink_msg_param_request_read_pack(
-      _my_sysid, _my_compid, &_msg_out,
-      tsystem, tcomponent, param_id, -1
+  fmav_msg_param_request_read_pack(
+      &_msg_out, _my_sysid, _my_compid,
+      tsystem, tcomponent, param_id, -1,
+      &_status_out
       );
   _msg_out_available = true;
 }
@@ -164,9 +162,10 @@ void MavlinkTelem::generateRequestDataStream(
     uint8_t tsystem, uint8_t tcomponent, uint8_t data_stream, uint16_t rate_hz, uint8_t startstop)
 {
   setOutVersionV2();
-  mavlink_msg_request_data_stream_pack(
-      _my_sysid, _my_compid, &_msg_out,
-      tsystem, tcomponent, data_stream, rate_hz, startstop
+  fmav_msg_request_data_stream_pack(
+      &_msg_out, _my_sysid, _my_compid,
+      tsystem, tcomponent, data_stream, rate_hz, startstop,
+      &_status_out
       );
   _msg_out_available = true;
 }
@@ -193,9 +192,9 @@ void MavlinkTelem::handleMessage(void)
 
   // autodetect sys id, and handle autopilot connecting
   if (!isSystemIdValid() || (autopilot.compid == 0)) {
-    if (_msg.msgid == MAVLINK_MSG_ID_HEARTBEAT) {
-      mavlink_heartbeat_t payload;
-      mavlink_msg_heartbeat_decode(&_msg, &payload);
+    if (_msg.msgid == FASTMAVLINK_MSG_ID_HEARTBEAT) {
+      fmav_heartbeat_t payload;
+      fmav_msg_heartbeat_decode(&payload, &_msg);
       if ((_msg.compid == MAV_COMP_ID_AUTOPILOT1) || (payload.autopilot != MAV_AUTOPILOT_INVALID)) {
         _sysid = _msg.sysid;
         autopilottype = payload.autopilot;
@@ -211,9 +210,9 @@ void MavlinkTelem::handleMessage(void)
   // discoverers
   // somewhat inefficient, lots of heartbeat decodes, we probably want a separate heartbeat handler
 
-  if ((camera.compid == 0) && (_msg.msgid == MAVLINK_MSG_ID_HEARTBEAT)) {
-    mavlink_heartbeat_t payload;
-    mavlink_msg_heartbeat_decode(&_msg, &payload);
+  if ((camera.compid == 0) && (_msg.msgid == FASTMAVLINK_MSG_ID_HEARTBEAT)) {
+    fmav_heartbeat_t payload;
+    fmav_msg_heartbeat_decode(&payload, &_msg);
     if ( (payload.autopilot == MAV_AUTOPILOT_INVALID) &&
        ( (payload.type == MAV_TYPE_CAMERA) ||
          ((_msg.compid >= MAV_COMP_ID_CAMERA) && (_msg.compid <= MAV_COMP_ID_CAMERA6)) ) ) {
@@ -223,9 +222,9 @@ void MavlinkTelem::handleMessage(void)
     }
   }
 
-  if ((gimbal.compid == 0) && (_msg.msgid == MAVLINK_MSG_ID_HEARTBEAT)) {
-    mavlink_heartbeat_t payload;
-    mavlink_msg_heartbeat_decode(&_msg, &payload);
+  if ((gimbal.compid == 0) && (_msg.msgid == FASTMAVLINK_MSG_ID_HEARTBEAT)) {
+    fmav_heartbeat_t payload;
+    fmav_msg_heartbeat_decode(&payload, &_msg);
     if ( (payload.autopilot == MAV_AUTOPILOT_INVALID) &&
        ( (payload.type == MAV_TYPE_GIMBAL) ||
          ((_msg.compid == MAV_COMP_ID_GIMBAL) ||
@@ -236,9 +235,9 @@ void MavlinkTelem::handleMessage(void)
     }
   }
 
-  if ((gimbalmanager.compid == 0) && (gimbal.compid > 0) && (_msg.msgid == MAVLINK_MSG_ID_STORM32_GIMBAL_MANAGER_STATUS)) {
-    mavlink_storm32_gimbal_manager_status_t payload;
-    mavlink_msg_storm32_gimbal_manager_status_decode(&_msg, &payload);
+  if ((gimbalmanager.compid == 0) && (gimbal.compid > 0) && (_msg.msgid == FASTMAVLINK_MSG_ID_STORM32_GIMBAL_MANAGER_STATUS)) {
+    fmav_storm32_gimbal_manager_status_t payload;
+    fmav_msg_storm32_gimbal_manager_status_decode(&payload, &_msg);
     if (payload.gimbal_id == gimbal.compid) { //this is the gimbal's gimbal manager
       _resetGimbalClient();
       gimbalmanager.compid = _msg.compid;
@@ -249,7 +248,7 @@ void MavlinkTelem::handleMessage(void)
   }
 
   // reset receiving timeout, but ignore RADIO_STATUS
-  if (_msg.msgid != MAVLINK_MSG_ID_RADIO_STATUS) {
+  if (_msg.msgid != FASTMAVLINK_MSG_ID_RADIO_STATUS) {
     _is_receiving = MAVLINK_TELEM_RECEIVING_TIMEOUT;
   }
 
@@ -262,9 +261,9 @@ void MavlinkTelem::handleMessage(void)
   // RADIO_STATUS is somewhat tricky, this may need doing it better if there are more sources of it
   // SiK comes as vehicle 51, comp 68!
   // it must NOT be rated as _is_recieving!
-  if (_msg.msgid == MAVLINK_MSG_ID_RADIO_STATUS) {
-    mavlink_radio_status_t payload;
-    mavlink_msg_radio_status_decode(&_msg, &payload);
+  if (_msg.msgid == FASTMAVLINK_MSG_ID_RADIO_STATUS) {
+    fmav_radio_status_t payload;
+    fmav_msg_radio_status_decode(&payload, &_msg);
     radio.rssi = payload.rssi;
     radio.remrssi = payload.remrssi;
     radio.noise = payload.noise;
@@ -417,10 +416,10 @@ void MavlinkTelem::doTask(void)
 // -- Wakeup call from OpenTx --
 // this is the main entry point
 
-// ourself = link 0   MAVLINK_COMM_0
-// serial1 = link 1   MAVLINK_COMM_1
-// serial2 = link 2   MAVLINK_COMM_2
-// usb     = link 3   MAVLINK_COMM_3
+// ourself = link 0
+// serial1 = link 1
+// serial2 = link 2
+// usb     = link 3
 
 void MavlinkTelem::wakeup()
 {
@@ -465,87 +464,6 @@ void MavlinkTelem::wakeup()
   }
   if (available > 128) available = 128; // 128 = 22 ms @ 57600 bps
 
-#if !defined(FASTMAVLINK_IN_USE)
-  // read serial1
-  if (currently_scheduled_serial == 0) {
-    for (uint32_t i = 0; i < available; i++) {
-      uint8_t c;
-      if (!mavlinkTelemGetc(&c)) break;
-      if (mavlink_parse_char(MAVLINK_COMM_1, c, &_msg, &_status)) {
-        mavlinkRouter.handleMessage(1, &_msg);
-        uint16_t count = 0;
-        if (mavlinkRouter.sendToLink(2) || mavlinkRouter.sendToLink(3)) {
-          count = mavlink_msg_to_send_buffer(_txbuf, &_msg);
-        }
-        if (mavlinkRouter.sendToLink(1)) {} // WE DO NOT REFLECT, SO THIS MUST NEVER HAPPEN !!
-        if (mavlinkRouter.sendToLink(2)) { mavlinkTelem2PutBuf(_txbuf, count); }
-        if (mavlinkRouter.sendToLink(3)) { mavlinkTelem3PutBuf(_txbuf, count); }
-        if (mavlinkRouter.sendToLink(0)) { handleMessage(); } // checks _msg, and puts any result into a task queue
-      }
-    }
-  }
-
-  // read serial2
-  if (currently_scheduled_serial == 1) {
-    for (uint32_t i = 0; i < available; i++) {
-      uint8_t c;
-      if (!mavlinkTelem2Getc(&c)) break;
-      if (mavlink_parse_char(MAVLINK_COMM_2, c, &_msg, &_status)) {
-        mavlinkRouter.handleMessage(2, &_msg);
-        uint16_t count = 0;
-        if (mavlinkRouter.sendToLink(1) || mavlinkRouter.sendToLink(3)) {
-          count = mavlink_msg_to_send_buffer(_txbuf, &_msg);
-        }
-        if (mavlinkRouter.sendToLink(1)) { mavlinkTelemPutBuf(_txbuf, count); }
-        if (mavlinkRouter.sendToLink(2)) {} // WE DO NOT REFLECT, SO THIS MUST NEVER HAPPEN !!
-        if (mavlinkRouter.sendToLink(3)) { mavlinkTelem3PutBuf(_txbuf, count); }
-        if (mavlinkRouter.sendToLink(0)) { handleMessage(); } // checks _msg, and puts any result into a task queue
-      }
-    }
-  }
-
-  // read usb = serial3
-  if (currently_scheduled_serial == 2) {
-    for (uint32_t i = 0; i < available; i++) {
-      uint8_t c;
-      if (!mavlinkTelem3Getc(&c)) break;
-      if (mavlink_parse_char(MAVLINK_COMM_3, c, &_msg, &_status)) {
-        mavlinkRouter.handleMessage(3, &_msg);
-        uint16_t count = 0;
-        if (mavlinkRouter.sendToLink(1) || mavlinkRouter.sendToLink(2)) {
-          count = mavlink_msg_to_send_buffer(_txbuf, &_msg);
-        }
-        if (mavlinkRouter.sendToLink(1)) { mavlinkTelemPutBuf(_txbuf, count); }
-        if (mavlinkRouter.sendToLink(2)) { mavlinkTelem2PutBuf(_txbuf, count); }
-        if (mavlinkRouter.sendToLink(3)) {} // WE DO NOT REFLECT, SO THIS MUST NEVER HAPPEN !!
-        if (mavlinkRouter.sendToLink(0)) { handleMessage(); } // checks _msg, and puts any result into a task queue
-      }
-    }
-  }
-
-  // do tasks
-  doTask(); //checks task queue _msg, and puts one result into _msg_out
-
-  // send out pending message
-  if (_msg_out_available) {
-    mavlinkRouter.handleMessage(0, &_msg_out);
-    if (mavlinkRouter.sendToLink(1) || mavlinkRouter.sendToLink(2) || mavlinkRouter.sendToLink(3)) {
-      uint16_t count = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
-      // check that message can be send to all enabled serials
-      if ((!serial1_enabled || mavlinkTelemHasSpace(count)) &&
-          (!serial2_enabled || mavlinkTelem2HasSpace(count)) &&
-          (!serial3_enabled || mavlinkTelem3HasSpace(count))) {
-        if (serial1_enabled && mavlinkRouter.sendToLink(1)) mavlinkTelemPutBuf(_txbuf, count);
-        if (serial2_enabled && mavlinkRouter.sendToLink(2)) mavlinkTelem2PutBuf(_txbuf, count);
-        if (serial3_enabled && mavlinkRouter.sendToLink(3)) mavlinkTelem3PutBuf(_txbuf, count);
-        _msg_out_available = false;
-      }
-    } else {
-      _msg_out_available = false; //message is targeted at unknown component
-    }
-  }
-
-#else
   uint8_t c;
   fmav_result_t result;
 
@@ -607,7 +525,7 @@ void MavlinkTelem::wakeup()
   if (_msg_out_available) {
     mavlinkRouter.handleMessage(0, &_msg_out);
     if (mavlinkRouter.sendToLink(1) || mavlinkRouter.sendToLink(2) || mavlinkRouter.sendToLink(3)) {
-      uint16_t count = mavlink_msg_to_send_buffer(_txbuf, &_msg_out);
+      uint16_t count = fmav_msg_to_frame_buf(_txbuf, &_msg_out);
       // check that message can be send to all enabled serials
       if ((!serial1_enabled || mavlinkTelemHasSpace(count)) &&
           (!serial2_enabled || mavlinkTelem2HasSpace(count)) &&
@@ -621,7 +539,6 @@ void MavlinkTelem::wakeup()
       _msg_out_available = false; //message is targeted at unknown component
     }
   }
-#endif
 }
 
 // -- 10 ms tick --
@@ -714,12 +631,10 @@ void MavlinkTelem::_reset(void)
 
   _resetQShot();
 
-  for (uint8_t chan = MAVLINK_COMM_0; chan < MAVLINK_COMM_NUM_BUFFERS; chan++) mavlink_reset_channel_status(chan);
-#if defined(FASTMAVLINK_IN_USE)
   fmav_status_reset(&_status1);
   fmav_status_reset(&_status2);
   fmav_status_reset(&_status3);
-#endif
+  fmav_status_reset(&_status_out);
   mavlinkRouter.reset();
   mavlinkRouter.addOurself(MAVLINK_TELEM_MY_SYSID, MAVLINK_TELEM_MY_COMPID);
 

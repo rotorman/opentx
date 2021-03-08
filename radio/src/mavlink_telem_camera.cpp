@@ -136,9 +136,9 @@ void MavlinkTelem::handleMessageCamera(void)
   camera.is_receiving = MAVLINK_TELEM_RECEIVING_TIMEOUT; //we accept any msg from the camera to indicate it is alive
 
   switch (_msg.msgid) {
-    case MAVLINK_MSG_ID_HEARTBEAT: {
-      mavlink_heartbeat_t payload;
-      mavlink_msg_heartbeat_decode(&_msg, &payload);
+    case FASTMAVLINK_MSG_ID_HEARTBEAT: {
+      fmav_heartbeat_t payload;
+      fmav_msg_heartbeat_decode(&payload, &_msg);
       camera.system_status = payload.system_status;
       camera.is_armed = (payload.base_mode & MAV_MODE_FLAG_SAFETY_ARMED) ? true : false;
       camera.is_standby = (payload.system_status <= MAV_STATE_STANDBY) ? true : false;
@@ -148,9 +148,9 @@ void MavlinkTelem::handleMessageCamera(void)
       break;
     }
 
-    case MAVLINK_MSG_ID_CAMERA_INFORMATION: {
-      mavlink_camera_information_t payload;
-      mavlink_msg_camera_information_decode(&_msg, &payload);
+    case FASTMAVLINK_MSG_ID_CAMERA_INFORMATION: {
+      fmav_camera_information_t payload;
+      fmav_msg_camera_information_decode(&payload, &_msg);
       memset(cameraInfo.vendor_name, 0, 32+1);
       memcpy(cameraInfo.vendor_name, payload.vendor_name, 32);
       memset(cameraInfo.model_name, 0, 32+1);
@@ -165,18 +165,18 @@ void MavlinkTelem::handleMessageCamera(void)
       break;
     }
 
-    case MAVLINK_MSG_ID_CAMERA_SETTINGS: {
-      mavlink_camera_settings_t payload;
-      mavlink_msg_camera_settings_decode(&_msg, &payload);
+    case FASTMAVLINK_MSG_ID_CAMERA_SETTINGS: {
+      fmav_camera_settings_t payload;
+      fmav_msg_camera_settings_decode(&payload, &_msg);
       cameraStatus.mode = (payload.mode_id == CAMERA_MODE_IMAGE) ? CAMERA_MODE_IMAGE : CAMERA_MODE_VIDEO;
       clear_request(TASK_CAMERA, TASK_SENDREQUEST_CAMERA_SETTINGS);
       camera.requests_waiting_mask &=~ CAMERA_REQUESTWAITING_CAMERA_SETTINGS;
       break;
     }
 
-    case MAVLINK_MSG_ID_CAMERA_CAPTURE_STATUS: {
-      mavlink_camera_capture_status_t payload;
-      mavlink_msg_camera_capture_status_decode(&_msg, &payload);
+    case FASTMAVLINK_MSG_ID_CAMERA_CAPTURE_STATUS: {
+      fmav_camera_capture_status_t payload;
+      fmav_msg_camera_capture_status_decode(&payload, &_msg);
       cameraStatus.recording_time_ms = payload.recording_time_ms;
       cameraStatus.available_capacity_MiB = payload.available_capacity;
       cameraStatus.video_on = (payload.video_status > 0);
@@ -186,9 +186,9 @@ void MavlinkTelem::handleMessageCamera(void)
       break;
     }
 
-    case MAVLINK_MSG_ID_STORAGE_INFORMATION: {
-      mavlink_storage_information_t payload;
-      mavlink_msg_storage_information_decode(&_msg, &payload);
+    case FASTMAVLINK_MSG_ID_STORAGE_INFORMATION: {
+      fmav_storage_information_t payload;
+      fmav_msg_storage_information_decode(&payload, &_msg);
       if (payload.status == STORAGE_STATUS_READY) {
         cameraInfo.total_capacity_MiB = payload.total_capacity;
         cameraStatus.available_capacity_MiB = payload.available_capacity;
@@ -201,9 +201,9 @@ void MavlinkTelem::handleMessageCamera(void)
       break;
     }
 
-    case MAVLINK_MSG_ID_BATTERY_STATUS: {
-      mavlink_battery_status_t payload;
-      mavlink_msg_battery_status_decode(&_msg, &payload);
+    case FASTMAVLINK_MSG_ID_BATTERY_STATUS: {
+      fmav_battery_status_t payload;
+      fmav_msg_battery_status_decode(&payload, &_msg);
       int32_t voltage = 0;
       bool has_voltage = false;
       for (uint8_t i=0; i<10; i++) {

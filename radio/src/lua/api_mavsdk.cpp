@@ -1263,8 +1263,8 @@ static int luaMavsdkIsStatusTextAvailable(lua_State *L)
 
 static int luaMavsdkGetStatusText(lua_State *L)
 {
-  char text[MAVLINK_MSG_STATUSTEXT_FIELD_TEXT_LEN+1]; //mavlink string is not necessarily \0 terminated
-  mavlink_statustext_t payload;
+  char text[FASTMAVLINK_MSG_STATUSTEXT_FIELD_TEXT_LEN+1]; //mavlink string is not necessarily \0 terminated
+  fmav_statustext_t payload;
   if (!mavlinkTelem.statustext.fifo.pop(payload)) { //should not happen, use isStatusTextAvailable() to check beforehand
     text[0] = '\0';
     payload.severity = MAV_SEVERITY_INFO;
@@ -1272,8 +1272,8 @@ static int luaMavsdkGetStatusText(lua_State *L)
     lua_pushnil(L);
   }
   else {
-    memcpy(text, payload.text, MAVLINK_MSG_STATUSTEXT_FIELD_TEXT_LEN);
-    text[MAVLINK_MSG_STATUSTEXT_FIELD_TEXT_LEN] = '\0';
+    memcpy(text, payload.text, FASTMAVLINK_MSG_STATUSTEXT_FIELD_TEXT_LEN);
+    text[FASTMAVLINK_MSG_STATUSTEXT_FIELD_TEXT_LEN] = '\0';
     lua_pushinteger(L, payload.severity);
     lua_pushstring(L, text);
   }

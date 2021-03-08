@@ -49,14 +49,11 @@ extern Fifo<uint8_t, 2*512> mavlinkTelemUsbRxFifo;
 
 #define FASTMAVLINK_RAM_SECTION  static MAVLINK_RAM_SECTION
 
-#define MAVLINK_COMM_NUM_BUFFERS      4 // 4 // we only use status for COMM1, but optimization is doing it for us
-#define MAVLINK_MAX_SIGNING_STREAMS   1 // 16
-
 #define FASTMAVLINK_ROUTER_LINKS_MAX        4
 #define FASTMAVLINK_ROUTER_COMPONENTS_MAX   12
 
-// checking for lost frames by analyzing seq won't work if we use common and not ardupilotmega
-#include "thirdparty/Mavlink/out/opentx/mavlink.h"
+// checking for lost frames by analyzing seq won't work if we use a too "small" dialect
+#include "thirdparty/Mavlink/out/opentx/opentx.h"
 
 #define MAVLINK_TELEM_MY_SYSID        254 //MissionPlanner is 255, QGroundControl is 255
 #define MAVLINK_TELEM_MY_COMPID       (MAV_COMP_ID_MISSIONPLANNER + 4) //191 is companion, 194 is free
@@ -292,7 +289,7 @@ class MavlinkTelem
     uint8_t bat_instancemask;
 
     struct StatusText {
-      Fifo<mavlink_statustext_t, 4> fifo;
+      Fifo<fmav_statustext_t, 4> fifo;
       uint8_t updated;
     };
     struct StatusText statustext;
@@ -603,9 +600,9 @@ class MavlinkTelem
 
     // SOME more MAVLINK stuff
 
-    const mavlink_status_t* getChannelStatus(void)
+    const fmav_status_t* getChannelStatusOut(void)
     {
-      return &_status;
+      return &_status_out;
     }
 
     uint32_t msg_rx_count;
@@ -774,19 +771,17 @@ class MavlinkTelem
     uint32_t _bytes_rx_persec_cnt;
     int16_t _seq_rx_last = -1;
 
-    mavlink_status_t _status;
-    mavlink_message_t _msg;
+    fmav_status_t _status_out;
     bool _msg_out_available = false;
-    mavlink_message_t _msg_out; //size is 292 bytes
+    fmav_message_t _msg_out; //size is 292 bytes
 
     uint16_t _scheduled_serial = 0;
     MavlinkRouter mavlinkRouter;
     uint8_t _txbuf[296]; //only needs to hold one MAVLink message, which is 280 max, thus 512 is by construction large enough
 
-#if defined(FASTMAVLINK_IN_USE)
     fmav_status_t _status1, _status2, _status3;
     uint8_t _rxbuf1[296], _rxbuf2[296], _rxbuf3[296];
-#endif
+    fmav_message_t _msg;
 
     // STUFF
 

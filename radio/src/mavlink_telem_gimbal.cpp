@@ -97,7 +97,8 @@ void MavlinkTelem::generateCmdDoMountConfigure(uint8_t tsystem, uint8_t tcompone
 {
   _generateCmdLong(tsystem, tcomponent,
       MAV_CMD_DO_MOUNT_CONFIGURE,
-      mode, 0,0,0,0,0,0);
+      mode, 0,0,0,0,0,0
+      );
 }
 
 //ArduPilot: if a mount has no pan control, then this will also yaw the copter in guided mode overwriting _fixed_yaw !!
@@ -105,14 +106,16 @@ void MavlinkTelem::generateCmdDoMountControl(uint8_t tsystem, uint8_t tcomponent
 {
   _generateCmdLong(tsystem, tcomponent,
       MAV_CMD_DO_MOUNT_CONTROL,
-      pitch_deg, 0.0, yaw_deg, 0,0,0, mode);
+      pitch_deg, 0.0, yaw_deg, 0,0,0, mode
+      );
 }
 
 void MavlinkTelem::generateCmdRequestGimbalDeviceInformation(uint8_t tsystem, uint8_t tcomponent)
 {
   _generateCmdLong(tsystem, tcomponent,
       MAV_CMD_REQUEST_MESSAGE,
-      MAVLINK_MSG_ID_GIMBAL_DEVICE_INFORMATION, 0,0,0,0,0,0);
+      FASTMAVLINK_MSG_ID_GIMBAL_DEVICE_INFORMATION, 0,0,0,0,0,0
+      );
 }
 
 //STorM32 specific
@@ -129,12 +132,14 @@ float q[4];
   }
 
   setOutVersionV2();
-  mavlink_msg_storm32_gimbal_device_control_pack(
-      _sysid, _my_compid, &_msg_out, //_sys_id and not _my_sysid !!! we mimic being part of the autopilot system
+  fmav_msg_storm32_gimbal_device_control_pack(
+      &_msg_out, _my_sysid, _my_compid, //_sys_id and not _my_sysid !!! we mimic being part of the autopilot system
       tsystem, tcomponent,
       flags,
       q,
-      NAN, NAN, NAN);
+      NAN, NAN, NAN,
+      &_status_out
+      );
   _msg_out_available = true;
 }
 
@@ -143,7 +148,8 @@ void MavlinkTelem::generateCmdRequestStorm32GimbalManagerInformation(uint8_t tsy
 {
   _generateCmdLong(tsystem, tcomponent,
       MAV_CMD_REQUEST_MESSAGE,
-      MAVLINK_MSG_ID_STORM32_GIMBAL_MANAGER_INFORMATION, 0,0,0,0,0,0);
+      FASTMAVLINK_MSG_ID_STORM32_GIMBAL_MANAGER_INFORMATION, 0,0,0,0,0,0
+      );
 }
 
 //STorM32 specific
@@ -160,14 +166,16 @@ float q[4];
   }
 
   setOutVersionV2();
-  mavlink_msg_storm32_gimbal_manager_control_pack(
-      _my_sysid, _my_compid, &_msg_out,
+  fmav_msg_storm32_gimbal_manager_control_pack(
+      &_msg_out, _my_sysid, _my_compid,
       tsystem, tcomponent,
       gimbal_id,
       MAV_STORM32_GIMBAL_MANAGER_CLIENT_GCS, //client
       device_flags, manager_flags,
       q,
-      NAN, NAN, NAN);
+      NAN, NAN, NAN,
+      &_status_out
+      );
   _msg_out_available = true;
 }
 
@@ -176,14 +184,16 @@ void MavlinkTelem::generateStorm32GimbalManagerControlPitchYaw(uint8_t tsystem, 
     uint8_t gimbal_id, float pitch_deg, float yaw_deg, uint16_t device_flags, uint16_t manager_flags)
 {
   setOutVersionV2();
-  mavlink_msg_storm32_gimbal_manager_control_pitchyaw_pack(
-      _my_sysid, _my_compid, &_msg_out,
+  fmav_msg_storm32_gimbal_manager_control_pitchyaw_pack(
+      &_msg_out, _my_sysid, _my_compid,
       tsystem, tcomponent,
       gimbal_id,
       MAV_STORM32_GIMBAL_MANAGER_CLIENT_GCS, //client
       device_flags, manager_flags,
       pitch_deg*FDEGTORAD, yaw_deg*FDEGTORAD,
-      NAN, NAN);
+      NAN, NAN,
+      &_status_out
+      );
   _msg_out_available = true;
 }
 
@@ -194,7 +204,8 @@ void MavlinkTelem::generateCmdStorm32DoGimbalManagerControlPitchYaw(uint8_t tsys
   _generateCmdLong(tsystem, tcomponent,
       MAV_CMD_STORM32_DO_GIMBAL_MANAGER_CONTROL_PITCHYAW,
       pitch_deg, yaw_deg, NAN, NAN, device_flags, manager_flags,
-      (uint16_t)gimbal_id + ((uint16_t)MAV_STORM32_GIMBAL_MANAGER_CLIENT_GCS < 8));
+      (uint16_t)gimbal_id + ((uint16_t)MAV_STORM32_GIMBAL_MANAGER_CLIENT_GCS < 8)
+      );
 }
 
 // -- Mavsdk Convenience Task Wrapper --
@@ -414,9 +425,9 @@ void MavlinkTelem::handleMessageGimbal(void)
   gimbal.is_receiving = MAVLINK_TELEM_RECEIVING_TIMEOUT; //we accept any msg from the gimbal to indicate it is alive
 
   switch (_msg.msgid) {
-    case MAVLINK_MSG_ID_HEARTBEAT: {
-      mavlink_heartbeat_t payload;
-      mavlink_msg_heartbeat_decode(&_msg, &payload);
+    case FASTMAVLINK_MSG_ID_HEARTBEAT: {
+      fmav_heartbeat_t payload;
+      fmav_msg_heartbeat_decode(&payload, &_msg);
       gimbal.system_status = payload.system_status;
       gimbal.custom_mode = payload.custom_mode;
       gimbal.is_armed = (payload.base_mode & MAV_MODE_FLAG_SAFETY_ARMED) ? true : false;
@@ -428,9 +439,9 @@ void MavlinkTelem::handleMessageGimbal(void)
       break;
     }
 
-    case MAVLINK_MSG_ID_ATTITUDE: {
-      mavlink_attitude_t payload;
-      mavlink_msg_attitude_decode(&_msg, &payload);
+    case FASTMAVLINK_MSG_ID_ATTITUDE: {
+      fmav_attitude_t payload;
+      fmav_msg_attitude_decode(&payload, &_msg);
       gimbalAtt.roll_deg = payload.roll * FRADTODEG;
       gimbalAtt.pitch_deg = payload.pitch * FRADTODEG;
       gimbalAtt.yaw_deg_relative = payload.yaw * FRADTODEG;
@@ -441,9 +452,9 @@ void MavlinkTelem::handleMessageGimbal(void)
       break;
     }
 
-    case MAVLINK_MSG_ID_MOUNT_STATUS: {
-      mavlink_mount_status_t payload;
-      mavlink_msg_mount_status_decode(&_msg, &payload);
+    case FASTMAVLINK_MSG_ID_MOUNT_STATUS: {
+      fmav_mount_status_t payload;
+      fmav_msg_mount_status_decode(&payload, &_msg);
       gimbalAtt.roll_deg = ((float)payload.pointing_b * 0.01f);
       gimbalAtt.pitch_deg = ((float)payload.pointing_a * 0.01f);
       gimbalAtt.yaw_deg_relative = ((float)payload.pointing_c * 0.01f);
@@ -454,9 +465,9 @@ void MavlinkTelem::handleMessageGimbal(void)
       break;
     }
 
-    case MAVLINK_MSG_ID_GIMBAL_DEVICE_INFORMATION: {
-      mavlink_gimbal_device_information_t payload;
-      mavlink_msg_gimbal_device_information_decode(&_msg, &payload);
+    case FASTMAVLINK_MSG_ID_GIMBAL_DEVICE_INFORMATION: {
+      fmav_gimbal_device_information_t payload;
+      fmav_msg_gimbal_device_information_decode(&payload, &_msg);
       memset(gimbaldeviceInfo.vendor_name, 0, 32+1);
       memcpy(gimbaldeviceInfo.vendor_name, payload.vendor_name, 32);
       memset(gimbaldeviceInfo.model_name, 0, 32+1);
@@ -475,9 +486,9 @@ void MavlinkTelem::handleMessageGimbal(void)
       break;
     }
 
-    case MAVLINK_MSG_ID_STORM32_GIMBAL_DEVICE_STATUS: {
-      mavlink_storm32_gimbal_device_status_t payload;
-      mavlink_msg_storm32_gimbal_device_status_decode(&_msg, &payload);
+    case FASTMAVLINK_MSG_ID_STORM32_GIMBAL_DEVICE_STATUS: {
+      fmav_storm32_gimbal_device_status_t payload;
+      fmav_msg_storm32_gimbal_device_status_decode(&payload, &_msg);
       calc_G_angles_deg_from_q(&gimbalAtt.roll_deg, &gimbalAtt.pitch_deg, &gimbalAtt.yaw_deg_relative, payload.q);
       gimbalAtt.yaw_deg_absolute = gimbalAtt.yaw_deg_relative + att.yaw_rad * FRADTODEG;
       if (gimbalAtt.yaw_deg_absolute < -180.0f) gimbalAtt.yaw_deg_absolute += 360.0f;
@@ -497,9 +508,9 @@ void MavlinkTelem::handleMessageGimbalClient(void)
   //no: we should not do this for the manager, since this function is called for any message from the hosting component
 
   switch (_msg.msgid) {
-    case MAVLINK_MSG_ID_STORM32_GIMBAL_MANAGER_INFORMATION: {
-      mavlink_storm32_gimbal_manager_information_t payload;
-      mavlink_msg_storm32_gimbal_manager_information_decode(&_msg, &payload);
+    case FASTMAVLINK_MSG_ID_STORM32_GIMBAL_MANAGER_INFORMATION: {
+      fmav_storm32_gimbal_manager_information_t payload;
+      fmav_msg_storm32_gimbal_manager_information_decode(&payload, &_msg);
       if (payload.gimbal_id != gimbal.compid) break; //not for us
       gimbalmanagerInfo.device_cap_flags = payload.device_cap_flags;
       gimbalmanagerInfo.manager_cap_flags = payload.manager_cap_flags;
@@ -509,9 +520,9 @@ void MavlinkTelem::handleMessageGimbalClient(void)
       break;
     }
 
-    case MAVLINK_MSG_ID_STORM32_GIMBAL_MANAGER_STATUS: {
-      mavlink_storm32_gimbal_manager_status_t payload;
-      mavlink_msg_storm32_gimbal_manager_status_decode(&_msg, &payload);
+    case FASTMAVLINK_MSG_ID_STORM32_GIMBAL_MANAGER_STATUS: {
+      fmav_storm32_gimbal_manager_status_t payload;
+      fmav_msg_storm32_gimbal_manager_status_decode(&payload, &_msg);
       if (payload.gimbal_id != gimbal.compid) break; //not for us
       gimbalmanagerStatus.supervisor = payload.supervisor;
       gimbalmanagerStatus.device_flags = payload.device_flags;

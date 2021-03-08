@@ -43,10 +43,11 @@ void MavlinkTelem::generateMissionItemInt(uint8_t tsystem, uint8_t tcomponent,
     uint8_t frame, uint16_t cmd, uint8_t current, int32_t lat, int32_t lon, float alt_m)
 {
   setOutVersionV2();
-  mavlink_msg_mission_item_int_pack(
-      _my_sysid, _my_compid, &_msg_out,
+  fmav_msg_mission_item_int_pack(
+      &_msg_out, _my_sysid, _my_compid,
       tsystem, tcomponent,
-      0, frame, cmd, current, 0, 0.0f, 0.0f, 0.0f, 0.0f, lat, lon, alt_m, MAV_MISSION_TYPE_MISSION
+      0, frame, cmd, current, 0, 0.0f, 0.0f, 0.0f, 0.0f, lat, lon, alt_m, MAV_MISSION_TYPE_MISSION,
+      &_status_out
       );
   _msg_out_available = true;
 }
@@ -56,12 +57,13 @@ void MavlinkTelem::generateSetPositionTargetGlobalInt(uint8_t tsystem, uint8_t t
     int32_t lat, int32_t lon, float alt, float vx, float vy, float vz, float yaw_rad, float yaw_rad_rate)
 {
   setOutVersionV2();
-  mavlink_msg_set_position_target_global_int_pack(
-      _my_sysid, _my_compid, &_msg_out,
+  fmav_msg_set_position_target_global_int_pack(
+      &_msg_out, _my_sysid, _my_compid,
       get_tmr10ms()*10, //uint32_t time_boot_ms,
       tsystem, tcomponent,
       frame, type_mask,
-      lat, lon, alt, vx, vy, vz, 0.0f, 0.0f, 0.0f, yaw_rad, yaw_rad_rate // alt in m, v in m/s, yaw in rad
+      lat, lon, alt, vx, vy, vz, 0.0f, 0.0f, 0.0f, yaw_rad, yaw_rad_rate, // alt in m, v in m/s, yaw in rad
+      &_status_out
       );
   _msg_out_available = true;
 }
@@ -75,12 +77,13 @@ void MavlinkTelem::generateCmdConditionYaw(uint8_t tsystem, uint8_t tcomponent, 
 void MavlinkTelem::generateRcChannelsOverride(uint8_t sysid, uint8_t tsystem, uint8_t tcomponent, uint16_t* chan_raw)
 {
   setOutVersionV2();
-  mavlink_msg_rc_channels_override_pack(
-      sysid, _my_compid, &_msg_out,
+  fmav_msg_rc_channels_override_pack(
+      &_msg_out, _my_sysid, _my_compid,
       tsystem, tcomponent,
       chan_raw[0], chan_raw[1], chan_raw[2], chan_raw[3], chan_raw[4], chan_raw[5], chan_raw[6], chan_raw[7],
       chan_raw[8], chan_raw[9], chan_raw[10], chan_raw[11], chan_raw[12], chan_raw[13], chan_raw[14], chan_raw[15],
-      chan_raw[16], chan_raw[17]
+      chan_raw[16], chan_raw[17],
+      &_status_out
       );
   _msg_out_available = true;
 }
@@ -88,10 +91,11 @@ void MavlinkTelem::generateRcChannelsOverride(uint8_t sysid, uint8_t tsystem, ui
 void MavlinkTelem::generateMissionRequestList(uint8_t tsystem, uint8_t tcomponent, uint8_t mission_type)
 {
   setOutVersionV2();
-  mavlink_msg_mission_request_list_pack(
-      _my_sysid, _my_compid, &_msg_out,
+  fmav_msg_mission_request_list_pack(
+      &_msg_out, _my_sysid, _my_compid,
       tsystem, tcomponent,
-      mission_type
+      mission_type,
+      &_status_out
       );
   _msg_out_available = true;
 }
@@ -99,10 +103,11 @@ void MavlinkTelem::generateMissionRequestList(uint8_t tsystem, uint8_t tcomponen
 void MavlinkTelem::generateMissionRequestInt(uint8_t tsystem, uint8_t tcomponent, uint16_t seq, uint8_t mission_type)
 {
   setOutVersionV2();
-  mavlink_msg_mission_request_int_pack(
-      _my_sysid, _my_compid, &_msg_out,
+  fmav_msg_mission_request_int_pack(
+      &_msg_out, _my_sysid, _my_compid,
       tsystem, tcomponent,
-      seq, mission_type
+      seq, mission_type,
+      &_status_out
       );
   _msg_out_available = true;
 }
@@ -324,13 +329,13 @@ bool MavlinkTelem::doTaskAutopilotLowPriority(void)
 
   if (_task[TASK_AUTOPILOT] & TASK_SENDCMD_REQUEST_ATTITUDE) {
     RESETTASK(TASK_AUTOPILOT,TASK_SENDCMD_REQUEST_ATTITUDE);
-    generateCmdSetMessageInterval(_sysid, autopilot.compid, MAVLINK_MSG_ID_ATTITUDE, 100000, 1); // 100 ms = 10 Hz
+    generateCmdSetMessageInterval(_sysid, autopilot.compid, FASTMAVLINK_MSG_ID_ATTITUDE, 100000, 1); // 100 ms = 10 Hz
     return true; //do only one per loop
   }
   if (_task[TASK_AUTOPILOT] & TASK_SENDCMD_REQUEST_GLOBAL_POSITION_INT) {
     RESETTASK(TASK_AUTOPILOT,TASK_SENDCMD_REQUEST_GLOBAL_POSITION_INT);
     //generateCmdSetMessageInterval(_sysid, autopilot.compid, MAVLINK_MSG_ID_GLOBAL_POSITION_INT, 100000, 1); // 100 ms = 10 Hz
-    generateCmdSetMessageInterval(_sysid, autopilot.compid, MAVLINK_MSG_ID_GLOBAL_POSITION_INT, 200000, 1); // 200 ms = 5 Hz
+    generateCmdSetMessageInterval(_sysid, autopilot.compid, FASTMAVLINK_MSG_ID_GLOBAL_POSITION_INT, 200000, 1); // 200 ms = 5 Hz
     return true; //do only one per loop
   }
 
@@ -416,9 +421,9 @@ void MavlinkTelem::handleMessageAutopilot(void)
   autopilot.is_receiving = MAVLINK_TELEM_RECEIVING_TIMEOUT; //we accept any msg from the autopilot to indicate it is alive
 
   switch (_msg.msgid) {
-    case MAVLINK_MSG_ID_HEARTBEAT: {
-      mavlink_heartbeat_t payload;
-      mavlink_msg_heartbeat_decode(&_msg, &payload);
+    case FASTMAVLINK_MSG_ID_HEARTBEAT: {
+      fmav_heartbeat_t payload;
+      fmav_msg_heartbeat_decode(&payload, &_msg);
       flightmode = payload.custom_mode;
       autopilot.system_status = payload.system_status;
       autopilot.is_armed = (payload.base_mode & MAV_MODE_FLAG_SAFETY_ARMED) ? true : false;
@@ -429,9 +434,9 @@ void MavlinkTelem::handleMessageAutopilot(void)
       break;
     }
 
-    case MAVLINK_MSG_ID_ATTITUDE: {
-      mavlink_attitude_t payload;
-      mavlink_msg_attitude_decode(&_msg, &payload);
+    case FASTMAVLINK_MSG_ID_ATTITUDE: {
+      fmav_attitude_t payload;
+      fmav_msg_attitude_decode(&payload, &_msg);
       att.roll_rad = payload.roll;
       att.pitch_rad = payload.pitch;
       att.yaw_rad = payload.yaw;
@@ -441,9 +446,9 @@ void MavlinkTelem::handleMessageAutopilot(void)
       break;
     }
 
-    case MAVLINK_MSG_ID_GPS_RAW_INT: {
-      mavlink_gps_raw_int_t payload;
-      mavlink_msg_gps_raw_int_decode(&_msg, &payload);
+    case FASTMAVLINK_MSG_ID_GPS_RAW_INT: {
+      fmav_gps_raw_int_t payload;
+      fmav_msg_gps_raw_int_decode(&payload, &_msg);
       gps1.fix = payload.fix_type;
       gps1.sat = payload.satellites_visible;
       gps1.hdop = payload.eph;
@@ -464,9 +469,9 @@ void MavlinkTelem::handleMessageAutopilot(void)
       break;
     }
 
-    case MAVLINK_MSG_ID_GPS2_RAW: {
-      mavlink_gps2_raw_t payload;
-      mavlink_msg_gps2_raw_decode(&_msg, &payload);
+    case FASTMAVLINK_MSG_ID_GPS2_RAW: {
+      fmav_gps2_raw_t payload;
+      fmav_msg_gps2_raw_decode(&payload, &_msg);
       gps2.fix = payload.fix_type;
       gps2.sat = payload.satellites_visible;
       gps2.hdop = payload.eph;
@@ -481,9 +486,9 @@ void MavlinkTelem::handleMessageAutopilot(void)
       break;
     }
 
-    case MAVLINK_MSG_ID_GLOBAL_POSITION_INT: {
-      mavlink_global_position_int_t payload;
-      mavlink_msg_global_position_int_decode(&_msg, &payload);
+    case FASTMAVLINK_MSG_ID_GLOBAL_POSITION_INT: {
+      fmav_global_position_int_t payload;
+      fmav_msg_global_position_int_decode(&payload, &_msg);
       gposition.lat = payload.lat;
       gposition.lon = payload.lon;
       gposition.alt_mm = payload.alt;
@@ -498,9 +503,9 @@ void MavlinkTelem::handleMessageAutopilot(void)
       break;
     }
 
-    case MAVLINK_MSG_ID_VFR_HUD: {
-      mavlink_vfr_hud_t payload;
-      mavlink_msg_vfr_hud_decode(&_msg, &payload);
+    case FASTMAVLINK_MSG_ID_VFR_HUD: {
+      fmav_vfr_hud_t payload;
+      fmav_msg_vfr_hud_decode(&payload, &_msg);
       vfr.airspd_mps = payload.airspeed;
       vfr.groundspd_mps = payload.groundspeed;
       vfr.alt_m = payload.alt;
@@ -518,18 +523,18 @@ void MavlinkTelem::handleMessageAutopilot(void)
     }
 
     /* let's use BATTERY_STATUS, is nearly the same thing
-    case MAVLINK_MSG_ID_SYS_STATUS: {
-      mavlink_sys_status_t payload;
-      mavlink_msg_sys_status_decode(&_msg, &payload);
+    case FASTMAVLINK_MSG_ID_SYS_STATUS: {
+      fmav_sys_status_t payload;
+      fmav_msg_sys_status_decode(&payload, &_msg);
       // voltage_battery  uint16_t  mV
       // current_battery  int16_t cA
       // battery_remaining  int8_t  %
       break;
     }*/
 
-    case MAVLINK_MSG_ID_BATTERY_STATUS: {
-      mavlink_battery_status_t payload;
-      mavlink_msg_battery_status_decode(&_msg, &payload);
+    case FASTMAVLINK_MSG_ID_BATTERY_STATUS: {
+      fmav_battery_status_t payload;
+      fmav_msg_battery_status_decode(&payload, &_msg);
       int32_t voltage = 0;
       int8_t cellcount = 0;
       bool validcellcount = true;
@@ -580,17 +585,17 @@ void MavlinkTelem::handleMessageAutopilot(void)
       break;
     }
 
-    case MAVLINK_MSG_ID_STATUSTEXT: {
-      mavlink_statustext_t payload;
-      mavlink_msg_statustext_decode(&_msg, &payload);
+    case FASTMAVLINK_MSG_ID_STATUSTEXT: {
+      fmav_statustext_t payload;
+      fmav_msg_statustext_decode(&payload, &_msg);
       statustext.fifo.push(payload);
       INCU8(statustext.updated);
       break;
     }
 
-    case MAVLINK_MSG_ID_EKF_STATUS_REPORT: {
-      mavlink_ekf_status_report_t payload;
-      mavlink_msg_ekf_status_report_decode(&_msg, &payload);
+    case FASTMAVLINK_MSG_ID_EKF_STATUS_REPORT: {
+      fmav_ekf_status_report_t payload;
+      fmav_msg_ekf_status_report_decode(&payload, &_msg);
       //we don't really need the other fields
       ekf.flags = payload.flags;
       INCU8(ekf.updated);
@@ -599,9 +604,9 @@ void MavlinkTelem::handleMessageAutopilot(void)
       break;
     }
 
-    case MAVLINK_MSG_ID_RC_CHANNELS_RAW: { //#35
-      mavlink_rc_channels_raw_t payload;
-      mavlink_msg_rc_channels_raw_decode(&_msg, &payload);
+    case FASTMAVLINK_MSG_ID_RC_CHANNELS_RAW: { //#35
+      fmav_rc_channels_raw_t payload;
+      fmav_msg_rc_channels_raw_decode(&payload, &_msg);
       radio.rssi35 = payload.rssi;
       radio.is_receiving35 = MAVLINK_TELEM_RADIO_RECEIVING_TIMEOUT;
       if (!radio.is_receiving && !radio.is_receiving65) {
@@ -610,9 +615,9 @@ void MavlinkTelem::handleMessageAutopilot(void)
       break;
     }
 
-    case MAVLINK_MSG_ID_RC_CHANNELS: { //#65
-      mavlink_rc_channels_t payload;
-      mavlink_msg_rc_channels_decode(&_msg, &payload);
+    case FASTMAVLINK_MSG_ID_RC_CHANNELS: { //#65
+      fmav_rc_channels_t payload;
+      fmav_msg_rc_channels_decode(&payload, &_msg);
       radio.rssi65 = payload.rssi;
       radio.is_receiving65 = MAVLINK_TELEM_RADIO_RECEIVING_TIMEOUT;
       clear_request(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_RC_CHANNELS);
@@ -622,18 +627,18 @@ void MavlinkTelem::handleMessageAutopilot(void)
       break;
     }
 
-    case MAVLINK_MSG_ID_RANGEFINDER: {
-      mavlink_rangefinder_t payload;
-      mavlink_msg_rangefinder_decode(&_msg, &payload);
+    case FASTMAVLINK_MSG_ID_RANGEFINDER: {
+      fmav_rangefinder_t payload;
+      fmav_msg_rangefinder_decode(&payload, &_msg);
       //we don't really need the other fields
       rangefinder.distance = payload.distance;
       INCU8(rangefinder.updated);
       break;
     }
 
-    case MAVLINK_MSG_ID_NAV_CONTROLLER_OUTPUT: {
-      mavlink_nav_controller_output_t payload;
-      mavlink_msg_nav_controller_output_decode(&_msg, &payload);
+    case FASTMAVLINK_MSG_ID_NAV_CONTROLLER_OUTPUT: {
+      fmav_nav_controller_output_t payload;
+      fmav_msg_nav_controller_output_decode(&payload, &_msg);
       //we don't really need the other fields
       navControllerOutput.nav_bearing = payload.nav_bearing;
       navControllerOutput.target_bearing = payload.target_bearing;
@@ -642,9 +647,9 @@ void MavlinkTelem::handleMessageAutopilot(void)
       break;
     }
 
-    case MAVLINK_MSG_ID_MISSION_COUNT: {
-      mavlink_mission_count_t payload;
-      mavlink_msg_mission_count_decode(&_msg, &payload);
+    case FASTMAVLINK_MSG_ID_MISSION_COUNT: {
+      fmav_mission_count_t payload;
+      fmav_msg_mission_count_decode(&payload, &_msg);
       if (payload.mission_type != MAV_MISSION_TYPE_MISSION) break; //not a MISSION item
       mission.count = payload.count;
       INCU8(mission.updated);
@@ -652,9 +657,9 @@ void MavlinkTelem::handleMessageAutopilot(void)
       break;
     }
 
-    case MAVLINK_MSG_ID_MISSION_CURRENT: {
-      mavlink_mission_current_t payload;
-      mavlink_msg_mission_current_decode(&_msg, &payload);
+    case FASTMAVLINK_MSG_ID_MISSION_CURRENT: {
+      fmav_mission_current_t payload;
+      fmav_msg_mission_current_decode(&payload, &_msg);
       bool has_changed = (mission.seq_current != payload.seq);
       mission.seq_current = payload.seq;
       INCU8(mission.updated);
@@ -663,9 +668,9 @@ void MavlinkTelem::handleMessageAutopilot(void)
       break;
     }
 
-    case MAVLINK_MSG_ID_MISSION_ITEM_INT: {
-      mavlink_mission_item_int_t payload;
-      mavlink_msg_mission_item_int_decode(&_msg, &payload);
+    case FASTMAVLINK_MSG_ID_MISSION_ITEM_INT: {
+      fmav_mission_item_int_t payload;
+      fmav_msg_mission_item_int_decode(&payload, &_msg);
       if (payload.mission_type != MAV_MISSION_TYPE_MISSION) break; //not a MISSION item
       if (payload.frame == MAV_FRAME_MISSION) break; //not a coordinate frame, indicates a mission command
       missionItem.seq = payload.seq;
@@ -679,9 +684,9 @@ void MavlinkTelem::handleMessageAutopilot(void)
       break;
     }
 
-    case MAVLINK_MSG_ID_PARAM_VALUE: {
-      mavlink_param_value_t payload;
-      mavlink_msg_param_value_decode(&_msg, &payload);
+    case FASTMAVLINK_MSG_ID_PARAM_VALUE: {
+      fmav_param_value_t payload;
+      fmav_msg_param_value_decode(&payload, &_msg);
       if (!strncmp(payload.param_id,"BATT_CAPACITY",16)) {
         param.BATT_CAPACITY = payload.param_value;
         clear_request(TASK_AP, TASK_AP_REQUESTPARAM_BATT_CAPACITY);
