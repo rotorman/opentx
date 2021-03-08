@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-fmavgenerate_c_library.py
+fmav_generate_c_library.py
 calls fastMavlink generator for C header files
 (c) olliw, olliw42
 '''
@@ -26,10 +26,10 @@ mavlinkoutputdirectory = 'out'
 '''
 Imports
 '''
-import pkgutil
-search_path = [mavlinkpathtorepository] # set to None to see all modules importable from sys.path
-all_modules = [x[1] for x in pkgutil.iter_modules(path=search_path)]
-print(all_modules)
+#import pkgutil
+#search_path = [mavlinkpathtorepository] # set to None to see all modules importable from sys.path
+#all_modules = [x[1] for x in pkgutil.iter_modules(path=search_path)]
+#print(all_modules)
 
 sys.path.insert(0,mavlinkpathtorepository)
 
