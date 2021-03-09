@@ -473,7 +473,7 @@
 #endif
 
 //OW
-#if defined(RADIO_T16) && defined(AUX_SERIAL)
+#if (defined(RADIO_T16) || defined(RADIO_T18)) && defined(AUX_SERIAL)
   #undef AUX_SERIAL_RCC_AHB1Periph
   #undef AUX_SERIAL_RCC_APB1Periph
   #undef AUX_SERIAL_RCC_APB2Periph
@@ -493,11 +493,11 @@
   #define AUX_SERIAL_DMA_Stream_RX            DMA1_Stream1
   #define AUX_SERIAL_DMA_Channel_RX           DMA_Channel_4
 #endif
-#if defined(RADIO_T16) && defined(AUX2_SERIAL)
+#if (defined(RADIO_T16) || defined(RADIO_T18)) && defined(AUX2_SERIAL)
   #undef AUX2_SERIAL_PWR_GPIO
   #undef AUX2_SERIAL_PWR_GPIO_PIN
 #endif
-#if defined(RADIO_T16) && defined(INTERNAL_GPS)
+#if (defined(RADIO_T16) || defined(RADIO_T18)) && defined(INTERNAL_GPS)
   #define GPS_RCC_AHB1Periph                   (RCC_AHB1Periph_GPIOB | RCC_AHB1Periph_GPIOG)
   #define GPS_RCC_APB1Periph                   0
   #define GPS_RCC_APB2Periph                   RCC_APB2Periph_USART6
