@@ -142,6 +142,9 @@ static void LCD_NRSTConfig(void)
 }
 
 // TODO delay function
+//OW
+#if !defined(RADIO_T18)
+//OWEND
 static void delay3(uint32_t nCount)
 {
   uint32_t index = 0;
@@ -150,6 +153,9 @@ static void delay3(uint32_t nCount)
     __asm("nop\n");
   }
 }
+//OW
+#endif
+//OWEND
 
 static void lcd_reset(void)
 {
