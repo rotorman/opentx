@@ -28,7 +28,7 @@
 #include "opentx_helpers.h"
 
 //OW
-#define OWVERSIONSTR  "v26rc02"
+#define OWVERSIONSTR  "v26rc03"
 //OWEND
 
 /*
@@ -81,7 +81,6 @@ modified files in radio/src/
     thirdparty/Lua/src/lrotable.h:   1x
 
 added files in radio/src/
-    mavlink_router.h
     mavlink_telem_autopilot.cpp
     mavlink_telem_camera.cpp
     mavlink_telem_gimbal.cpp
@@ -129,6 +128,7 @@ MAVLINK_AUX_SERIAL_MODES
 INTERNAL_GPS MIXSRC_TX_GPS
 BLUETOOTH
 TELEMETRY_MAVLINK   TELEMETRY_MAVLINK_USB_SERIAL  USB_SERIAL  DEBUG  AUX_SERIAL  AUX2_SERIAL  CLI
+T16 TX16S T18 X10
 
 rssi
 telemetryData.rssi

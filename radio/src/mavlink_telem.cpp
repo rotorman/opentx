@@ -186,13 +186,13 @@ void MavlinkTelem::generateCmdSetMessageInterval(uint8_t tsystem, uint8_t tcompo
 
 // -- Main handler for incoming MAVLink messages --
 
-uint16_t fmav_msg_frame_len(fmav_message_t* msg)
+/*uint16_t fmav_msg_frame_len(fmav_message_t* msg)
 {
     return (uint16_t)msg->len +
            ((msg->magic == FASTMAVLINK_MAGIC_V2) ? FASTMAVLINK_HEADER_V2_LEN : FASTMAVLINK_HEADER_V1_LEN) +
            FASTMAVLINK_CHECKSUM_LEN +
            ((msg->incompat_flags & FASTMAVLINK_INCOMPAT_FLAGS_SIGNED) ? FASTMAVLINK_SIGNATURE_LEN : 0);
-}
+}*/
 
 
 void MavlinkTelem::handleMessage(void)
