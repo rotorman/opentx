@@ -410,6 +410,11 @@ bool MavlinkTelem::doTaskAutopilotLowPriority(void)
     generateParamRequestRead(_sysid, autopilot.compid, "SYSID_MYGCS");
     return true; //do only one per loop
   }
+  if (_task[TASK_AP] & TASK_AP_REQUESTPARAM_ARMING_CHECK) {
+    RESETTASK(TASK_AP, TASK_AP_REQUESTPARAM_ARMING_CHECK);
+    generateParamRequestRead(_sysid, autopilot.compid, "ARMING_CHECK");
+    return true; //do only one per loop
+  }
 
   return false;
 }
@@ -431,6 +436,17 @@ void MavlinkTelem::handleMessageAutopilot(void)
       autopilot.is_critical = (payload.system_status >= MAV_STATE_CRITICAL) ? true : false;
       INCU8(autopilot.updated);
       //autopilot.is_receiving = MAVLINK_TELEM_RECEIVING_TIMEOUT;
+      break;
+    }
+
+    case FASTMAVLINK_MSG_ID_SYS_STATUS: {
+      fmav_sys_status_t payload;
+      fmav_msg_sys_status_decode(&payload, &_msg);
+      sysstatus.sensors_present = payload.onboard_control_sensors_present;
+      sysstatus.sensors_enabled = payload.onboard_control_sensors_enabled;
+      sysstatus.sensors_health = payload.onboard_control_sensors_health;
+      sysstatus.received = true;
+      INCU8(sysstatus.updated);
       break;
     }
 
@@ -711,6 +727,10 @@ void MavlinkTelem::handleMessageAutopilot(void)
         param.SYSID_MYGCS = payload.param_value;
         clear_request(TASK_AP, TASK_AP_REQUESTPARAM_SYSID_MYGCS);
       }
+      if (!strncmp(payload.param_id,"ARMING_CHECK",16)) {
+        param.ARMING_CHECK = payload.param_value;
+        clear_request(TASK_AP, TASK_AP_REQUESTPARAM_ARMING_CHECK);
+      }
       break;
     }
   }
@@ -737,6 +757,12 @@ void MavlinkTelem::_resetAutopilot(void)
   autopilot.is_critical = false;
   autopilot.prearm_ok = false;
   autopilot.updated = 0;
+
+  sysstatus.sensors_present = 0;
+  sysstatus.sensors_enabled = 0;
+  sysstatus.sensors_health = 0;
+  sysstatus.received = false;
+  sysstatus.updated = 0;
 
   att.roll_rad = 0.0f;
   att.pitch_rad = 0.0f;
@@ -844,6 +870,7 @@ void MavlinkTelem::_resetAutopilot(void)
   param.WPNAV_ACCEL = NAN;
   param.WPNAV_ACCEL_Z = NAN;
   param.SYSID_MYGCS = -1;
+  param.ARMING_CHECK = -1;
 }
 
 // -- Miscellaneous --
@@ -904,6 +931,7 @@ void MavlinkTelem::setAutopilotStartupRequests(void)
     set_request(TASK_AP, TASK_AP_REQUESTPARAM_BATT_CAPACITY, 10, 200+25);
     set_request(TASK_AP, TASK_AP_REQUESTPARAM_BATT2_CAPACITY, 10, 200+28);
     set_request(TASK_AP, TASK_AP_REQUESTPARAM_SYSID_MYGCS, 10, 123); //we request it more frequently to get it sooner
+    set_request(TASK_AP, TASK_AP_REQUESTPARAM_ARMING_CHECK, 10, 200+33);
 
     push_task(TASK_AP, TASK_AP_REQUESTBANNER);
   }

@@ -590,6 +590,22 @@ static int luaMavsdkGetRadioRemoteNoise(lua_State *L)
   return 1;
 }
 
+// -- MAVSDK SYSTEM STATUS --
+
+static int luaMavsdkGetSystemStatusSensors(lua_State *L)
+{
+  if (mavlinkTelem.sysstatus.received) {
+    lua_newtable(L);
+    lua_pushtablenumber(L, "present", mavlinkTelem.sysstatus.sensors_present);
+    lua_pushtablenumber(L, "enabled", mavlinkTelem.sysstatus.sensors_enabled);
+    lua_pushtablenumber(L, "health", mavlinkTelem.sysstatus.sensors_health);
+  }
+  else {
+    lua_pushnil(L);
+  }
+  return 1;
+}
+
 // -- MAVSDK ATTITUDE --
 
 static int luaMavsdkGetAttRollDeg(lua_State *L)
@@ -1253,6 +1269,18 @@ static int luaMavsdkApGetRangefinder(lua_State *L)
   return 1;
 }
 
+static int luaMavsdkApGetArmingCheck(lua_State *L)
+{
+  if (mavlinkTelem.param.ARMING_CHECK < 0) {
+    lua_pushnil(L);
+  }
+  else {
+    lua_pushnumber(L, mavlinkTelem.param.ARMING_CHECK);
+  }
+  return 1;
+}
+
+
 // -- MAVSDK STATUSTEXT --
 
 static int luaMavsdkIsStatusTextAvailable(lua_State *L)
@@ -1445,6 +1473,8 @@ const luaL_Reg mavsdkLib[] = {
   { "getRadioRemoteNoise", luaMavsdkGetRadioRemoteNoise },
   { "getRadioRssiScaled", luaMavsdkGetRadioRssiScaled },
 
+  { "getSystemStatusSensors", luaMavsdkGetSystemStatusSensors },
+
   { "getAttRollDeg", luaMavsdkGetAttRollDeg },
   { "getAttPitchDeg", luaMavsdkGetAttPitchDeg },
   { "getAttYawDeg", luaMavsdkGetAttYawDeg },
@@ -1540,6 +1570,7 @@ const luaL_Reg mavsdkLib[] = {
   { "apCopterFlyHold", luaMavsdkApCopterFlyHold },
   { "apCopterFlyPause", luaMavsdkApCopterFlyPause },
   { "apGetRangefinder", luaMavsdkApGetRangefinder },
+  { "apGetArmingCheck", luaMavsdkApGetArmingCheck },
 
   { "optionIsRssiEnabled", luaMavsdkOptionIsRssiEnabled },
   { "optionEnableRssi", luaMavsdkOptionEnableRssi },

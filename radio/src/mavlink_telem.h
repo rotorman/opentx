@@ -223,6 +223,15 @@ class MavlinkTelem
     uint8_t vehicletype = MAV_TYPE_GENERIC;
     uint8_t flightmode = 0;
 
+    struct SysStatus {
+      uint32_t sensors_present; // MAV_SYS_STATUS_SENSOR
+      uint32_t sensors_enabled; // MAV_SYS_STATUS_SENSOR
+      uint32_t sensors_health; // MAV_SYS_STATUS_SENSOR
+      uint8_t updated;
+      bool received;
+    };
+    struct SysStatus sysstatus;
+
     struct Att {
       float roll_rad; // rad
       float pitch_rad; // rad
@@ -358,6 +367,7 @@ class MavlinkTelem
       float WPNAV_ACCEL; // type = float //we use NAN to indicate it wasn't obtained
       float WPNAV_ACCEL_Z; // type = float //we use NAN to indicate it wasn't obtained
       int16_t SYSID_MYGCS; // we use -1 to indicate it wasn't obtained
+      int32_t ARMING_CHECK; // type int32 //we use -1 to indicate it wasn't obtained
     };
     struct Parameters param;
 
@@ -691,6 +701,7 @@ class MavlinkTelem
       TASK_AP_REQUESTPARAM_WPNAV_ACCEL            = 0x00080000,
       TASK_AP_REQUESTPARAM_WPNAV_ACCEL_Z          = 0x00100000,
       TASK_AP_REQUESTPARAM_SYSID_MYGCS            = 0x00200000,
+      TASK_AP_REQUESTPARAM_ARMING_CHECK           = 0x00400000,
       // camera
       TASK_SENDREQUEST_CAMERA_INFORMATION         = 0x00000001,
       TASK_SENDREQUEST_CAMERA_SETTINGS            = 0x00000002,
