@@ -28,14 +28,17 @@
 #include "opentx_helpers.h"
 
 //OW
-#define OWVERSIONSTR  "v26rc03"
+#define OWVERSIONSTR  "v26"
 //OWEND
 
 /*
+v26 2021-03-21
+fastMavlink v003, prearm checks
 v25 2021-03-07
+fastMavlink
 v24 2021-02-11
 v22 2021-02-5:
-mavlink submodule changeg to main git repo, 600xx storm32
+mavlink submodule changed to main git repo, 600xx storm32
 v20 2021-01-23:
 mavlink submodule changed to main git repo, file generator updated
 uart totally revised, uses now AUX_SERIAL and AUX2_SERIAL
@@ -119,7 +122,7 @@ g_eeGeneral.USBMode
 USB_UNSELECTED_MODE
 USB_JOYSTICK_MODE
 USB_MASS_STORAGE_MODE
-USB_SERIAL_MODE   if defined(USB_SERIAL) usbd_cdc_core  TR_USBMODES
+USB_SERIAL_MODE   if defined(USB_SERIAL) usbd_cdc_core  TR_USBMODES   error
 
 ----
 
