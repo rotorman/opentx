@@ -53,7 +53,7 @@ extern Fifo<uint8_t, 2*512> mavlinkTelemUsbRxFifo;
 #define FASTMAVLINK_ROUTER_COMPONENTS_MAX   12
 
 #include "thirdparty/Mavlink/out/opentx/opentx.h"
-#include "thirdparty/Mavlink/out/fastmavlink_router.h"
+#include "thirdparty/Mavlink/out/lib/fastmavlink_router.h"
 
 // -- main Mavlink stuff
 
@@ -777,13 +777,13 @@ class MavlinkTelem
     uint16_t _scheduled_serial = 0;
 
     fmav_status_t _status1, _status2, _status3;
-    uint8_t _rxbuf1[296], _rxbuf2[296], _rxbuf3[296];
+    uint8_t _buf1[296], _buf2[296], _buf3[296];
     fmav_message_t _msg;
 
     fmav_status_t _status_out;
-    bool _msg_out_available = false;
     fmav_message_t _msg_out; // size is 292 bytes
-    uint8_t _txbuf[296]; // only needs to hold one MAVLink message, which is 280 max
+    uint8_t _buf_out[296]; // only needs to hold one MAVLink message, which is 280 max
+    bool _msg_out_available = false;
 
     // STUFF
 

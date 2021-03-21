@@ -25,7 +25,7 @@
 #include <stdio.h>
 #include "opentx.h"
 #include "lua_api.h"
-#include "thirdparty/Mavlink/out/opentx/mavlink.h"
+#include "thirdparty/Mavlink/out/opentx/opentx.h"
 
 
 static int luaMavlinkGetVersion(lua_State * L)

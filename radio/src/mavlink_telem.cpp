@@ -185,16 +185,6 @@ void MavlinkTelem::generateCmdSetMessageInterval(uint8_t tsystem, uint8_t tcompo
 // -- Handle incoming MAVLink messages, which are for QShots --
 
 // -- Main handler for incoming MAVLink messages --
-
-/*uint16_t fmav_msg_frame_len(fmav_message_t* msg)
-{
-    return (uint16_t)msg->len +
-           ((msg->magic == FASTMAVLINK_MAGIC_V2) ? FASTMAVLINK_HEADER_V2_LEN : FASTMAVLINK_HEADER_V1_LEN) +
-           FASTMAVLINK_CHECKSUM_LEN +
-           ((msg->incompat_flags & FASTMAVLINK_INCOMPAT_FLAGS_SIGNED) ? FASTMAVLINK_SIGNATURE_LEN : 0);
-}*/
-
-
 void MavlinkTelem::handleMessage(void)
 {
   if (_msg.sysid == 0) return; //this can't be anything meaningful
@@ -489,13 +479,13 @@ void MavlinkTelem::wakeup()
   if (currently_scheduled_serial == 0) {
     for (uint32_t i = 0; i < available; i++) {
       if (!mavlinkTelemGetc(&c)) break;
-      if (fmav_parse_and_check_to_frame_buf(&result, _rxbuf1, &_status1, c)) {
+      if (fmav_parse_and_check_to_frame_buf(&result, _buf1, &_status1, c)) {
         fmav_router_handle_message(1, &result);
         if (fmav_router_send_to_link(1)) {} // WE DO NOT REFLECT, SO THIS MUST NEVER HAPPEN !!
-        if (fmav_router_send_to_link(2)) { mavlinkTelem2PutBuf(_rxbuf1, result.frame_len); }
-        if (fmav_router_send_to_link(3)) { mavlinkTelem3PutBuf(_rxbuf1, result.frame_len); }
+        if (fmav_router_send_to_link(2)) { mavlinkTelem2PutBuf(_buf1, result.frame_len); }
+        if (fmav_router_send_to_link(3)) { mavlinkTelem3PutBuf(_buf1, result.frame_len); }
         if (result.res == FASTMAVLINK_PARSE_RESULT_OK && fmav_router_send_to_link(0)) {
-          fmav_frame_buf_to_msg(&_msg, &result, _rxbuf1);
+          fmav_frame_buf_to_msg(&_msg, &result, _buf1);
           handleMessage(); // checks _msg, and puts any result into a task queue
         }
       }
@@ -506,13 +496,13 @@ void MavlinkTelem::wakeup()
   if (currently_scheduled_serial == 1) {
     for (uint32_t i = 0; i < available; i++) {
       if (!mavlinkTelem2Getc(&c)) break;
-      if (fmav_parse_and_check_to_frame_buf(&result, _rxbuf2, &_status2, c)) {
+      if (fmav_parse_and_check_to_frame_buf(&result, _buf2, &_status2, c)) {
         fmav_router_handle_message(2, &result);
-        if (fmav_router_send_to_link(1)) { mavlinkTelemPutBuf(_rxbuf2, result.frame_len); }
+        if (fmav_router_send_to_link(1)) { mavlinkTelemPutBuf(_buf2, result.frame_len); }
         if (fmav_router_send_to_link(2)) {} // WE DO NOT REFLECT, SO THIS MUST NEVER HAPPEN !!
-        if (fmav_router_send_to_link(3)) { mavlinkTelem3PutBuf(_rxbuf2, result.frame_len); }
+        if (fmav_router_send_to_link(3)) { mavlinkTelem3PutBuf(_buf2, result.frame_len); }
         if (result.res == FASTMAVLINK_PARSE_RESULT_OK && fmav_router_send_to_link(0)) {
-          fmav_frame_buf_to_msg(&_msg, &result, _rxbuf2);
+          fmav_frame_buf_to_msg(&_msg, &result, _buf2);
           handleMessage(); // checks _msg, and puts any result into a task queue
         }
       }
@@ -523,13 +513,13 @@ void MavlinkTelem::wakeup()
   if (currently_scheduled_serial == 2) {
     for (uint32_t i = 0; i < available; i++) {
       if (!mavlinkTelem3Getc(&c)) break;
-      if (fmav_parse_and_check_to_frame_buf(&result, _rxbuf3, &_status3, c)) {
+      if (fmav_parse_and_check_to_frame_buf(&result, _buf3, &_status3, c)) {
         fmav_router_handle_message(3, &result);
-        if (fmav_router_send_to_link(1)) { mavlinkTelemPutBuf(_rxbuf3, result.frame_len); }
-        if (fmav_router_send_to_link(2)) { mavlinkTelem2PutBuf(_rxbuf3, result.frame_len); }
+        if (fmav_router_send_to_link(1)) { mavlinkTelemPutBuf(_buf3, result.frame_len); }
+        if (fmav_router_send_to_link(2)) { mavlinkTelem2PutBuf(_buf3, result.frame_len); }
         if (fmav_router_send_to_link(3)) {} // WE DO NOT REFLECT, SO THIS MUST NEVER HAPPEN !!
         if (result.res == FASTMAVLINK_PARSE_RESULT_OK && fmav_router_send_to_link(0)) {
-          fmav_frame_buf_to_msg(&_msg, &result, _rxbuf3);
+          fmav_frame_buf_to_msg(&_msg, &result, _buf3);
           handleMessage(); // checks _msg, and puts any result into a task queue
         }
       }
@@ -543,14 +533,14 @@ void MavlinkTelem::wakeup()
   if (_msg_out_available) {
     fmav_router_handle_message_by_msg(0, &_msg_out);
     if (fmav_router_send_to_link(1) || fmav_router_send_to_link(2) || fmav_router_send_to_link(3)) {
-      uint16_t count = fmav_msg_to_frame_buf(_txbuf, &_msg_out);
+      uint16_t count = fmav_msg_to_frame_buf(_buf_out, &_msg_out);
       // check that message can be send to all enabled serials
       if ((!serial1_enabled || mavlinkTelemHasSpace(count)) &&
           (!serial2_enabled || mavlinkTelem2HasSpace(count)) &&
           (!serial3_enabled || mavlinkTelem3HasSpace(count))) {
-        if (serial1_enabled && fmav_router_send_to_link(1)) mavlinkTelemPutBuf(_txbuf, count);
-        if (serial2_enabled && fmav_router_send_to_link(2)) mavlinkTelem2PutBuf(_txbuf, count);
-        if (serial3_enabled && fmav_router_send_to_link(3)) mavlinkTelem3PutBuf(_txbuf, count);
+        if (serial1_enabled && fmav_router_send_to_link(1)) mavlinkTelemPutBuf(_buf_out, count);
+        if (serial2_enabled && fmav_router_send_to_link(2)) mavlinkTelem2PutBuf(_buf_out, count);
+        if (serial3_enabled && fmav_router_send_to_link(3)) mavlinkTelem3PutBuf(_buf_out, count);
         _msg_out_available = false;
         msg_tx_count++;
         _msg_tx_persec_cnt++;
