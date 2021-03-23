@@ -25,7 +25,6 @@
 #include <stdio.h>
 #include "opentx.h"
 #include "lua_api.h"
-#include "thirdparty/Mavlink/out/opentx/opentx.h"
 
 
 constexpr float FPI = 3.141592653589793f;
@@ -1406,6 +1405,11 @@ static int luaMavsdkRadioDisableRssiVoice(lua_State *L)
   mavlinkTelem.radio.rssi_voice_disabled = disable;
   return 0;
 }
+
+
+//------------------------------------------------------------
+// mavsdk luaL and luaR arrays
+//------------------------------------------------------------
 
 // I believe the names can't be longer than 32 chars
 const luaL_Reg mavsdkLib[] = {

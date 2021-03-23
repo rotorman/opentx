@@ -652,9 +652,5 @@ void MavlinkTelem::_reset(void)
   bytes_tx_persec = 0;
   _msg_tx_persec_cnt = 0;
   _bytes_tx_persec_cnt = 0;
-
-  // MAVLINK
-  //msgRxFifo.clear();
-  //msgFifo_enabled = false;
 }
 
