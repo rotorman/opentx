@@ -11,15 +11,15 @@ RTOS_DEFINE_STACK(mavlinkStack, MAVLINK_STACK_SIZE);
 
 struct MavlinkTaskStat {
   uint16_t start = 0;
-  uint16_t last = 0;
+  uint16_t run = 0;
   uint16_t max = 0;
-  uint16_t load = 0;
+  uint16_t loop = 0;
 };
 struct MavlinkTaskStat mavlinkTaskStat;
 
 uint16_t mavlinkTaskRunTime(void)
 {
-  return mavlinkTaskStat.start/2;
+  return mavlinkTaskStat.run/2;
 }
 
 uint16_t mavlinkTaskRunTimeMax(void)
@@ -27,9 +27,9 @@ uint16_t mavlinkTaskRunTimeMax(void)
   return mavlinkTaskStat.max/2;
 }
 
-uint16_t mavlinkTaskLoad(void)
+uint16_t mavlinkTaskLoop(void)
 {
-  return mavlinkTaskStat.load;
+  return mavlinkTaskStat.loop/2;
 }
 
 TASK_FUNCTION(mavlinkTask)
@@ -40,9 +40,10 @@ TASK_FUNCTION(mavlinkTask)
 
     mavlinkTelem.wakeup();
 
-    mavlinkTaskStat.last = getTmr2MHz() - mavlinkTaskStat.start;
-    if (mavlinkTaskStat.last > mavlinkTaskStat.max) mavlinkTaskStat.max = mavlinkTaskStat.last;
-    mavlinkTaskStat.load = mavlinkTaskStat.last / (mavlinkTaskStat.start - start_last);
+    mavlinkTaskStat.run = getTmr2MHz() - mavlinkTaskStat.start;
+    if (mavlinkTaskStat.run > mavlinkTaskStat.max) mavlinkTaskStat.max = mavlinkTaskStat.run;
+    //mavlinkTaskStat.load = (mavlinkTaskStat.run*100) / (mavlinkTaskStat.start - start_last);
+    mavlinkTaskStat.loop = (mavlinkTaskStat.start - start_last);
 
     RTOS_WAIT_TICKS(2);
   }

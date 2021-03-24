@@ -1358,17 +1358,6 @@ static int luaMavsdkGetMissionItem(lua_State *L)
   return 1;
 }
 
-// -- MAVSDK MAVLINKTASK STAT --
-
-static int luaMavsdkGetTaskStats(lua_State *L)
-{
-  lua_newtable(L);
-  lua_pushtableinteger(L, "time", mavlinkTaskRunTime());
-  lua_pushtableinteger(L, "max", mavlinkTaskRunTimeMax());
-  lua_pushtableinteger(L, "load", mavlinkTaskLoad());
-  return 1;
-}
-
 // -- Fake RSSI --
 
 static int luaMavsdkOptionIsRssiEnabled(lua_State *L)
@@ -1581,8 +1570,6 @@ const luaL_Reg mavsdkLib[] = {
   { "optionGetRssiScale", luaMavsdkOptionGetRssiScale },
   { "optionSetRssiScale", luaMavsdkOptionSetRssiScale },
   { "radioDisableRssiVoice", luaMavsdkRadioDisableRssiVoice },
-
-  { "getTaskStats", luaMavsdkGetTaskStats },
 
   { NULL, NULL }  /* sentinel */
 };

@@ -9,7 +9,7 @@
 void mavlinkStart();
 uint16_t mavlinkTaskRunTime(void);
 uint16_t mavlinkTaskRunTimeMax(void);
-uint16_t mavlinkTaskLoad(void);
+uint16_t mavlinkTaskLoop(void);
 
 // -- SERIAL and USB CDC handlers --
 
@@ -55,7 +55,7 @@ extern Fifo<uint8_t, 2*512> mavlinkTelemUsbRxFifo;
 #include "thirdparty/Mavlink/out/opentx/opentx.h"
 #include "thirdparty/Mavlink/out/lib/fastmavlink_router.h"
 
-// -- main Mavlink stuff
+// -- main Mavlink stuff --
 
 #define MAVLINK_TELEM_MY_SYSID        254 //MissionPlanner is 255, QGroundControl is 255
 #define MAVLINK_TELEM_MY_COMPID       (MAV_COMP_ID_MISSIONPLANNER + 4) //191 is companion, 194 is free
