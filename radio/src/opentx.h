@@ -150,6 +150,8 @@ opentxLib -> lauxlib.h, limit.c
 opentxConstants -> limit.c, lrotable.h
 lcdLib -> lauxlib.h, limit.c
 modelLib -> lauxlib.h, limit.c
+lsScripts lsWidgets lua_setglobal lua_istable
+malloc
 
 ----
 BOARD_NAME

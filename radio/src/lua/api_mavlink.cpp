@@ -26,6 +26,7 @@
 #include "opentx.h"
 #include "lua_api.h"
 #include "thirdparty/Mavlink/opentx_lua_lib_constants.h"
+#include "thirdparty/Mavlink/opentx_lua_lib_messages.h"
 
 
 static int luaMavlinkGetVersion(lua_State * L)
@@ -45,6 +46,8 @@ static int luaMavlinkGetChannelStatus(lua_State * L)
   lua_pushtableinteger(L, "bytes_tx_per_sec", mavlinkTelem.bytes_tx_persec);
   return 1;
 }
+
+//-- some statistics --
 
 extern int _end;
 extern int _heap_end;
@@ -95,6 +98,47 @@ static int luaMavlinkGetTaskStats(lua_State *L)
   return 1;
 }
 
+//-- mavlink api, messages --
+
+static int luaMavlinkMessageEnable(lua_State *L)
+{
+  bool flag = (luaL_checkinteger(L, 1) > 0);
+  mavlinkTelem.mavMsgListEnable(flag);
+  return 0;
+}
+
+static int luaMavlinkMessageCount(lua_State *L)
+{
+  lua_pushinteger(L, mavlinkTelem.mavMsgListCount());
+  return 1;
+}
+
+static int luaMavlinkGetMessage(lua_State *L)
+{
+  int msgid = luaL_checknumber(L, 1);
+
+  MavlinkTelem::MavMsg* mavmsg = mavlinkTelem.mavMsgListGet(msgid);
+  if (!mavmsg) {
+    lua_pushnil(L);
+  }
+  else {
+    luaMavlinkPushMavMsg(L, mavmsg);
+  }
+  return 1;
+}
+
+static int luaMavlinkGetMessageLast(lua_State *L)
+{
+  MavlinkTelem::MavMsg* mavmsg = mavlinkTelem.mavMsgListGetLast();
+  if (!mavmsg) {
+    lua_pushnil(L);
+  }
+  else {
+    luaMavlinkPushMavMsg(L, mavmsg);
+  }
+  return 1;
+}
+
 
 //------------------------------------------------------------
 // mavlink luaL and luaR arrays
@@ -106,6 +150,11 @@ const luaL_Reg mavlinkLib[] = {
   { "getMemUsed", luaMavlinkGetMemUsed },
   { "getStackUsed", luaMavlinkGetStackUsed },
   { "getTaskStats", luaMavlinkGetTaskStats },
+
+  { "messageEnable", luaMavlinkMessageEnable },
+  { "getMessageCount", luaMavlinkMessageCount },
+  { "getMessage", luaMavlinkGetMessage },
+  { "getMessageLast", luaMavlinkGetMessageLast },
 
   { nullptr, nullptr }  /* sentinel */
 };

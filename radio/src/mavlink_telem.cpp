@@ -255,8 +255,8 @@ void MavlinkTelem::handleMessage(void)
     _is_receiving = MAVLINK_TELEM_RECEIVING_TIMEOUT;
   }
 
-  // MAVLINK
-  //if (msgFifo_enabled) msgRxFifo.push(_msg);
+  // MAVLINK API
+  mavMsgListSet(&_msg);
 
   // MAVSDK
   // also try to convert the MAVLink messages to FrSky sensors
@@ -568,6 +568,9 @@ void MavlinkTelem::tick10ms()
   check(gimbal.is_receiving, _resetGimbalAndGimbalClient());
   check(gimbalmanager.is_receiving, _resetGimbalClient());
   check(camera.is_receiving, _resetCamera());
+
+  // keep 10us timer updated
+  time10us();
 }
 
 // -- Resets --
@@ -652,5 +655,8 @@ void MavlinkTelem::_reset(void)
   bytes_tx_persec = 0;
   _msg_tx_persec_cnt = 0;
   _bytes_tx_persec_cnt = 0;
+
+  // MAVLINK
+  mavMsgListInit();
 }
 

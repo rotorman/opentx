@@ -1399,8 +1399,8 @@ static int luaMavsdkRadioDisableRssiVoice(lua_State *L)
 //------------------------------------------------------------
 // mavsdk luaL and luaR arrays
 //------------------------------------------------------------
-
 // I believe the names can't be longer than 32 chars
+
 const luaL_Reg mavsdkLib[] = {
   { "mavtelemIsEnabled", luaMavsdkMavTelemIsEnabled },
   { "getVersion", luaMavsdkMavTelemVersion },

@@ -161,12 +161,121 @@ class MavlinkTelem
 
     #define REQUESTLIST_MAX   32
 
-    // the widget background task is called at 50ms, = 576 bytes max at 115200 bps
-    // FIXME: we need something better here!!!
-    // use two COMM'S ??!?!??!?
-    // 16 is sufficient for a rate of 43 msg/s or 1350 bytes/s, 8 was NOT!
-    //Fifo<mavlink_message_t, 32> msgRxFifo;  // HUGE!
-    //bool msgFifo_enabled = false;
+    // MAVLINK API
+
+    #define MAVMSGLIST_MAX   64
+
+    struct MavMsg {
+      uint32_t msgid;
+      uint8_t sysid;
+      uint8_t compid;
+      uint8_t target_sysid;
+      uint8_t target_compid;
+      void* payload_ptr;
+      uint32_t timestamp; // used only for finding last
+      bool updated;
+    };
+
+    MavMsg* mavMsgList[MAVMSGLIST_MAX]; // list of pointers into MavMsg structs
+    bool mavmsg_enabled = false;
+
+    void mavMsgListInit()
+    {
+      for (uint8_t i = 0; i < MAVMSGLIST_MAX; i++) mavMsgList[i] = NULL;
+      mavmsg_enabled = false;
+    }
+
+    void mavMsgListEnable(bool flag)
+    {
+      mavmsg_enabled = flag;
+    }
+
+    uint8_t mavMsgListCount()
+    {
+      if (!mavmsg_enabled) return 0;
+
+      uint8_t cnt = 0;
+      for (uint8_t i = 0; i < MAVMSGLIST_MAX; i++) if(mavMsgList[i]) cnt++;
+      return cnt;
+    }
+
+    bool _mavMsgListFind(uint8_t* index, uint32_t msgid)
+    {
+      for (uint8_t i = 0; i < MAVMSGLIST_MAX; i++) {
+        if (mavMsgList[i] && mavMsgList[i]->msgid == msgid) { *index = i; return true; }
+      }
+      return false;
+    }
+
+    bool _mavMsgListFindOrAdd(uint8_t* index, uint32_t msgid)
+    {
+      for (uint8_t i = 0; i < MAVMSGLIST_MAX; i++) {
+        if (mavMsgList[i] && mavMsgList[i]->msgid == msgid) { *index = i; return true; }
+      }
+      for (uint8_t i = 0; i < MAVMSGLIST_MAX; i++) {
+        if (mavMsgList[i]) continue;
+        // now add it
+        mavMsgList[i] = (MavMsg*)malloc(sizeof(MavMsg));
+        if (!mavMsgList[i]) return false;
+        mavMsgList[i]->msgid = msgid;
+        mavMsgList[i]->payload_ptr = NULL;
+        *index = i;
+        return true;
+      }
+      return false;
+    }
+
+    uint16_t t2MHz_last = 0;
+    uint64_t t10us_last = 0;
+
+    uint32_t time10us(void) { // ca 11.9h, should be sufficient
+      uint16_t t2MHz_now = getTmr2MHz();
+      t10us_last += (t2MHz_now - t2MHz_last);
+      t2MHz_last = t2MHz_now;
+      return t10us_last/20;
+    }
+
+    void mavMsgListSet(fmav_message_t* msg)
+    {
+      if (!mavmsg_enabled) return;
+
+      uint8_t i;
+      if (!_mavMsgListFindOrAdd(&i, msg->msgid)) return;
+
+      if (!mavMsgList[i]->payload_ptr) mavMsgList[i]->payload_ptr = malloc(msg->payload_max_len);
+      if (!mavMsgList[i]->payload_ptr) return;
+
+      mavMsgList[i]->sysid = msg->sysid;
+      mavMsgList[i]->compid = msg->compid;
+      mavMsgList[i]->target_sysid = msg->target_sysid;
+      mavMsgList[i]->target_compid = msg->target_compid;
+      memcpy(mavMsgList[i]->payload_ptr, msg->payload, msg->payload_max_len);
+
+      mavMsgList[i]->updated = true;
+      mavMsgList[i]->timestamp = time10us(); //get_tmr10ms(); //getTmr2MHz();
+    }
+
+    MavMsg* mavMsgListGet(uint32_t msgid)
+    {
+      if (!mavmsg_enabled) return NULL;
+
+      uint8_t i;
+      if (!_mavMsgListFind(&i, msgid)) return NULL;
+      return mavMsgList[i];
+    }
+
+    MavMsg* mavMsgListGetLast(void)
+    {
+      if (!mavmsg_enabled) return NULL;
+
+      uint32_t t_max = 0;
+      uint8_t i_max;
+      for (uint8_t i = 0; i < MAVMSGLIST_MAX; i++) {
+        if (mavMsgList[i] && mavMsgList[i]->timestamp > t_max) { t_max = mavMsgList[i]->timestamp; i_max = i; }
+      }
+      if (!t_max) return NULL;
+      return mavMsgList[i_max];
+    }
 
     // MAVSDK GENERAL
 

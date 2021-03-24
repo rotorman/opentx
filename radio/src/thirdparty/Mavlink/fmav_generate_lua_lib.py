@@ -16,56 +16,75 @@ Attention: names must not be longer than 32 chars
 
 def excludeMessage(msg):
     #return True
-    #return False
-    if msg.name in ['AHRS','AHRS2','AHRS3','VIBRATION']: return False
+    return False
+    if msg.name in ['AHRS','ATTITUDE','VIBRATION']: return False
     #if msg.name in ['AHRS']: return False
     return True
 
 
+def shortenName(name, width):
+    nameshort = name[:]
+    if len(nameshort) > width:
+        print('WARNING: msg id '+name+' too long')
+        nn = str.split(name, '_')
+        nameshort = nn[0]+'_'
+        for i in range(1,len(nn)-1):
+            nameshort += nn[i][:3] + '_'
+        nameshort += nn[-1]
+        if len(nameshort) > width:
+            print(' ! ! !   msg id too long even after shortening')
+            nameshort = nameshort[:width]
+    return nameshort 
+
+def shortenNameEnum(name, width):
+    nameshort = name[:]
+    if nameshort[:4] == 'MAV_': nameshort = nameshort[4:]
+    if len(nameshort) > width:
+        print('WARNING: msg id '+name+' too long')
+        nn = str.split(name, '_')
+        nameshort = nn[0]+'_'
+        for i in range(1,len(nn)-1):
+            nameshort += nn[i][:3]
+        nameshort += '_' + nn[-1]
+        if len(nameshort) > width:
+            print(' ! ! !   enum field too long even after shortening')
+            nameshort = nameshort[:width]
+    return nameshort 
+
+
 def generateLibMessageStr(msg, m):
-    m.append('void luaMavlinkGet_'+msg.name+'(lua_State* L, const fmav_message_t* msg)')
-    m.append('{')
-    m.append('  fmav_'+msg.name.lower()+'_t payload;')
-    m.append('  fmav_msg_'+msg.name.lower()+'_decode(&payload, msg);')
-    m.append('')
-#    m.append('  lua_getglobal(L, "m_msg_'+msg.name.lower()+'");')
-#    m.append('  bool is_table = lua_istable(L, -1);')
-#    m.append('  if (is_table) { // global already exists')
-#    m.append('    lua_pop(L, 1);')
-#    m.append('    return;')
-#    m.append('  }')
-#    m.append('  else {')
-#    m.append('    lua_newtable(L);')
-#    m.append('  }')
-    
-    m.append('  lua_newtable(L);')    
-    m.append('  luaMavlinkPushHeader(L, msg);')
-    #m.append('')
-    
+    m.append('  case FASTMAVLINK_MSG_ID_'+msg.name+': {')
+    count = 0
+    for field in msg.fields:
+        if field.array_length == 0:
+            if msg.is_target_system_field(field): continue
+            if msg.is_target_component_field(field): continue
+            count += 1
+        else:    
+            count += 1
+    if count > 0:
+        m.append('    fmav_'+msg.name.lower()+'_t* payload = (fmav_'+msg.name.lower()+'_t*)(mavmsg->payload_ptr);')
     #for field in msg.ordered_fields:
     for field in msg.fields:
         if field.array_length == 0:
             #we strip of target fields as their values are already in the msg structure
             if msg.is_target_system_field(field): continue
             if msg.is_target_component_field(field): continue
-            m.append('  push_value(L, "'+field.name+'", payload.'+field.name+');')
+            #m.append('    push_value(L, "'+field.name+'", payload.'+field.name+');')
+            #m.append('    lua_pushtableinteger(L, "'+field.name+'", payload->'+field.name+');')
+            nameshort = shortenName(field.name, 32)
+            m.append('    lua_pushtablenumber(L, "'+nameshort+'", payload->'+field.name+');')
         else:
-            pass
-#XX            m.append('  lua_pushstring(L, "'+field.name+'"); // array '+field.name+'['+str(field.array_length)+']' )
-#XX            m.append('  lua_newtable(L);')
-#XX            m.append('  for (int i = 0; i < '+str(field.array_length)+'; i++) { ')
-#XX            m.append('    push_value(L, i, payload.'+field.name+'[i]);')
-#XX            m.append('  }')
-#XX            m.append('  lua_rawset(L, -3); // end array')
-
-    #m.append('')
-    m.append('  push_value(L, "updated", true);')
-    m.append('  lua_setglobal(L, "m_msg_'+msg.name.lower()+'");')    
-#    m.append('  if (!is_table) { // global does not exist, so create')
-#    m.append('    lua_setglobal(L, "m_msg_'+msg.name.lower()+'");')
-#    m.append('  }')
-    m.append('}')
-    m.append('')
+            nameshort = shortenName(field.name, 32)
+            m.append('    lua_pushstring(L, "'+nameshort+'"); // array '+field.name+'['+str(field.array_length)+']' )
+            m.append('    lua_newtable(L);')
+            m.append('    for (int i = 0; i < '+str(field.array_length)+'; i++) { ')
+            #m.append('      push_value(L, i, payload.'+field.name+'[i]);')
+            m.append('      lua_pushtableinumber(L, i, payload->'+field.name+'[i]);')
+            m.append('    }')
+            m.append('    lua_rawset(L, -3);')
+    m.append('    break;')
+    m.append('    }')
 
 
 def generateLuaLibHeaders(dialectname):
@@ -98,83 +117,32 @@ def generateLuaLibHeaders(dialectname):
 // all message from opentx.xml
 // auto generated
 
-// basic idea is by hsteinhaus
-// https://github.com/opentx/opentx/pull/5600
-// needed correction since globals are not garbage collected 
-// and thus swamp the memory
 
+#define lua_pushtableinteger_raw(L, k, v)  (lua_pushstring(L, (k)), lua_pushinteger(L, (v)), lua_rawset(L, -3))
+#define lua_pushtablenumber_raw(L, k, v)   (lua_pushstring(L, (k)), lua_pushnumber(L, (v)), lua_rawset(L, -3))
+#define lua_pushtablestring_raw(L, k, v)   (lua_pushstring(L, (k)), lua_pushstring(L, (v)), lua_rawset(L, -3))
+#define lua_pushtableinumber_raw(L, i, v)  (lua_pushnumber(L, (i)), lua_pushnumber(L, (v)), lua_rawset(L, -3))
+#define lua_pushtableinumber(L, i, v)      (lua_pushnumber(L, (i)), lua_pushnumber(L, (v)), lua_settable(L, -3))
 
-//------------------------------------------------------------
-//-- Helper
-//------------------------------------------------------------
-
-void push_value(lua_State* L, const char* field, const char* text)
+static void luaMavlinkPushMavMsg(lua_State *L, MavlinkTelem::MavMsg* mavmsg)
 {
-  lua_pushstring(L, field); // push key
-  lua_pushstring(L, text); // push value
-  lua_rawset(L, -3); // set table: table[key] = value
-}
+  lua_newtable(L);
+  lua_pushtableinteger(L, "sysid", mavmsg->sysid);
+  lua_pushtableinteger(L, "compid", mavmsg->compid);
+  lua_pushtableinteger(L, "msgid", mavmsg->msgid);
+  lua_pushtableinteger(L, "target_sysid", mavmsg->target_sysid);
+  lua_pushtableinteger(L, "target_compid", mavmsg->target_compid);
+  lua_pushtableboolean(L, "updated", mavmsg->updated);
+  mavmsg->updated = false;
 
-void push_value(lua_State* L, const char* field, const double value)
-{
-  lua_pushstring(L, field);
-  lua_pushnumber(L, value);
-  lua_rawset(L, -3);
-}
-
-void push_value(lua_State* L, const int i, const char* text)
-{
-  lua_pushnumber(L, i);
-  lua_pushstring(L, text);
-  lua_rawset(L, -3);
-}
-
-void push_value(lua_State* L, const int i, const double value)
-{
-  lua_pushnumber(L, i);
-  lua_pushnumber(L, value);
-  lua_rawset(L, -3);
-}
-
-void luaMavlinkPushHeader(lua_State* L, const fmav_message_t* msg)
-{
-  push_value(L, "magic", msg->magic);
-  push_value(L, "len", msg->len);
-  push_value(L, "incompat_flags", msg->incompat_flags);
-  push_value(L, "compat_flags", msg->compat_flags);
-  push_value(L, "seq", msg->seq);
-  push_value(L, "sysid", msg->sysid);
-  push_value(L, "compid", msg->compid);
-  push_value(L, "target_sysid", msg->target_sysid);
-  push_value(L, "target_compid", msg->target_compid);
-}
-
-
-//------------------------------------------------------------
-//-- Messages
-//------------------------------------------------------------
-''')
+  switch (mavmsg->msgid) {''')
     for msgid in sorted(dialectxml.messages_all_by_id.keys()):
-        if excludeMessage(dialectxml.messages_all_by_id[msgid]): continue
-        generateLibMessageStr(dialectxml.messages_all_by_id[msgid], m)
-    m.append('''
-//------------------------------------------------------------
-//-- Message Handler
-//------------------------------------------------------------
-
-void luaMavlinkHandleMessage(const fmav_message_t* msg)
-{
-  lua_State* L = lsWidgets;
+        msg = dialectxml.messages_all_by_id[msgid]
+        if excludeMessage(msg): continue
+        generateLibMessageStr(msg, m)
+    m.append('''  }
+}
 ''')
-    m.append('  switch (msg->msgid) {')
-    for msgid in sorted(dialectxml.messages_all_by_id.keys()):
-        if excludeMessage(dialectxml.messages_all_by_id[msgid]): continue
-        name = dialectxml.messages_all_by_id[msgid].name
-        m.append('    case FASTMAVLINK_MSG_ID_'+name+':')
-        m.append('      luaMavlinkGet_'+name+'(L, msg);')
-        m.append('      return;')
-    m.append('  }')
-    m.append('}')
 
     # constants
     print("Constants")
@@ -190,13 +158,17 @@ void luaMavlinkHandleMessage(const fmav_message_t* msg)
     for msgid in sorted(dialectxml.messages_all_by_id.keys()):
         #print(msgid, dialectxml.messages_all_by_id[msgid].name)
         name = dialectxml.messages_all_by_id[msgid].name
-        s.append('  { "MSG_ID_'+name+'", FASTMAVLINK_MSG_ID_'+name+' }, \\')
+        #s.append('  { "MSG_ID_'+name+'", FASTMAVLINK_MSG_ID_'+name+' }, \\')
+        nameshort = shortenName(name, 30)
+        s.append('  { "M_'+nameshort+'", FASTMAVLINK_MSG_ID_'+name+' }, \\')
     for enumname in enums_all_by_name:
         #print(enumname)
         s.append( '  \\')
         for entry in enums_all_by_name[enumname].entry:
             #print('    ',entry.name, entry.value)
-            s.append('  { "'+entry.name+'", '+str(entry.value)+' }, \\')
+            #s.append('  { "'+entry.name+'", '+str(entry.value)+' }, \\')
+            nameshort = shortenNameEnum(entry.name, 32)
+            s.append('  { "'+nameshort+'", '+str(entry.value)+' }, \\')
     #print(s)
 
     F = open(constantsoutname, mode='w')
@@ -206,12 +178,12 @@ void luaMavlinkHandleMessage(const fmav_message_t* msg)
     F.write('\n')
     F.close()
 
-#    F = open(messagesoutname, mode='w')
-#    for mm in m:
-#        F.write(mm)
-#        F.write('\n')
-#    F.write('\n')
-#    F.close()
+    F = open(messagesoutname, mode='w')
+    for mm in m:
+        F.write(mm)
+        F.write('\n')
+    F.write('\n')
+    F.close()
 
 
 if __name__ == "__main__":
