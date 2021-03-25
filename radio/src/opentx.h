@@ -99,7 +99,7 @@ added files in radio/src/
 
 
 TODO:
-- mavlink api: why 8Hz instead of 4Hz? differentiate received messages by sys-comp ids?
+- mavlink api: differentiate received messages by sys-comp ids?
 - mavlink router: wipeout&reassign when link changes? wipeout after timeout?
 
 COMMENTS:

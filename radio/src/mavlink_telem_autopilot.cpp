@@ -10,6 +10,44 @@ constexpr float FRADTODEG = 180.0f/FPI;
 
 #define INCU8(x)    if ((x) < UINT8_MAX) { (x)++; }
 
+// -- Rate defines --
+
+#define DATA_STREAM_RAW_SENSORS_RATE      2 // not used
+
+// MAVLINK_MSG_ID_GPS_RAW_INT
+// MAVLINK_MSG_ID_GPS2_RAW
+// MAVLINK_MSG_ID_SYS_STATUS
+// MSG_NAV_CONTROLLER_OUTPUT
+// MSG_CURRENT_WAYPOINT // MISSION_CURRENT
+#define DATA_STREAM_EXTENDED_STATUS_RATE  2
+
+// MAVLINK_MSG_ID_GLOBAL_POSITION_INT
+#define DATA_STREAM_POSITION_RATE         4  // not used
+
+// MAVLINK_MSG_ID_ATTITUDE
+#define DATA_STREAM_EXTRA1_RATE           4  // not used
+
+// MAVLINK_MSG_ID_VFR_HUD
+#define DATA_STREAM_EXTRA2_RATE           2
+
+// MAVLINK_MSG_ID_BATTERY_STATUS (only if batt monitor configured)
+// MAVLINK_MSG_ID_BATTERY2 (only if batt2 monitor configured)
+// MAVLINK_MSG_ID_EKF_STATUS_REPORT
+#define DATA_STREAM_EXTRA3_RATE           2
+
+// MSG_SERVO_OUTPUT_RAW
+// MSG_RC_CHANNELS
+// MSG_RC_CHANNELS_RAW (only sent on a mavlink1 connection)
+#define DATA_STREAM_RC_CHANNELS_RATE      1
+
+// call at high rates of 10 Hz, or 5 Hz
+// MAVLINK_MSG_ID_ATTITUDE
+#define MSG_ID_ATTITUDE_RATE              100000 // 100 ms = 10 Hz
+
+// call at high rates of 10 Hz, or 5 Hz
+// MAVLINK_MSG_ID_GLOBAL_POSITION_INT
+#define MSG_ID_GLOBAL_POSITION_INT_RATE   200000 // 200 ms = 5 Hz
+
 // -- Generate MAVLink messages --
 // these should never be called directly, should only by called by the task handler
 
@@ -293,49 +331,48 @@ bool MavlinkTelem::doTaskAutopilotLowPriority(void)
 
   if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_RAW_SENSORS) {
     RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_RAW_SENSORS);
-    generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_RAW_SENSORS, 2, 1); // 2 Hz
+    generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_RAW_SENSORS, DATA_STREAM_RAW_SENSORS_RATE, 1); // 2 Hz
     return true; //do only one per loop
   }
   if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_EXTENDED_STATUS) {
     RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_EXTENDED_STATUS);
-    generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_EXTENDED_STATUS, 2, 1); // 2 Hz
+    generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_EXTENDED_STATUS, DATA_STREAM_EXTENDED_STATUS_RATE, 1); // 2 Hz
     return true; //do only one per loop
   }
   if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_POSITION) {
     RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_POSITION);
-    generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_POSITION, 4, 1); // do faster, 4 Hz
+    generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_POSITION, DATA_STREAM_POSITION_RATE, 1); // do faster, 4 Hz
     return true; //do only one per loop
   }
   if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_EXTRA1) {
     RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_EXTRA1);
-    generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_EXTRA1, 4, 1); // do faster, 4 Hz
+    generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_EXTRA1, DATA_STREAM_EXTRA1_RATE, 1); // do faster, 4 Hz
     return true; //do only one per loop
   }
   if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_EXTRA2) {
     RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_EXTRA2);
-    generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_EXTRA2, 2, 1); // 2 Hz
+    generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_EXTRA2, DATA_STREAM_EXTRA2_RATE, 1); // 2 Hz
     return true; //do only one per loop
   }
   if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_EXTRA3) {
     RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_EXTRA3);
-    generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_EXTRA3, 2, 1); // 2 Hz
+    generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_EXTRA3, DATA_STREAM_EXTRA3_RATE, 1); // 2 Hz
     return true; //do only one per loop
   }
   if (_task[TASK_AUTOPILOT] & TASK_SENDREQUESTDATASTREAM_RC_CHANNELS) {
     RESETTASK(TASK_AUTOPILOT,TASK_SENDREQUESTDATASTREAM_RC_CHANNELS);
-    generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_RC_CHANNELS, 1, 1); // 1 Hz
+    generateRequestDataStream(_sysid, autopilot.compid, MAV_DATA_STREAM_RC_CHANNELS, DATA_STREAM_RC_CHANNELS_RATE, 1); // 1 Hz
     return true; //do only one per loop
   }
 
   if (_task[TASK_AUTOPILOT] & TASK_SENDCMD_REQUEST_ATTITUDE) {
     RESETTASK(TASK_AUTOPILOT,TASK_SENDCMD_REQUEST_ATTITUDE);
-    generateCmdSetMessageInterval(_sysid, autopilot.compid, FASTMAVLINK_MSG_ID_ATTITUDE, 100000, 1); // 100 ms = 10 Hz
+    generateCmdSetMessageInterval(_sysid, autopilot.compid, FASTMAVLINK_MSG_ID_ATTITUDE, MSG_ID_ATTITUDE_RATE, 1); // 100 ms = 10 Hz
     return true; //do only one per loop
   }
   if (_task[TASK_AUTOPILOT] & TASK_SENDCMD_REQUEST_GLOBAL_POSITION_INT) {
     RESETTASK(TASK_AUTOPILOT,TASK_SENDCMD_REQUEST_GLOBAL_POSITION_INT);
-    //generateCmdSetMessageInterval(_sysid, autopilot.compid, MAVLINK_MSG_ID_GLOBAL_POSITION_INT, 100000, 1); // 100 ms = 10 Hz
-    generateCmdSetMessageInterval(_sysid, autopilot.compid, FASTMAVLINK_MSG_ID_GLOBAL_POSITION_INT, 200000, 1); // 200 ms = 5 Hz
+    generateCmdSetMessageInterval(_sysid, autopilot.compid, FASTMAVLINK_MSG_ID_GLOBAL_POSITION_INT, MSG_ID_GLOBAL_POSITION_INT_RATE, 1); // 200 ms = 5 Hz
     return true; //do only one per loop
   }
 
@@ -883,46 +920,48 @@ void MavlinkTelem::setAutopilotStartupRequests(void)
 {
   if (autopilottype == MAV_AUTOPILOT_ARDUPILOTMEGA) {
     // 2 Hz sufficient
-    // yields: MAVLINK_MSG_ID_GPS_RAW_INT
-    //         MAVLINK_MSG_ID_GPS2_RAW
-    //         MAVLINK_MSG_ID_SYS_STATUS
-    //         MSG_NAV_CONTROLLER_OUTPUT,
-    //         MSG_CURRENT_WAYPOINT, // MISSION_CURRENT
+    // MAVLINK_MSG_ID_GPS_RAW_INT
+    // MAVLINK_MSG_ID_GPS2_RAW
+    // MAVLINK_MSG_ID_SYS_STATUS
+    // MSG_NAV_CONTROLLER_OUTPUT
+    // MSG_CURRENT_WAYPOINT // MISSION_CURRENT
     // cleared by MAVLINK_MSG_ID_GPS_RAW_INT (is send even when both GPS are 0, so we can use it to clear)
     set_request(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTENDED_STATUS, 100, 200-4);
 
-    // yields: MAVLINK_MSG_ID_GLOBAL_POSITION_INT
+    // MAVLINK_MSG_ID_GLOBAL_POSITION_INT
     // cleared by MAVLINK_MSG_ID_GLOBAL_POSITION_INT
     //set_request(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_POSITION, 100, 198);
 
-    // yields: MAVLINK_MSG_ID_ATTITUDE
+    // MAVLINK_MSG_ID_ATTITUDE
     // cleared by MAVLINK_MSG_ID_ATTITUDE
     //set_request(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTRA1, 100, 211);
 
     // 2 Hz sufficient
-    // yields: MAVLINK_MSG_ID_VFR_HUD
+    // MAVLINK_MSG_ID_VFR_HUD
     // cleared by MAVLINK_MSG_ID_VFR_HUD
     set_request(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTRA2, 100, 200+20);
 
     // 2 Hz sufficient
-    // yields: MAVLINK_MSG_ID_BATTERY_STATUS (only if batt monitor configured)
-    //         MAVLINK_MSG_ID_BATTERY2 (only if batt2 monitor configured)
-    //         MAVLINK_MSG_ID_EKF_STATUS_REPORT
+    // MAVLINK_MSG_ID_BATTERY_STATUS (only if batt monitor configured)
+    // MAVLINK_MSG_ID_BATTERY2 (only if batt2 monitor configured)
+    // MAVLINK_MSG_ID_EKF_STATUS_REPORT
     // cleared by MAVLINK_MSG_ID_EKF_STATUS_REPORT
     set_request(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_EXTRA3, 100, 200+3);
 
     // 1 Hz sufficient
-    // yields: MSG_SERVO_OUTPUT_RAW,
-    //         MSG_RC_CHANNELS,
-    //         MSG_RC_CHANNELS_RAW, // only sent on a mavlink1 connection
+    // MSG_SERVO_OUTPUT_RAW
+    // MSG_RC_CHANNELS
+    // MSG_RC_CHANNELS_RAW (only sent on a mavlink1 connection)
     // cleared by MAVLINK_MSG_ID_RC_CHANNELS
     set_request(TASK_AUTOPILOT, TASK_SENDREQUESTDATASTREAM_RC_CHANNELS, 100, 200-8);
 
-    // call these at high rates of 10 Hz, or 5 Hz
-    // yields: MAVLINK_MSG_ID_ATTITUDE
+    // call at high rates of 10 Hz, or 5 Hz
+    // MAVLINK_MSG_ID_ATTITUDE
     // cleared by MAVLINK_MSG_ID_ATTITUDE
     set_request(TASK_AUTOPILOT, TASK_SENDCMD_REQUEST_ATTITUDE, 100, 200+5);
-    // yields: MAVLINK_MSG_ID_GLOBAL_POSITION_INT
+
+    // call at high rates of 10 Hz, or 5 Hz
+    // MAVLINK_MSG_ID_GLOBAL_POSITION_INT
     // cleared by MAVLINK_MSG_ID_GLOBAL_POSITION_INT
     set_request(TASK_AUTOPILOT, TASK_SENDCMD_REQUEST_GLOBAL_POSITION_INT, 100, 200+7);
 
