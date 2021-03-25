@@ -176,6 +176,8 @@ class MavlinkTelem
     }
 
     // MAVLINK API
+    // in the receive list we probably need to differentiate not only by msgid, but also by sysis-compid
+    // if two components send the same message at (too) high rate considering only msgid leads to message loss
 
     #define MAVMSGLIST_MAX   64
 
@@ -186,7 +188,7 @@ class MavlinkTelem
       uint8_t target_sysid;
       uint8_t target_compid;
       void* payload_ptr;
-      uint32_t timestamp; // used only for finding last
+      uint32_t timestamp; // used only for finding latest
       bool updated;
     };
 
@@ -721,7 +723,7 @@ class MavlinkTelem
     void sendQShotStatus(uint8_t mode, uint8_t shot_state);
     void sendQShotButtonState(uint8_t button_state);
 
-    // SOME more MAVLINK stuff
+    // SOME more MAVLink stuff
 
     const fmav_status_t* getChannelStatusOut(void)
     {
