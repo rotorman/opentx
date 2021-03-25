@@ -32,6 +32,7 @@
 //OWEND
 
 /*
+mavMsgOut
 mavMsgList
 v26 2021-03-21
 fastMavlink v003, prearm checks
@@ -98,7 +99,7 @@ added files in radio/src/
 
 
 TODO:
-- mavlink api
+- mavlink api: why 8Hz instead of 4Hz? differentiate received messages by sys-comp ids?
 - mavlink router: wipeout&reassign when link changes? wipeout after timeout?
 
 COMMENTS:
