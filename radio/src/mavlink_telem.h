@@ -192,8 +192,8 @@ class MavlinkTelem
       bool updated;
     };
 
-    MavMsg* mavMsgList[MAVMSGLIST_MAX]; // list of pointers into MavMsg structs
-    bool mavmsg_enabled = false;
+    MavMsg* _mavMsgList[MAVMSGLIST_MAX] = { NULL }; // list of pointers into MavMsg structs
+    bool _mavmsg_enabled = false;
 
     void mavMsgListInit(void);
     void mavMsgListEnable(bool flag);
