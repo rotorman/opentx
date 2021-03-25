@@ -89,6 +89,7 @@ added files in radio/src/
     mavlink_telem_camera.cpp
     mavlink_telem_gimbal.cpp
     mavlink_telem_qshot.cpp
+    mavlink_telem_mavapi.cpp
     mavlink_telem.cpp
     mavlink_telem.h
     lua/api_mavlink.cpp
