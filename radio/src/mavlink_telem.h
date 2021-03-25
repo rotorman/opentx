@@ -195,93 +195,20 @@ class MavlinkTelem
     MavMsg* mavMsgList[MAVMSGLIST_MAX]; // list of pointers into MavMsg structs
     bool mavmsg_enabled = false;
 
-    void mavMsgListInit()
-    {
-      for (uint8_t i = 0; i < MAVMSGLIST_MAX; i++) mavMsgList[i] = NULL;
-      mavmsg_enabled = false;
-    }
+    void mavMsgListInit(void);
+    void mavMsgListEnable(bool flag);
+    uint8_t mavMsgListCount(void);
+    uint8_t _mavMsgListFindOrAdd(uint32_t msgid);
+    void handleMavapiMessage(fmav_message_t* msg);
+    MavMsg* mavMsgListGet(uint32_t msgid);
+    MavMsg* mavMsgListGetLast(void);
 
-    void mavMsgListEnable(bool flag)
-    {
-      mavmsg_enabled = flag;
-    }
+    bool _mavapi_msg_out_free = true;
+    fmav_message_t _t_mavapi_msg_out;
 
-    uint8_t mavMsgListCount()
-    {
-      if (!mavmsg_enabled) return 0;
-
-      uint8_t cnt = 0;
-      for (uint8_t i = 0; i < MAVMSGLIST_MAX; i++) if(mavMsgList[i]) cnt++;
-      return cnt;
-    }
-
-    bool _mavMsgListFind(uint8_t* index, uint32_t msgid)
-    {
-      for (uint8_t i = 0; i < MAVMSGLIST_MAX; i++) {
-        if (mavMsgList[i] && mavMsgList[i]->msgid == msgid) { *index = i; return true; }
-      }
-      return false;
-    }
-
-    bool _mavMsgListFindOrAdd(uint8_t* index, uint32_t msgid)
-    {
-      for (uint8_t i = 0; i < MAVMSGLIST_MAX; i++) {
-        if (mavMsgList[i] && mavMsgList[i]->msgid == msgid) { *index = i; return true; }
-      }
-      for (uint8_t i = 0; i < MAVMSGLIST_MAX; i++) {
-        if (mavMsgList[i]) continue;
-        // now add it
-        mavMsgList[i] = (MavMsg*)malloc(sizeof(MavMsg));
-        if (!mavMsgList[i]) return false;
-        mavMsgList[i]->msgid = msgid;
-        mavMsgList[i]->payload_ptr = NULL;
-        *index = i;
-        return true;
-      }
-      return false;
-    }
-
-    void mavMsgListSet(fmav_message_t* msg)
-    {
-      if (!mavmsg_enabled) return;
-
-      uint8_t i;
-      if (!_mavMsgListFindOrAdd(&i, msg->msgid)) return;
-
-      if (!mavMsgList[i]->payload_ptr) mavMsgList[i]->payload_ptr = malloc(msg->payload_max_len);
-      if (!mavMsgList[i]->payload_ptr) return;
-
-      mavMsgList[i]->sysid = msg->sysid;
-      mavMsgList[i]->compid = msg->compid;
-      mavMsgList[i]->target_sysid = msg->target_sysid;
-      mavMsgList[i]->target_compid = msg->target_compid;
-      memcpy(mavMsgList[i]->payload_ptr, msg->payload, msg->payload_max_len);
-
-      mavMsgList[i]->updated = true;
-      mavMsgList[i]->timestamp = time10us(); //get_tmr10ms(); //getTmr2MHz();
-    }
-
-    MavMsg* mavMsgListGet(uint32_t msgid)
-    {
-      if (!mavmsg_enabled) return NULL;
-
-      uint8_t i;
-      if (!_mavMsgListFind(&i, msgid)) return NULL;
-      return mavMsgList[i];
-    }
-
-    MavMsg* mavMsgListGetLast(void)
-    {
-      if (!mavmsg_enabled) return NULL;
-
-      uint32_t t_max = 0;
-      uint8_t i_max;
-      for (uint8_t i = 0; i < MAVMSGLIST_MAX; i++) {
-        if (mavMsgList[i] && mavMsgList[i]->timestamp > t_max) { t_max = mavMsgList[i]->timestamp; i_max = i; }
-      }
-      if (!t_max) return NULL;
-      return mavMsgList[i_max];
-    }
+    fmav_message_t* mavMsgOutPtr(void);
+    void mavMsgOutSet(void);
+    void generateMavapiMessage(void);
 
     // MAVSDK GENERAL
 
@@ -776,6 +703,8 @@ class MavlinkTelem
       TASK_SENDCMD_DO_QSHOT_CONFIGFURE            = 0x00000002,
       TASK_SENDMSG_QSHOT_STATUS                   = 0x00000004,
       TASK_SENDMSG_QSHOT_BUTTON_STATE             = 0x00000008,
+
+      TASK_SENDMSG_MAVLINK_API                    = 0x00000010,
 
       // autopilot
       TASK_SENDREQUESTDATASTREAM_RAW_SENSORS      = 0x00000001, // group 1

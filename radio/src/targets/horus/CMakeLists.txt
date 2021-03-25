@@ -306,6 +306,7 @@ if (TELEMETRY_MAVLINK)
   set(SRC ${SRC} 
     mavlink_telem.cpp
     mavlink_telem_interface.cpp
+    mavlink_telem_mavapi.cpp
     mavlink_telem_autopilot.cpp 
     mavlink_telem_camera.cpp
     mavlink_telem_gimbal.cpp 

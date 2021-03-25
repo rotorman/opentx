@@ -4,10 +4,16 @@ fmav_generate_lua-lib.py
 calls fastMavlink generator modules
 (c) OlliW, OlliW42, www.olliw.eu
 '''
-import os
-from fastmavlink.generator.modules import fmav_parse as mavparse
-from fastmavlink.generator.modules import mavtemplate
-from fastmavlink.generator.modules import fmav_flags as mavflags
+import os, sys
+
+mavlinkpathtorepository = os.path.join('fastmavlink')
+#mavlinkpathtorepository = r'C:/Users/Olli/Documents/GitHub/fastmavlink'
+
+sys.path.insert(0, mavlinkpathtorepository)
+
+from generator.modules import fmav_parse as mavparse
+from generator.modules import mavtemplate
+from generator.modules import fmav_flags as mavflags
 
 '''
 Attention: names must not be longer than 32 chars
@@ -51,39 +57,72 @@ def shortenNameEnum(name, width):
             nameshort = nameshort[:width]
     return nameshort 
 
-
-def generateLibMessageStr(msg, m):
-    m.append('  case FASTMAVLINK_MSG_ID_'+msg.name+': {')
+def msgFieldCount(msg, excludetargets):
     count = 0
     for field in msg.fields:
         if field.array_length == 0:
-            if msg.is_target_system_field(field): continue
-            if msg.is_target_component_field(field): continue
+            if excludetargets and msg.is_target_system_field(field): continue
+            if excludetargets and msg.is_target_component_field(field): continue
             count += 1
         else:    
             count += 1
-    if count > 0:
+    return count        
+
+def generateLibMessageForPush(msg, m):
+    m.append('  case FASTMAVLINK_MSG_ID_'+msg.name+': {')
+    if msgFieldCount(msg,True) > 0:
         m.append('    fmav_'+msg.name.lower()+'_t* payload = (fmav_'+msg.name.lower()+'_t*)(mavmsg->payload_ptr);')
     #for field in msg.ordered_fields:
     for field in msg.fields:
+        nameshort = shortenName(field.name, 32)
         if field.array_length == 0:
             #we strip of target fields as their values are already in the msg structure
             if msg.is_target_system_field(field): continue
             if msg.is_target_component_field(field): continue
-            #m.append('    push_value(L, "'+field.name+'", payload.'+field.name+');')
-            #m.append('    lua_pushtableinteger(L, "'+field.name+'", payload->'+field.name+');')
-            nameshort = shortenName(field.name, 32)
             m.append('    lua_pushtablenumber(L, "'+nameshort+'", payload->'+field.name+');')
         else:
-            nameshort = shortenName(field.name, 32)
             m.append('    lua_pushstring(L, "'+nameshort+'"); // array '+field.name+'['+str(field.array_length)+']' )
             m.append('    lua_newtable(L);')
             m.append('    for (int i = 0; i < '+str(field.array_length)+'; i++) { ')
-            #m.append('      push_value(L, i, payload.'+field.name+'[i]);')
             m.append('      lua_pushtableinumber(L, i, payload->'+field.name+'[i]);')
             m.append('    }')
             m.append('    lua_rawset(L, -3);')
-    m.append('    break;')
+    m.append('    return;')
+    m.append('    }')
+
+
+def generateLibMessageForCheck(msg, m):
+    m.append('  case FASTMAVLINK_MSG_ID_'+msg.name+': {')
+    if msgFieldCount(msg,False) > 0:
+        m.append('    fmav_'+msg.name.lower()+'_t* payload = (fmav_'+msg.name.lower()+'_t*)(msg_out->payload);')
+    for field in msg.fields:
+        nameshort = shortenName(field.name, 32)
+        default = '0'
+        if field.array_length == 0:
+            #we substitute target fields
+            if msg.is_target_system_field(field): nameshort = 'target_sysid'
+            if msg.is_target_component_field(field):  nameshort = 'target_compid'
+            if msg.name == 'HEARTBEAT' and nameshort == 'mavlink_version':
+                m.append('    payload->mavlink_version = FASTMAVLINK_MAVLINK_VERSION;')
+                continue
+            m.append('    lua_checktablenumber(L, payload->'+field.name+', "'+nameshort+'", '+default+');')
+        else:
+            m.append('    lua_pushstring(L, "'+nameshort+'"); // array '+field.name+'['+str(field.array_length)+']' )
+            m.append('    lua_gettable(L, -2);')
+            m.append('    for (int i = 0; i < '+str(field.array_length)+'; i++) { ')
+            m.append('      lua_checktableinumber(L, payload->'+field.name+'[i], i, '+default+');')
+            m.append('    }')
+            m.append('    lua_pop(L, 1);')
+            
+    for field in msg.fields:
+        if msg.is_target_system_field(field): 
+            m.append('    msg_out->target_sysid = payload->'+field.name+';')
+    for field in msg.fields:
+        if msg.is_target_component_field(field): 
+            m.append('    msg_out->target_compid = payload->'+field.name+';')
+    m.append('    msg_out->crc_extra = FASTMAVLINK_MSG_'+msg.name+'_CRCEXTRA;')
+    m.append('    msg_out->payload_max_len = FASTMAVLINK_MSG_'+msg.name+'_PAYLOAD_LEN_MAX;')
+    m.append('    return 1;')
     m.append('    }')
 
 
@@ -118,11 +157,15 @@ def generateLuaLibHeaders(dialectname):
 // auto generated
 
 
-#define lua_pushtableinteger_raw(L, k, v)  (lua_pushstring(L, (k)), lua_pushinteger(L, (v)), lua_rawset(L, -3))
-#define lua_pushtablenumber_raw(L, k, v)   (lua_pushstring(L, (k)), lua_pushnumber(L, (v)), lua_rawset(L, -3))
-#define lua_pushtablestring_raw(L, k, v)   (lua_pushstring(L, (k)), lua_pushstring(L, (v)), lua_rawset(L, -3))
-#define lua_pushtableinumber_raw(L, i, v)  (lua_pushnumber(L, (i)), lua_pushnumber(L, (v)), lua_rawset(L, -3))
-#define lua_pushtableinumber(L, i, v)      (lua_pushnumber(L, (i)), lua_pushnumber(L, (v)), lua_settable(L, -3))
+//------------------------------------------------------------
+// push
+//------------------------------------------------------------
+
+#define lua_pushtableinteger_raw(L, k, v)  (lua_pushstring(L,(k)), lua_pushinteger(L,(v)), lua_rawset(L,-3))
+#define lua_pushtablenumber_raw(L, k, v)   (lua_pushstring(L,(k)), lua_pushnumber(L,(v)), lua_rawset(L,-3))
+#define lua_pushtablestring_raw(L, k, v)   (lua_pushstring(L,(k)), lua_pushstring(L,(v)), lua_rawset(L,-3))
+#define lua_pushtableinumber_raw(L, i, v)  (lua_pushnumber(L,(i)), lua_pushnumber(L,(v)), lua_rawset(L,-3))
+#define lua_pushtableinumber(L, i, v)      (lua_pushnumber(L,(i)), lua_pushnumber(L,(v)), lua_settable(L,-3))
 
 static void luaMavlinkPushMavMsg(lua_State *L, MavlinkTelem::MavMsg* mavmsg)
 {
@@ -133,14 +176,43 @@ static void luaMavlinkPushMavMsg(lua_State *L, MavlinkTelem::MavMsg* mavmsg)
   lua_pushtableinteger(L, "target_sysid", mavmsg->target_sysid);
   lua_pushtableinteger(L, "target_compid", mavmsg->target_compid);
   lua_pushtableboolean(L, "updated", mavmsg->updated);
-  mavmsg->updated = false;
 
   switch (mavmsg->msgid) {''')
     for msgid in sorted(dialectxml.messages_all_by_id.keys()):
         msg = dialectxml.messages_all_by_id[msgid]
         if excludeMessage(msg): continue
-        generateLibMessageStr(msg, m)
+        generateLibMessageForPush(msg, m)
     m.append('''  }
+}
+
+
+//------------------------------------------------------------
+// check
+//------------------------------------------------------------
+
+#define lua_checktableinteger(L, r, k, d)  (lua_pushstring(L,(k)), lua_gettable(L,-2 ), r = (lua_isnumber(L,-1))?lua_tointeger(L,-1):(d), lua_pop(L,1))
+#define lua_checktablenumber(L, r, k, d)   (lua_pushstring(L,(k)), lua_gettable(L,-2 ), r = (lua_isnumber(L,-1))?lua_tonumber(L,-1):(d), lua_pop(L,1))
+#define lua_checktableinumber(L, r, i, d)  (lua_pushnumber(L,(i)), lua_gettable(L,-2 ), r = (lua_isnumber(L,-1))?lua_tonumber(L,-1):(d), lua_pop(L,1))
+
+static uint8_t luaMavlinkCheckMsgOut(lua_State *L, fmav_message_t* msg_out)
+{
+  uint32_t msgid;
+  lua_checktableinteger(L, msgid, "msgid", UINT32_MAX);
+  if (msgid == UINT32_MAX) return 0;
+  
+  msg_out->sysid = mavlinkTelem.mySysId();
+  msg_out->compid = mavlinkTelem.myCompId();
+  msg_out->msgid = msgid;
+  msg_out->target_sysid = 0;
+  msg_out->target_compid = 0;
+  
+  switch (msgid) {''')  
+    for msgid in sorted(dialectxml.messages_all_by_id.keys()):
+        msg = dialectxml.messages_all_by_id[msgid]
+        if excludeMessage(msg): continue
+        generateLibMessageForCheck(msg, m)
+    m.append('''  }
+  return 0;
 }
 ''')
 
@@ -156,20 +228,14 @@ static void luaMavlinkPushMavMsg(lua_State *L, MavlinkTelem::MavMsg* mavmsg)
 
 #define MAVLINK_LIB_CONSTANTS \\''')
     for msgid in sorted(dialectxml.messages_all_by_id.keys()):
-        #print(msgid, dialectxml.messages_all_by_id[msgid].name)
         name = dialectxml.messages_all_by_id[msgid].name
-        #s.append('  { "MSG_ID_'+name+'", FASTMAVLINK_MSG_ID_'+name+' }, \\')
         nameshort = shortenName(name, 30)
         s.append('  { "M_'+nameshort+'", FASTMAVLINK_MSG_ID_'+name+' }, \\')
     for enumname in enums_all_by_name:
-        #print(enumname)
         s.append( '  \\')
         for entry in enums_all_by_name[enumname].entry:
-            #print('    ',entry.name, entry.value)
-            #s.append('  { "'+entry.name+'", '+str(entry.value)+' }, \\')
             nameshort = shortenNameEnum(entry.name, 32)
             s.append('  { "'+nameshort+'", '+str(entry.value)+' }, \\')
-    #print(s)
 
     F = open(constantsoutname, mode='w')
     for ss in s:

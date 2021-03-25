@@ -123,6 +123,7 @@ static int luaMavlinkGetMessage(lua_State *L)
   }
   else {
     luaMavlinkPushMavMsg(L, mavmsg);
+    mavmsg->updated = false;
   }
   return 1;
 }
@@ -135,6 +136,30 @@ static int luaMavlinkGetMessageLast(lua_State *L)
   }
   else {
     luaMavlinkPushMavMsg(L, mavmsg);
+  }
+  return 1;
+}
+
+static int luaMavlinkIsFree(lua_State *L)
+{
+  lua_pushboolean(L, (mavlinkTelem.mavMsgOutPtr() != NULL));
+  return 1;
+}
+
+static int luaMavlinkSendMessage(lua_State *L)
+{
+  fmav_message_t* msg_out = mavlinkTelem.mavMsgOutPtr();
+
+  if (!lua_istable(L, -1) || !msg_out) {
+//  if (!msg_out) {
+    lua_pushnil(L);
+  }
+  else if (luaMavlinkCheckMsgOut(L, msg_out)) {
+    mavlinkTelem.mavMsgOutSet();
+    lua_pushboolean(L, true);
+  }
+  else {
+    lua_pushboolean(L, false);
   }
   return 1;
 }
@@ -155,6 +180,8 @@ const luaL_Reg mavlinkLib[] = {
   { "getMessageCount", luaMavlinkMessageCount },
   { "getMessage", luaMavlinkGetMessage },
   { "getMessageLast", luaMavlinkGetMessageLast },
+  { "isFree", luaMavlinkIsFree },
+  { "sendMessage", luaMavlinkSendMessage },
 
   { nullptr, nullptr }  /* sentinel */
 };

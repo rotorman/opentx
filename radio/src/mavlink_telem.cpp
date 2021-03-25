@@ -256,7 +256,7 @@ void MavlinkTelem::handleMessage(void)
   }
 
   // MAVLINK API
-  mavMsgListSet(&_msg);
+  handleMavapiMessage(&_msg);
 
   // MAVSDK
   // also try to convert the MAVLink messages to FrSky sensors
@@ -401,20 +401,27 @@ void MavlinkTelem::doTask(void)
   // handle pending tasks
   // do only one task and hence one msg_out per loop
   if (!_msg_out_available && TASK_IS_PENDING()) {
+    //other TASKS
+    if (doTaskAutopilot()) return;
+    if (doTaskGimbalAndGimbalClient()) return;
+    if (doTaskCamera()) return;
+
     //TASK_ME
     if (_task[TASK_ME] & TASK_SENDMYHEARTBEAT) {
-      RESETTASK(TASK_ME,TASK_SENDMYHEARTBEAT);
+      RESETTASK(TASK_ME, TASK_SENDMYHEARTBEAT);
       uint8_t base_mode = MAV_MODE_PREFLIGHT | MAV_MODE_FLAG_CUSTOM_MODE_ENABLED | MAV_MODE_FLAG_SAFETY_ARMED;
       uint8_t system_status = MAV_STATE_UNINIT | MAV_STATE_ACTIVE;
       uint32_t custom_mode = 0;
       generateHeartbeat(base_mode, custom_mode, system_status);
       return; // do only one per loop
     }
+    if (_task[TASK_ME] & TASK_SENDMSG_MAVLINK_API) {
+      RESETTASK(TASK_ME, TASK_SENDMSG_MAVLINK_API);
+      generateMavapiMessage();
+      return; // do only one per loop
+    }
 
-    //other TASKS
-    if (doTaskAutopilot()) return;
-    if (doTaskGimbalAndGimbalClient()) return;
-    if (doTaskCamera()) return;
+    //other TASKS low priority
     if (doTaskAutopilotLowPriority()) return;
     if (doTaskCameraLowPriority()) return;
     if (doTaskQShot()) return;
