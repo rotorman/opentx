@@ -187,7 +187,6 @@ static int luaMavlinkSendMessage(lua_State *L)
   fmav_message_t* msg_out = mavlinkTelem.mavMsgOutPtr();
 
   if (!lua_istable(L, -1) || !msg_out) {
-//  if (!msg_out) {
     lua_pushnil(L);
   }
   else if (luaMavlinkCheckMsgOut(L, msg_out)) {
