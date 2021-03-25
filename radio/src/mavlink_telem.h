@@ -161,6 +161,20 @@ class MavlinkTelem
 
     #define REQUESTLIST_MAX   32
 
+    // Times
+
+    uint32_t time_boot_ms(void) { return get_tmr10ms()*10; }
+
+    uint16_t _t2MHz_last = 0;
+    uint64_t _t10us_last = 0;
+
+    uint32_t time10us(void) { // ca 11.9h, should be sufficient
+      uint16_t t2MHz_now = getTmr2MHz();
+      _t10us_last += (t2MHz_now - _t2MHz_last);
+      _t2MHz_last = t2MHz_now;
+      return _t10us_last/20;
+    }
+
     // MAVLINK API
 
     #define MAVMSGLIST_MAX   64
@@ -223,16 +237,6 @@ class MavlinkTelem
         return true;
       }
       return false;
-    }
-
-    uint16_t t2MHz_last = 0;
-    uint64_t t10us_last = 0;
-
-    uint32_t time10us(void) { // ca 11.9h, should be sufficient
-      uint16_t t2MHz_now = getTmr2MHz();
-      t10us_last += (t2MHz_now - t2MHz_last);
-      t2MHz_last = t2MHz_now;
-      return t10us_last/20;
     }
 
     void mavMsgListSet(fmav_message_t* msg)

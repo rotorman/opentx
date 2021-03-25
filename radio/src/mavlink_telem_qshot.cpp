@@ -32,7 +32,7 @@ void MavlinkTelem::generateButtonChange(uint8_t button_state)
 {
   fmav_msg_button_change_pack(
       &_msg_out, _my_sysid, _my_compid,
-      get_tmr10ms()*10, //uint32_t time_boot_ms,
+      time_boot_ms(),
       0,
       button_state,
       &_status_out
