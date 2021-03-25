@@ -98,6 +98,42 @@ static int luaMavlinkGetTaskStats(lua_State *L)
   return 1;
 }
 
+//-- mavlink api --
+
+static int luaMavlinkGetSystemId(lua_State *L)
+{
+  lua_pushinteger(L, mavlinkTelem.systemSysId());
+  return 1;
+}
+
+static int luaMavlinkGetAutopilotIds(lua_State *L)
+{
+  lua_pushinteger(L, mavlinkTelem.systemSysId());
+  lua_pushinteger(L, mavlinkTelem.autopilotCompId());
+  return 1;
+}
+
+static int luaMavlinkGetCameraIds(lua_State *L)
+{
+  lua_pushinteger(L, mavlinkTelem.systemSysId());
+  lua_pushinteger(L, mavlinkTelem.cameraCompId());
+  return 1;
+}
+
+static int luaMavlinkGetGimbalIds(lua_State *L)
+{
+  lua_pushinteger(L, mavlinkTelem.systemSysId());
+  lua_pushinteger(L, mavlinkTelem.gimbalCompId());
+  return 1;
+}
+
+static int luaMavlinkGetGimbalManagerIds(lua_State *L)
+{
+  lua_pushinteger(L, mavlinkTelem.systemSysId());
+  lua_pushinteger(L, mavlinkTelem.gimbalManagerCompId());
+  return 1;
+}
+
 //-- mavlink api, messages --
 
 static int luaMavlinkMessageEnable(lua_State *L)
@@ -177,6 +213,13 @@ const luaL_Reg mavlinkLib[] = {
   { "getTaskStats", luaMavlinkGetTaskStats },
 
   { "messageEnable", luaMavlinkMessageEnable },
+
+  { "getSystemId", luaMavlinkGetSystemId },
+  { "getAutopilotIds", luaMavlinkGetAutopilotIds },
+  { "getCameraIds", luaMavlinkGetCameraIds },
+  { "getGimbalIds", luaMavlinkGetGimbalIds },
+  { "getGimbalManagerIds", luaMavlinkGetGimbalManagerIds },
+
   { "getMessageCount", luaMavlinkMessageCount },
   { "getMessage", luaMavlinkGetMessage },
   { "getMessageLast", luaMavlinkGetMessageLast },
