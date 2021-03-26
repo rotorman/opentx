@@ -28,10 +28,11 @@
 #include "opentx_helpers.h"
 
 //OW
-#define OWVERSIONSTR  "v27rc03"
+#define OWVERSIONSTR  "v27rc04"
 //OWEND
 
 /*
+mavMsgOut w fifo
 mavMsgOut
 mavMsgList
 v26 2021-03-21
