@@ -203,8 +203,20 @@ class MavlinkTelem
     MavMsg* mavMsgListGet(uint32_t msgid);
     MavMsg* mavMsgListGetLast(void);
 
+    //simple fifo with only one entry
+/*
     bool _mavapi_msg_out_free = true;
     fmav_message_t _t_mavapi_msg_out;
+*/
+    //opentx's FiFo isn't ideal as it can hold only N-1 elements, which for
+    //big elements is a huge waste of mem. It is thread safe though.
+    //so, for the moment we go with it despite it's cost
+    //it doesn't really allow us to work on pointers, so we redo what we need
+
+    #define MAVOUTFIFO_MAX  4
+    fmav_message_t _mavapiMsgOutFifo[MAVOUTFIFO_MAX];
+    volatile uint32_t _wi = 0;
+    volatile uint32_t _ri = 0;
 
     fmav_message_t* mavMsgOutPtr(void);
     void mavMsgOutSet(void);

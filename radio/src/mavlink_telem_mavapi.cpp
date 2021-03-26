@@ -26,7 +26,7 @@ uint8_t MavlinkTelem::mavMsgListCount(void)
   return cnt;
 }
 
-// we probably need to differentiate not only by msgid, but also by sysis-compid
+// we probably need to differentiate not only by msgid, but also by sysid-compid
 // if two components send the same message at (too) high rate considering only msgid leads to message loss
 
 uint8_t MavlinkTelem::_mavMsgListFindOrAdd(uint32_t msgid)
@@ -97,7 +97,7 @@ MavlinkTelem::MavMsg* MavlinkTelem::mavMsgListGetLast(void)
 }
 
 // -- Send stuff --
-
+/*
 fmav_message_t* MavlinkTelem::mavMsgOutPtr(void)
 {
   if (!_mavapi_msg_out_free) return NULL;
@@ -117,3 +117,33 @@ void MavlinkTelem::generateMavapiMessage(void)
   _msg_out_available = true;
   _mavapi_msg_out_free = true;
 }
+*/
+
+// returns the pointer into which we should write, without advancing write index, probe()-like
+fmav_message_t* MavlinkTelem::mavMsgOutPtr(void)
+{
+  uint32_t wi_next = (_wi + 1) & (MAVOUTFIFO_MAX - 1);
+  if (wi_next == _ri) return NULL; // blocking push, not allowed if full
+  return &(_mavapiMsgOutFifo[_wi]);
+}
+
+// advances write index, and sets task, push()-like
+void MavlinkTelem::mavMsgOutSet(void)
+{
+  _wi = (_wi + 1) & (MAVOUTFIFO_MAX - 1);
+  SETTASK(TASK_ME, TASK_SENDMSG_MAVLINK_API);
+}
+
+// generate from msg at read index, and advance read index, pop()-like
+void MavlinkTelem::generateMavapiMessage(void)
+{
+  if (_wi == _ri) return; // empty, should never happen
+  fmav_message_t* msgptr = &(_mavapiMsgOutFifo[_ri]);
+  _ri = (_ri + 1) & (MAVOUTFIFO_MAX - 1);
+  memcpy(&_msg_out, msgptr, sizeof(fmav_message_t));
+  fmav_finalize_msg(&_msg_out, &_status_out);
+  _msg_out_available = true;
+}
+
+
+
