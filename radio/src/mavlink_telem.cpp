@@ -256,7 +256,7 @@ void MavlinkTelem::handleMessage(void)
   }
 
   // MAVLINK API
-  handleMavapiMessage(&_msg);
+  mavapiHandleMessage(&_msg);
 
   // MAVSDK
   // also try to convert the MAVLink messages to FrSky sensors
@@ -417,7 +417,7 @@ void MavlinkTelem::doTask(void)
     }
     if (_task[TASK_ME] & TASK_SENDMSG_MAVLINK_API) {
       RESETTASK(TASK_ME, TASK_SENDMSG_MAVLINK_API);
-      generateMavapiMessage();
+      mavapiGenerateMessage();
       return; // do only one per loop
     }
 
@@ -664,6 +664,6 @@ void MavlinkTelem::_reset(void)
   _bytes_tx_persec_cnt = 0;
 
   // MAVLINK
-  mavMsgListInit();
+  mavapiInit();
 }
 

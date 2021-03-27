@@ -139,13 +139,13 @@ static int luaMavlinkGetGimbalManagerIds(lua_State *L)
 static int luaMavlinkMessageEnable(lua_State *L)
 {
   bool flag = (luaL_checkinteger(L, 1) > 0);
-  mavlinkTelem.mavMsgListEnable(flag);
+  mavlinkTelem.mavapiMsgInEnable(flag);
   return 0;
 }
 
 static int luaMavlinkMessageCount(lua_State *L)
 {
-  lua_pushinteger(L, mavlinkTelem.mavMsgListCount());
+  lua_pushinteger(L, mavlinkTelem.mavapiMsgInCount());
   return 1;
 }
 
@@ -153,7 +153,7 @@ static int luaMavlinkGetMessage(lua_State *L)
 {
   int msgid = luaL_checknumber(L, 1);
 
-  MavlinkTelem::MavMsg* mavmsg = mavlinkTelem.mavMsgListGet(msgid);
+  MavlinkTelem::MavMsg* mavmsg = mavlinkTelem.mavapiMsgInGet(msgid);
   if (!mavmsg) {
     lua_pushnil(L);
   }
@@ -166,7 +166,7 @@ static int luaMavlinkGetMessage(lua_State *L)
 
 static int luaMavlinkGetMessageLast(lua_State *L)
 {
-  MavlinkTelem::MavMsg* mavmsg = mavlinkTelem.mavMsgListGetLast();
+  MavlinkTelem::MavMsg* mavmsg = mavlinkTelem.mavapiMsgInGetLast();
   if (!mavmsg) {
     lua_pushnil(L);
   }
@@ -178,19 +178,19 @@ static int luaMavlinkGetMessageLast(lua_State *L)
 
 static int luaMavlinkIsFree(lua_State *L)
 {
-  lua_pushboolean(L, (mavlinkTelem.mavMsgOutPtr() != NULL));
+  lua_pushboolean(L, (mavlinkTelem.mavapiMsgOutPtr() != NULL));
   return 1;
 }
 
 static int luaMavlinkSendMessage(lua_State *L)
 {
-  fmav_message_t* msg_out = mavlinkTelem.mavMsgOutPtr();
+  fmav_message_t* msg_out = mavlinkTelem.mavapiMsgOutPtr();
 
   if (!lua_istable(L, -1) || !msg_out) {
     lua_pushnil(L);
   }
   else if (luaMavlinkCheckMsgOut(L, msg_out)) {
-    mavlinkTelem.mavMsgOutSet();
+    mavlinkTelem.mavapiMsgOutSet();
     lua_pushboolean(L, true);
   }
   else {

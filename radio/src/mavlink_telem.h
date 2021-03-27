@@ -192,22 +192,16 @@ class MavlinkTelem
       bool updated;
     };
 
-    MavMsg* _mavMsgList[MAVMSGLIST_MAX] = { NULL }; // list of pointers into MavMsg structs
-    bool _mavmsg_enabled = false;
+    MavMsg* _mavapi_rx_list[MAVMSGLIST_MAX] = { NULL }; // list of pointers into MavMsg structs
+    bool _mavapi_rx_enabled = false;
 
-    void mavMsgListInit(void);
-    void mavMsgListEnable(bool flag);
-    uint8_t mavMsgListCount(void);
-    uint8_t _mavMsgListFindOrAdd(uint32_t msgid);
-    void handleMavapiMessage(fmav_message_t* msg);
-    MavMsg* mavMsgListGet(uint32_t msgid);
-    MavMsg* mavMsgListGetLast(void);
+    uint8_t _mavapiMsgInFindOrAdd(uint32_t msgid);
+    void mavapiHandleMessage(fmav_message_t* msg);
+    void mavapiMsgInEnable(bool flag);
+    uint8_t mavapiMsgInCount(void);
+    MavMsg* mavapiMsgInGet(uint32_t msgid);
+    MavMsg* mavapiMsgInGetLast(void);
 
-    //simple fifo with only one entry
-/*
-    bool _mavapi_msg_out_free = true;
-    fmav_message_t _t_mavapi_msg_out;
-*/
     //opentx's FiFo isn't ideal as it can hold only N-1 elements, which for
     //big elements is a huge waste of mem. It is thread safe though.
     //so, for the moment we go with it despite it's cost
@@ -218,9 +212,11 @@ class MavlinkTelem
     volatile uint32_t _wi = 0;
     volatile uint32_t _ri = 0;
 
-    fmav_message_t* mavMsgOutPtr(void);
-    void mavMsgOutSet(void);
-    void generateMavapiMessage(void);
+    fmav_message_t* mavapiMsgOutPtr(void);
+    void mavapiMsgOutSet(void);
+    void mavapiGenerateMessage(void);
+
+    void mavapiInit(void){};
 
     // MAVSDK GENERAL
 
