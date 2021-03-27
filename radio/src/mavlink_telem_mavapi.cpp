@@ -92,9 +92,22 @@ MavlinkTelem::MavMsg* MavlinkTelem::mavapiMsgInGetLast(void)
 
 // -- Send stuff --
 
+void MavlinkTelem::mavapiMsgOutEnable(bool flag)
+{
+  _mavapi_tx_enabled = flag;
+
+  if (_mavapi_tx_enabled && _mavapiMsgOutFifo == NULL) {
+    _mavapiMsgOutFifo = (fmav_message_t*)malloc(sizeof(fmav_message_t) * MAVOUTFIFO_MAX);
+    if (!_mavapiMsgOutFifo) _mavapi_tx_enabled = false; // grrrr
+  }
+}
+
+
 // returns the pointer into which we should write, without advancing write index, probe()-like
 fmav_message_t* MavlinkTelem::mavapiMsgOutPtr(void)
 {
+  if (!_mavapi_tx_enabled) return NULL;
+
   uint32_t wi_next = (_wi + 1) & (MAVOUTFIFO_MAX - 1);
   if (wi_next == _ri) return NULL; // blocking push, push not allowed if full
   return &(_mavapiMsgOutFifo[_wi]);
@@ -103,6 +116,8 @@ fmav_message_t* MavlinkTelem::mavapiMsgOutPtr(void)
 // advances write index, and sets task, push()-like
 void MavlinkTelem::mavapiMsgOutSet(void)
 {
+  if (!_mavapi_tx_enabled) return;
+
   _wi = (_wi + 1) & (MAVOUTFIFO_MAX - 1);
   SETTASK(TASK_ME, TASK_SENDMSG_MAVLINK_API);
 }
@@ -110,6 +125,8 @@ void MavlinkTelem::mavapiMsgOutSet(void)
 // generate from msg at read index, and advance read index, pop()-like
 void MavlinkTelem::mavapiGenerateMessage(void)
 {
+  if (!_mavapi_tx_enabled) return;
+
   if (_wi == _ri) return; // empty
   fmav_message_t* msgptr = &(_mavapiMsgOutFifo[_ri]);
   _ri = (_ri + 1) & (MAVOUTFIFO_MAX - 1);

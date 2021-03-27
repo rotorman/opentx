@@ -136,14 +136,14 @@ static int luaMavlinkGetGimbalManagerIds(lua_State *L)
 
 //-- mavlink api, messages --
 
-static int luaMavlinkMessageEnable(lua_State *L)
+static int luaMavlinkInEnable(lua_State *L)
 {
   bool flag = (luaL_checkinteger(L, 1) > 0);
   mavlinkTelem.mavapiMsgInEnable(flag);
   return 0;
 }
 
-static int luaMavlinkMessageCount(lua_State *L)
+static int luaMavlinkInCount(lua_State *L)
 {
   lua_pushinteger(L, mavlinkTelem.mavapiMsgInCount());
   return 1;
@@ -174,6 +174,13 @@ static int luaMavlinkGetMessageLast(lua_State *L)
     luaMavlinkPushMavMsg(L, mavmsg);
   }
   return 1;
+}
+
+static int luaMavlinkOutEnable(lua_State *L)
+{
+  bool flag = (luaL_checkinteger(L, 1) > 0);
+  mavlinkTelem.mavapiMsgOutEnable(flag);
+  return 0;
 }
 
 static int luaMavlinkIsFree(lua_State *L)
@@ -211,17 +218,17 @@ const luaL_Reg mavlinkLib[] = {
   { "getStackUsed", luaMavlinkGetStackUsed },
   { "getTaskStats", luaMavlinkGetTaskStats },
 
-  { "messageEnable", luaMavlinkMessageEnable },
-
   { "getSystemId", luaMavlinkGetSystemId },
   { "getAutopilotIds", luaMavlinkGetAutopilotIds },
   { "getCameraIds", luaMavlinkGetCameraIds },
   { "getGimbalIds", luaMavlinkGetGimbalIds },
   { "getGimbalManagerIds", luaMavlinkGetGimbalManagerIds },
 
-  { "getMessageCount", luaMavlinkMessageCount },
+  { "enableIn", luaMavlinkInEnable },
+  { "getInCount", luaMavlinkInCount },
   { "getMessage", luaMavlinkGetMessage },
   { "getMessageLast", luaMavlinkGetMessageLast },
+  { "enableOut", luaMavlinkOutEnable },
   { "isFree", luaMavlinkIsFree },
   { "sendMessage", luaMavlinkSendMessage },
 
