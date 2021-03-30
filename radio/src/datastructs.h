@@ -839,7 +839,8 @@ PACK(struct RadioData {
 #if defined(TELEMETRY_MAVLINK)
   uint16_t mavlinkBaudrate:3;
   uint16_t mavlinkBaudrate2:3;
-  uint16_t mavlinkDummy:10;
+  uint16_t mavlinkExternal:2;
+  uint16_t mavlinkDummy:8;
   // needs to adapt CHKSIZE below
 #endif
 //OWEND

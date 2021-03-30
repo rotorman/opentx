@@ -145,10 +145,10 @@ void auxSerialInit(unsigned int mode, unsigned int protocol)
 
 #if defined(TELEMETRY_MAVLINK)
     case UART_MODE_MAVLINK:
-      auxSerialSetup(mavlinkTelemBaudrate(), false);
+      auxSerialSetup(mavlinkTelemAuxBaudrate(), false);
       AUX_SERIAL_POWER_ON();
       auxSerialTxFifo.clear();
-      auxSerialRxFifo_4MavlinkTelem.clear();
+      mavlinkTelemAuxSerialRxFifo.clear();
       break;
 #endif
 //OWEND
@@ -181,7 +181,7 @@ void auxSerialStop()
 #if defined(TELEMETRY_MAVLINK)
   if (auxSerialMode == UART_MODE_MAVLINK) {
     auxSerialTxFifo.clear();
-    auxSerialRxFifo_4MavlinkTelem.clear();
+    mavlinkTelemAuxSerialRxFifo.clear();
   }
 #endif
 //OWEND
@@ -217,7 +217,7 @@ extern "C" void AUX_SERIAL_USART_IRQHandler(void)
     if (USART_GetITStatus(AUX_SERIAL_USART, USART_IT_RXNE) != RESET) {
       USART_ClearITPendingBit(AUX_SERIAL_USART, USART_IT_RXNE);
       uint8_t c = USART_ReceiveData(AUX_SERIAL_USART);
-      auxSerialRxFifo_4MavlinkTelem.push(c);
+      mavlinkTelemAuxSerialRxFifo.push(c);
     }
     return;
   }
@@ -378,10 +378,10 @@ void aux2SerialInit(unsigned int mode, unsigned int protocol)
 
 #if defined(TELEMETRY_MAVLINK)
       case UART_MODE_MAVLINK:
-        aux2SerialSetup(mavlinkTelemBaudrate2(), false);
+        aux2SerialSetup(mavlinkTelemAux2Baudrate(), false);
         AUX2_SERIAL_POWER_ON();
         aux2SerialTxFifo.clear();
-        aux2SerialRxFifo_4MavlinkTelem.clear();
+        mavlinkTelemAux2SerialRxFifo.clear();
         break;
 #endif
 //OWEND
@@ -414,7 +414,7 @@ void aux2SerialStop()
 #if defined(TELEMETRY_MAVLINK)
   if (aux2SerialMode == UART_MODE_MAVLINK) {
     aux2SerialTxFifo.clear();
-    aux2SerialRxFifo_4MavlinkTelem.clear();
+    mavlinkTelemAux2SerialRxFifo.clear();
   }
 #endif
 //OWEND
@@ -450,7 +450,7 @@ extern "C" void AUX2_SERIAL_USART_IRQHandler(void)
     if (USART_GetITStatus(AUX2_SERIAL_USART, USART_IT_RXNE) != RESET) {
       USART_ClearITPendingBit(AUX2_SERIAL_USART, USART_IT_RXNE);
       uint8_t c = USART_ReceiveData(AUX2_SERIAL_USART);
-      aux2SerialRxFifo_4MavlinkTelem.push(c);
+      mavlinkTelemAux2SerialRxFifo.push(c);
     }
     return;
   }

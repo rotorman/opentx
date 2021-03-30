@@ -54,6 +54,135 @@ void mavlinkStart()
   RTOS_CREATE_TASK(mavlinkTaskId, mavlinkTask, "mavlink", mavlinkStack, MAVLINK_STACK_SIZE, MAVLINK_TASK_PRIO);
 }
 
+// -- EXTERNAL BY SERIAL handlers --
+//we essentially redo everything from scratch
+
+MAVLINK_RAM_SECTION Fifo<uint8_t, 32> mavlinkTelemExternalTxFifo_frame;
+MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> mavlinkTelemExternalTxFifo;
+MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> mavlinkTelemExternalRxFifo;
+
+void mavlinkTelemExternal_init(bool flag)
+{
+  if (!flag) {
+    USART_DeInit(TELEMETRY_USART);
+    return;
+  }
+
+  // we don't want or need all this
+  NVIC_DisableIRQ(TELEMETRY_EXTI_IRQn);
+  NVIC_DisableIRQ(TELEMETRY_TIMER_IRQn);
+  NVIC_DisableIRQ(TELEMETRY_DMA_TX_Stream_IRQ);
+
+  DMA_ITConfig(TELEMETRY_DMA_Stream_TX, DMA_IT_TC, DISABLE);
+  DMA_Cmd(TELEMETRY_DMA_Stream_TX, DISABLE);
+  USART_DMACmd(TELEMETRY_USART, USART_DMAReq_Tx, DISABLE);
+  DMA_DeInit(TELEMETRY_DMA_Stream_TX);
+
+  EXTI_InitTypeDef EXTI_InitStructure;
+  EXTI_StructInit(&EXTI_InitStructure);
+  EXTI_InitStructure.EXTI_Line = TELEMETRY_EXTI_LINE;
+  EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+  EXTI_InitStructure.EXTI_Trigger = TELEMETRY_EXTI_TRIGGER;
+  EXTI_InitStructure.EXTI_LineCmd = DISABLE;
+  EXTI_Init(&EXTI_InitStructure);
+
+  // I believe has been called already through telemetryInit() -> telemetryPortInit(FRSKY_SPORT_BAUDRATE) -> telemetryInitDirPin()
+
+  GPIO_InitTypeDef GPIO_InitStructure;
+
+  GPIO_PinAFConfig(TELEMETRY_GPIO, TELEMETRY_GPIO_PinSource_RX, TELEMETRY_GPIO_AF);
+  GPIO_PinAFConfig(TELEMETRY_GPIO, TELEMETRY_GPIO_PinSource_TX, TELEMETRY_GPIO_AF);
+
+  GPIO_InitStructure.GPIO_Pin = TELEMETRY_TX_GPIO_PIN | TELEMETRY_RX_GPIO_PIN;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+  GPIO_Init(TELEMETRY_GPIO, &GPIO_InitStructure);
+
+  // I believe has been called already through telemetryInit() -> telemetryPortInit(FRSKY_SPORT_BAUDRATE) -> telemetryInitDirPin()
+/*
+  telemetryInitDirPin();
+*/
+  GPIO_InitStructure.GPIO_Pin   = TELEMETRY_DIR_GPIO_PIN;
+  GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_OUT;
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_NOPULL;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+  GPIO_Init(TELEMETRY_DIR_GPIO, &GPIO_InitStructure);
+  GPIO_ResetBits(TELEMETRY_DIR_GPIO, TELEMETRY_DIR_GPIO_PIN);
+
+  USART_InitTypeDef USART_InitStructure;
+  USART_InitStructure.USART_BaudRate = 400000;
+  USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+  USART_InitStructure.USART_StopBits = USART_StopBits_1;
+  USART_InitStructure.USART_Parity = USART_Parity_No;
+  USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+  USART_InitStructure.USART_Mode = USART_Mode_Tx | USART_Mode_Rx;
+  USART_Init(TELEMETRY_USART, &USART_InitStructure);
+
+  USART_Cmd(TELEMETRY_USART, ENABLE);
+  USART_ITConfig(TELEMETRY_USART, USART_IT_RXNE, ENABLE);
+  USART_ITConfig(TELEMETRY_USART, USART_IT_TXE, DISABLE);
+  NVIC_SetPriority(TELEMETRY_USART_IRQn, 6);
+  NVIC_EnableIRQ(TELEMETRY_USART_IRQn);
+}
+
+// this must be called regularly, at 2 ms
+// we send at most 24 bytes per frame
+// 115200 bps = 86 us per byte => 12 bytes per ms = 24 bytes per 2ms
+// 3+24 bytes @ 400000 bps = 0.675 ms
+// => enough time for a tx and rx packet in 2ms slot
+// however, the slots are not totally fixed to 2ms, can be shorter
+// so design only for lower data rate
+// 16 bytes per slot = 8000 bytes/s = effectively 80000 bps, shoudl be way enough
+// 3+16 bytes @ 400000 bps = 0.475 ms + 16 bytes @ 400000 bps = 0.4 ms == 0.875 ms
+void mavlinkTelemExternal_wakeup(void)
+{
+  // we do it at the beginning, so it gives few cycles before we enable TX
+  TELEMETRY_DIR_GPIO->BSRRL = TELEMETRY_DIR_GPIO_PIN; // output enable
+  TELEMETRY_USART->CR1 &= ~USART_CR1_RE; // turn off receiver
+
+  uint32_t count = mavlinkTelemExternalTxFifo.size();
+  if (count > 16) count = 16;
+
+  // always send header, this synchronizes slave
+  mavlinkTelemExternalTxFifo_frame.push('O');
+  mavlinkTelemExternalTxFifo_frame.push('W');
+  mavlinkTelemExternalTxFifo_frame.push((uint8_t)count);
+
+  // send payload
+  for (uint16_t i = 0; i < count; i++) {
+    uint8_t c;
+    mavlinkTelemExternalTxFifo.pop(c);
+    mavlinkTelemExternalTxFifo_frame.push(c);
+  }
+
+  USART_ITConfig(TELEMETRY_USART, USART_IT_TXE, ENABLE); // enable TX interrupt
+}
+
+uint32_t mavlinkTelemExternalAvailable(void)
+{
+  return mavlinkTelemExternalRxFifo.size();
+}
+
+uint8_t mavlinkTelemExternalGetc(uint8_t* c)
+{
+  return mavlinkTelemExternalRxFifo.pop(*c);
+}
+
+bool mavlinkTelemExternalHasSpace(uint16_t count)
+{
+  return mavlinkTelemExternalTxFifo.hasSpace(count);
+}
+
+bool mavlinkTelemExternalPutBuf(const uint8_t *buf, const uint16_t count)
+{
+  if (!mavlinkTelemExternalTxFifo.hasSpace(count)) return false;
+  for (uint16_t i = 0; i < count; i++) mavlinkTelemExternalTxFifo.push(buf[i]);
+  return true;
+}
+
 // -- SERIAL and USB CDC handlers --
 
 uint32_t _cvtBaudrate(uint16_t baud)
@@ -67,116 +196,131 @@ uint32_t _cvtBaudrate(uint16_t baud)
   return 57600;
 }
 
-uint32_t mavlinkTelemBaudrate(void)
+uint32_t mavlinkTelemAuxBaudrate(void)
 {
   return _cvtBaudrate(g_eeGeneral.mavlinkBaudrate);
 }
 
-uint32_t mavlinkTelemBaudrate2(void)
+uint32_t mavlinkTelemAux2Baudrate(void)
 {
   return _cvtBaudrate(g_eeGeneral.mavlinkBaudrate2);
 }
 
-#if !defined(AUX_SERIAL)
-uint32_t mavlinkTelemAvailable(void){ return 0; }
-uint8_t mavlinkTelemGetc(uint8_t *c){ return 0; }
-bool mavlinkTelemHasSpace(uint16_t count){ return false; }
-bool mavlinkTelemPutBuf(const uint8_t *buf, const uint16_t count){ return false; }
+#if defined(AUX_SERIAL)
+MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> auxSerialTxFifo;
+MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> mavlinkTelemAuxSerialRxFifo;
 #endif
 
-#if !defined(AUX2_SERIAL)
-uint32_t mavlinkTelem2Available(void){ return 0; }
-uint8_t mavlinkTelem2Getc(uint8_t *c){ return 0; }
-bool mavlinkTelem2HasSpace(uint16_t count){ return false; }
-bool mavlinkTelem2PutBuf(const uint8_t *buf, const uint16_t count){ return false; }
+#if defined(AUX2_SERIAL)
+MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> aux2SerialTxFifo;
+MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> mavlinkTelemAux2SerialRxFifo;
 #endif
 
-#if !defined(TELEMETRY_MAVLINK_USB_SERIAL)
-uint32_t mavlinkTelem3Available(void){ return 0; }
-uint8_t mavlinkTelem3Getc(uint8_t *c){ return 0; }
-bool mavlinkTelem3HasSpace(uint16_t count){ return false; }
-bool mavlinkTelem3PutBuf(const uint8_t *buf, const uint16_t count){ return false; }
+#if defined(TELEMETRY_MAVLINK_USB_SERIAL)
+MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> mavlinkTelemUsbRxFifo;
 #endif
 
 #if defined(AUX_SERIAL)
 
-MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> auxSerialTxFifo;
-MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> auxSerialRxFifo_4MavlinkTelem;
-
-uint32_t mavlinkTelemAvailable(void)
+uint32_t mavlinkTelem1Available(void)
 {
-  if (auxSerialMode != UART_MODE_MAVLINK) return 0;
-  return auxSerialRxFifo_4MavlinkTelem.size();
+  if (!mavlinkTelem.serial1_enabled) return 0;
+  if (mavlinkTelem.serial1_isexternal) return mavlinkTelemExternalRxFifo.size();
+
+//  if (auxSerialMode != UART_MODE_MAVLINK) return 0;
+  return mavlinkTelemAuxSerialRxFifo.size();
 }
 
 // call only after check with mavlinkTelem2Available()
-uint8_t mavlinkTelemGetc(uint8_t *c)
+uint8_t mavlinkTelem1Getc(uint8_t* c)
 {
-  return auxSerialRxFifo_4MavlinkTelem.pop(*c);
+  if (!mavlinkTelem.serial1_enabled) return 0;
+  if (mavlinkTelem.serial1_isexternal) return mavlinkTelemExternalRxFifo.pop(*c);
+
+  return mavlinkTelemAuxSerialRxFifo.pop(*c);
 }
 
-bool mavlinkTelemHasSpace(uint16_t count)
+bool mavlinkTelem1HasSpace(uint16_t count)
 {
-  if (auxSerialMode != UART_MODE_MAVLINK) return false;
+  if (!mavlinkTelem.serial1_enabled) return 0;
+  if (mavlinkTelem.serial1_isexternal) return mavlinkTelemExternalTxFifo.hasSpace(count);
+
+//  if (auxSerialMode != UART_MODE_MAVLINK) return false;
   return auxSerialTxFifo.hasSpace(count);
 }
 
-bool mavlinkTelemPutBuf(const uint8_t *buf, const uint16_t count)
+bool mavlinkTelem1PutBuf(const uint8_t* buf, const uint16_t count)
 {
-  if (auxSerialMode != UART_MODE_MAVLINK || !buf || !auxSerialTxFifo.hasSpace(count)) {
-    return false;
-  }
-  for (uint16_t i = 0; i < count; i++) {
-    uint8_t c = buf[i];
-    auxSerialTxFifo.push(c);
-  }
+  if (!mavlinkTelem.serial1_enabled || !buf) return false;
+  if (mavlinkTelem.serial1_isexternal) return mavlinkTelemExternalPutBuf(buf, count);
+
+  if (!auxSerialTxFifo.hasSpace(count)) return false;
+//  if (auxSerialMode != UART_MODE_MAVLINK || !buf || !auxSerialTxFifo.hasSpace(count)) {
+//    return false;
+//  }
+  for (uint16_t i = 0; i < count; i++) auxSerialTxFifo.push(buf[i]);
   USART_ITConfig(AUX_SERIAL_USART, USART_IT_TXE, ENABLE);
   return true;
 }
 
+#else
+uint32_t mavlinkTelem1Available(void){ return 0; }
+uint8_t mavlinkTelem1Getc(uint8_t* c){ return 0; }
+bool mavlinkTelem1HasSpace(uint16_t count){ return false; }
+bool mavlinkTelem1PutBuf(const uint8_t* buf, const uint16_t count){ return false; }
 #endif
 
 #if defined(AUX2_SERIAL)
 
-MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> aux2SerialTxFifo;
-MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> aux2SerialRxFifo_4MavlinkTelem;
-
 uint32_t mavlinkTelem2Available(void)
 {
-  if (aux2SerialMode != UART_MODE_MAVLINK) return 0;
-  return aux2SerialRxFifo_4MavlinkTelem.size();
+  if (!mavlinkTelem.serial2_enabled) return 0;
+  if (mavlinkTelem.serial2_isexternal) return mavlinkTelemExternalRxFifo.size();
+
+//  if (aux2SerialMode != UART_MODE_MAVLINK) return 0;
+  return mavlinkTelemAux2SerialRxFifo.size();
 }
 
 // call only after check with mavlinkTelem2Available()
-uint8_t mavlinkTelem2Getc(uint8_t *c)
+uint8_t mavlinkTelem2Getc(uint8_t* c)
 {
-  return aux2SerialRxFifo_4MavlinkTelem.pop(*c);
+  if (!mavlinkTelem.serial2_enabled) return 0;
+  if (mavlinkTelem.serial2_isexternal) return mavlinkTelemExternalRxFifo.pop(*c);
+
+  return mavlinkTelemAux2SerialRxFifo.pop(*c);
 }
 
 bool mavlinkTelem2HasSpace(uint16_t count)
 {
-  if (aux2SerialMode != UART_MODE_MAVLINK) return false;
+  if (!mavlinkTelem.serial2_enabled) return 0;
+  if (mavlinkTelem.serial2_isexternal) return mavlinkTelemExternalTxFifo.hasSpace(count);
+
+//  if (aux2SerialMode != UART_MODE_MAVLINK) return false;
   return aux2SerialTxFifo.hasSpace(count);
 }
 
-bool mavlinkTelem2PutBuf(const uint8_t *buf, const uint16_t count)
+bool mavlinkTelem2PutBuf(const uint8_t* buf, const uint16_t count)
 {
-  if (aux2SerialMode != UART_MODE_MAVLINK || !buf || !aux2SerialTxFifo.hasSpace(count)) {
-    return false;
-  }
-  for (uint16_t i = 0; i < count; i++) {
-    uint8_t c = buf[i];
-    aux2SerialTxFifo.push(c);
-  }
+  if (!mavlinkTelem.serial2_enabled || !buf) return false;
+  if (mavlinkTelem.serial2_isexternal) return mavlinkTelemExternalPutBuf(buf, count);
+
+  if (!aux2SerialTxFifo.hasSpace(count)) return false;
+//  if (aux2SerialMode != UART_MODE_MAVLINK || !buf || !aux2SerialTxFifo.hasSpace(count)) {
+//    return false;
+//  }
+  for (uint16_t i = 0; i < count; i++) aux2SerialTxFifo.push(buf[i]);
   USART_ITConfig(AUX2_SERIAL_USART, USART_IT_TXE, ENABLE);
   return true;
 }
 
+#else
+uint32_t mavlinkTelem2Available(void){ return 0; }
+uint8_t mavlinkTelem2Getc(uint8_t* c){ return 0; }
+bool mavlinkTelem2HasSpace(uint16_t count){ return false; }
+bool mavlinkTelem2PutBuf(const uint8_t* buf, const uint16_t count){ return false; }
 #endif
 
 #if defined(TELEMETRY_MAVLINK_USB_SERIAL)
-
-MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> mavlinkTelemUsbRxFifo;
 
 uint32_t mavlinkTelem3Available(void)
 {
@@ -185,7 +329,7 @@ uint32_t mavlinkTelem3Available(void)
 }
 
 // call only after check with mavlinkTelem2Available()
-uint8_t mavlinkTelem3Getc(uint8_t *c)
+uint8_t mavlinkTelem3Getc(uint8_t* c)
 {
   return mavlinkTelemUsbRxFifo.pop(*c);
 }
@@ -196,7 +340,7 @@ bool mavlinkTelem3HasSpace(uint16_t count)
   return true; //??
 }
 
-bool mavlinkTelem3PutBuf(const uint8_t *buf, const uint16_t count)
+bool mavlinkTelem3PutBuf(const uint8_t* buf, const uint16_t count)
 {
   if (getSelectedUsbMode() != USB_MAVLINK_MODE || !buf) {
     return false;
@@ -206,7 +350,44 @@ bool mavlinkTelem3PutBuf(const uint8_t *buf, const uint16_t count)
   }
   return true;
 }
+
+#else
+uint32_t mavlinkTelem3Available(void){ return 0; }
+uint8_t mavlinkTelem3Getc(uint8_t* c){ return 0; }
+bool mavlinkTelem3HasSpace(uint16_t count){ return false; }
+bool mavlinkTelem3PutBuf(const uint8_t* buf, const uint16_t count){ return false; }
 #endif
+
+// map aux1,aux2,external onto serial1 & serial2
+void MavlinkTelem::map_serials(void)
+{
+  if (_external_enabled) {
+    if (_aux1_enabled && _aux2_enabled) {
+      // shit, what should we do??? we give aux,aux2 priority
+      serial1_enabled = serial2_enabled = true;
+      serial1_isexternal = serial2_isexternal = false;
+    }
+    else if (_aux1_enabled && !_aux2_enabled) {
+      serial1_enabled = true;
+      serial1_isexternal = false;
+      serial2_enabled = serial2_isexternal = true;
+    }
+    else if (!_aux1_enabled && _aux2_enabled) {
+      serial1_enabled = serial1_isexternal = true;
+      serial2_enabled = true;
+      serial2_isexternal = false;
+    }
+    else {
+      serial1_enabled = serial1_isexternal = true;
+      serial2_enabled = serial2_isexternal = false;
+    }
+  }
+  else{
+    serial1_enabled = _aux1_enabled;
+    serial2_enabled = _aux1_enabled;
+    serial1_isexternal = serial2_isexternal = false;
+  }
+}
 
 // -- Miscellaneous stuff --
 

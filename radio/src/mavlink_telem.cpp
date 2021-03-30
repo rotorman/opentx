@@ -438,31 +438,38 @@ void MavlinkTelem::doTask(void)
 
 void MavlinkTelem::wakeup()
 {
-  // check configuration
-  bool serial1_enabled = (g_eeGeneral.auxSerialMode == UART_MODE_MAVLINK);
-  bool serial2_enabled = (g_eeGeneral.aux2SerialMode == UART_MODE_MAVLINK);
+  // track configuration changes
+  bool aux1_enabled = (g_eeGeneral.auxSerialMode == UART_MODE_MAVLINK);
+  bool aux2_enabled = (g_eeGeneral.aux2SerialMode == UART_MODE_MAVLINK);
 #if defined(TELEMETRY_MAVLINK_USB_SERIAL)
-  bool serial3_enabled = (getSelectedUsbMode() == USB_MAVLINK_MODE);
+  bool usb_enabled = (getSelectedUsbMode() == USB_MAVLINK_MODE);
 #else
-  bool serial3_enabled = false;
+  bool usb_enabled = false;
 #endif
+  bool external_enabled = (g_eeGeneral.mavlinkExternal == 1);
 
-  if ((_serial1_enabled != serial1_enabled) || (_serial2_enabled != serial2_enabled) ||
-      (_serial1_baudrate != g_eeGeneral.mavlinkBaudrate) || (_serial2_baudrate != g_eeGeneral.mavlinkBaudrate2)) {
-    _serial1_enabled = serial1_enabled;
-    _serial2_enabled = serial2_enabled;
-    _serial1_baudrate = g_eeGeneral.mavlinkBaudrate;
-    _serial2_baudrate = g_eeGeneral.mavlinkBaudrate2;
+  if ((_aux1_enabled != aux1_enabled) || (_aux2_enabled != aux2_enabled) ||
+      (_aux1_baudrate != g_eeGeneral.mavlinkBaudrate) || (_aux2_baudrate != g_eeGeneral.mavlinkBaudrate2) ||
+      (_external_enabled != external_enabled)) {
+    _aux1_enabled = aux1_enabled;
+    _aux2_enabled = aux2_enabled;
+    _aux1_baudrate = g_eeGeneral.mavlinkBaudrate;
+    _aux2_baudrate = g_eeGeneral.mavlinkBaudrate2;
+    _external_enabled = external_enabled;
+    mavlinkTelemExternal_init(external_enabled);
+    map_serials();
     _reset();
   }
 
-  if (_serial3_enabled != serial3_enabled) {
-    _serial3_enabled = serial3_enabled;
+  if (_usb_enabled != usb_enabled) {
+    _usb_enabled = usb_enabled;
     fmav_router_clearout_link(3);
   }
 
-  // skip out if not one of the AUX,AUX2 serials is enabled
-  if (!serial1_enabled && !serial2_enabled) return;
+  if (external_enabled) mavlinkTelemExternal_wakeup();
+
+  // skip out if not one of the serial1, serial2 is enabled
+  if (!serial1_enabled && !serial1_enabled) return;
 
   // look for incoming messages on all channels
   // only do one at a time
@@ -473,7 +480,7 @@ void MavlinkTelem::wakeup()
 
   uint32_t available = 0;
   switch (currently_scheduled_serial) {
-    case 0: available = mavlinkTelemAvailable(); break;
+    case 0: available = mavlinkTelem1Available(); break;
     case 1: available = mavlinkTelem2Available(); break;
     case 2: available = mavlinkTelem3Available(); break;
   }
@@ -485,7 +492,7 @@ void MavlinkTelem::wakeup()
   // read serial1
   if (currently_scheduled_serial == 0) {
     for (uint32_t i = 0; i < available; i++) {
-      if (!mavlinkTelemGetc(&c)) break;
+      if (!mavlinkTelem1Getc(&c)) break;
       if (fmav_parse_and_check_to_frame_buf(&result, _buf1, &_status1, c)) {
         fmav_router_handle_message(1, &result);
         if (fmav_router_send_to_link(1)) {} // WE DO NOT REFLECT, SO THIS MUST NEVER HAPPEN !!
@@ -505,7 +512,7 @@ void MavlinkTelem::wakeup()
       if (!mavlinkTelem2Getc(&c)) break;
       if (fmav_parse_and_check_to_frame_buf(&result, _buf2, &_status2, c)) {
         fmav_router_handle_message(2, &result);
-        if (fmav_router_send_to_link(1)) { mavlinkTelemPutBuf(_buf2, result.frame_len); }
+        if (fmav_router_send_to_link(1)) { mavlinkTelem1PutBuf(_buf2, result.frame_len); }
         if (fmav_router_send_to_link(2)) {} // WE DO NOT REFLECT, SO THIS MUST NEVER HAPPEN !!
         if (fmav_router_send_to_link(3)) { mavlinkTelem3PutBuf(_buf2, result.frame_len); }
         if (result.res == FASTMAVLINK_PARSE_RESULT_OK && fmav_router_send_to_link(0)) {
@@ -516,13 +523,13 @@ void MavlinkTelem::wakeup()
     }
   }
 
-  // read usb = serial3
+  // read serial3 = usb
   if (currently_scheduled_serial == 2) {
     for (uint32_t i = 0; i < available; i++) {
       if (!mavlinkTelem3Getc(&c)) break;
       if (fmav_parse_and_check_to_frame_buf(&result, _buf3, &_status3, c)) {
         fmav_router_handle_message(3, &result);
-        if (fmav_router_send_to_link(1)) { mavlinkTelemPutBuf(_buf3, result.frame_len); }
+        if (fmav_router_send_to_link(1)) { mavlinkTelem1PutBuf(_buf3, result.frame_len); }
         if (fmav_router_send_to_link(2)) { mavlinkTelem2PutBuf(_buf3, result.frame_len); }
         if (fmav_router_send_to_link(3)) {} // WE DO NOT REFLECT, SO THIS MUST NEVER HAPPEN !!
         if (result.res == FASTMAVLINK_PARSE_RESULT_OK && fmav_router_send_to_link(0)) {
@@ -542,12 +549,12 @@ void MavlinkTelem::wakeup()
     if (fmav_router_send_to_link(1) || fmav_router_send_to_link(2) || fmav_router_send_to_link(3)) {
       uint16_t count = fmav_msg_to_frame_buf(_buf_out, &_msg_out);
       // check that message can be send to all enabled serials
-      if ((!serial1_enabled || mavlinkTelemHasSpace(count)) &&
+      if ((!serial1_enabled || mavlinkTelem1HasSpace(count)) &&
           (!serial2_enabled || mavlinkTelem2HasSpace(count)) &&
-          (!serial3_enabled || mavlinkTelem3HasSpace(count))) {
-        if (serial1_enabled && fmav_router_send_to_link(1)) mavlinkTelemPutBuf(_buf_out, count);
+          (!_usb_enabled || mavlinkTelem3HasSpace(count))) {
+        if (serial1_enabled && fmav_router_send_to_link(1)) mavlinkTelem1PutBuf(_buf_out, count);
         if (serial2_enabled && fmav_router_send_to_link(2)) mavlinkTelem2PutBuf(_buf_out, count);
-        if (serial3_enabled && fmav_router_send_to_link(3)) mavlinkTelem3PutBuf(_buf_out, count);
+        if (_usb_enabled && fmav_router_send_to_link(3)) mavlinkTelem3PutBuf(_buf_out, count);
         _msg_out_available = false;
         msg_tx_count++;
         _msg_tx_persec_cnt++;
@@ -618,6 +625,7 @@ void MavlinkTelem::_reset(void)
 #if !defined(AUX2_SERIAL)
   if (g_eeGeneral.aux2SerialMode == UART_MODE_MAVLINK) g_eeGeneral.aux2SerialMode = UART_MODE_NONE;
 #endif
+  if (g_eeGeneral.mavlinkExternal > 1) g_eeGeneral.mavlinkExternal = 0;
 
   _my_sysid = MAVLINK_TELEM_MY_SYSID;
   _my_compid = MAVLINK_TELEM_MY_COMPID;

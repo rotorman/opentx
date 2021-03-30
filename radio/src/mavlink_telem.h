@@ -13,13 +13,35 @@ uint16_t mavlinkTaskLoop(void);
 
 // -- SERIAL and USB CDC handlers --
 
-uint32_t mavlinkTelemBaudrate(void);
-uint32_t mavlinkTelemBaudrate2(void);
+uint32_t mavlinkTelemAuxBaudrate(void);
+uint32_t mavlinkTelemAux2Baudrate(void);
 
-uint32_t mavlinkTelemAvailable(void);
-uint8_t mavlinkTelemGetc(uint8_t *c);
-bool mavlinkTelemHasSpace(uint16_t count);
-bool mavlinkTelemPutBuf(const uint8_t *buf, const uint16_t count);
+#if defined(AUX_SERIAL)
+extern Fifo<uint8_t, 2*512> auxSerialTxFifo;
+extern Fifo<uint8_t, 2*512> mavlinkTelemAuxSerialRxFifo;
+#endif
+
+#if defined(AUX2_SERIAL)
+extern Fifo<uint8_t, 2*512> aux2SerialTxFifo;
+extern Fifo<uint8_t, 2*512> mavlinkTelemAux2SerialRxFifo;
+#endif
+
+#if defined(TELEMETRY_MAVLINK_USB_SERIAL)
+extern Fifo<uint8_t, 2*512> mavlinkTelemUsbRxFifo;
+#endif
+
+//TODO: since we want to allow only 2 channels max, this is memory waste,
+//i.e., we should just have 2 instead of three Fifos.
+extern Fifo<uint8_t, 32> mavlinkTelemExternalTxFifo_frame;
+extern Fifo<uint8_t, 2*512> mavlinkTelemExternalRxFifo;
+
+void mavlinkTelemExternal_init(bool flag);
+void mavlinkTelemExternal_wakeup(void);
+
+uint32_t mavlinkTelem1Available(void);
+uint8_t mavlinkTelem1Getc(uint8_t *c);
+bool mavlinkTelem1HasSpace(uint16_t count);
+bool mavlinkTelem1PutBuf(const uint8_t *buf, const uint16_t count);
 
 uint32_t mavlinkTelem2Available(void);
 uint8_t mavlinkTelem2Getc(uint8_t *c);
@@ -30,20 +52,6 @@ uint32_t mavlinkTelem3Available(void);
 uint8_t mavlinkTelem3Getc(uint8_t *c);
 bool mavlinkTelem3HasSpace(uint16_t count);
 bool mavlinkTelem3PutBuf(const uint8_t *buf, const uint16_t count);
-
-#if defined(AUX_SERIAL)
-extern Fifo<uint8_t, 2*512> auxSerialTxFifo;
-extern Fifo<uint8_t, 2*512> auxSerialRxFifo_4MavlinkTelem;
-#endif
-
-#if defined(AUX2_SERIAL)
-extern Fifo<uint8_t, 2*512> aux2SerialTxFifo;
-extern Fifo<uint8_t, 2*512> aux2SerialRxFifo_4MavlinkTelem;
-#endif
-
-#if defined(TELEMETRY_MAVLINK_USB_SERIAL)
-extern Fifo<uint8_t, 2*512> mavlinkTelemUsbRxFifo;
-#endif
 
 // -- fastMavlink --
 
@@ -840,6 +848,10 @@ class MavlinkTelem
     void clear_request(uint8_t idx, uint32_t task);
     void do_requests(void);
 
+    // STUFF
+
+    bool _storm32_gimbal_protocol_v2 = false;
+
     // MORE MAVLINK STUFF
 
     uint32_t _msg_rx_persec_cnt;
@@ -858,15 +870,23 @@ class MavlinkTelem
     uint8_t _buf_out[296]; // only needs to hold one MAVLink message, which is 280 max
     bool _msg_out_available = false;
 
-    // STUFF
+    // SERIALS STUFF
 
-    bool _serial1_enabled = false;
-    uint32_t _serial1_baudrate = UINT32_MAX; // to enforce change
-    bool _serial2_enabled = false;
-    uint32_t _serial2_baudrate = UINT32_MAX; // to enforce change
-    bool _serial3_enabled = false;
+    bool _aux1_enabled = false;
+    uint32_t _aux1_baudrate = UINT32_MAX; // to enforce change
+    bool _aux2_enabled = false;
+    uint32_t _aux2_baudrate = UINT32_MAX; // to enforce change
+    bool _usb_enabled = false;
+    bool _external_enabled = false;
 
-    bool _storm32_gimbal_protocol_v2 = false;
+    void map_serials(void);
+
+  public:
+    //map of aux1,aux2,external onto serial1, serial2
+    bool serial1_enabled = false;
+    bool serial2_enabled = false;
+    bool serial1_isexternal = false;
+    bool serial2_isexternal = false;
 };
 
 extern MavlinkTelem mavlinkTelem;

@@ -74,11 +74,14 @@ enum MenuRadioHardwareItems {
   ITEM_RADIO_HARDWARE_AUX2_SERIAL_MODE,
 #endif
 //OW
-#if defined(TELEMETRY_MAVLINK) && defined(AUX_SERIAL)
+#if defined(TELEMETRY_MAVLINK)
+#if defined(AUX_SERIAL)
   ITEM_RADIO_HARDWARE_MAVLINK_BAUDRATE,
 #endif
-#if defined(TELEMETRY_MAVLINK) && defined(AUX2_SERIAL)
+#if defined(AUX2_SERIAL)
   ITEM_RADIO_HARDWARE_MAVLINK_BAUDRATE2,
+#endif
+  ITEM_RADIO_HARDWARE_MAVLINK_EXTERNAL,
 #endif
 //OWEND
   ITEM_RADIO_HARDWARE_JITTER_FILTER,
@@ -116,12 +119,18 @@ enum MenuRadioHardwareItems {
   #define MAVLINK_BAUDRATE2_ROW
 #endif
 #if defined(TELEMETRY_MAVLINK)
+  #define MAVLINK_EXTERNAL_ROW         0,
+#else
+  #define MAVLINK_EXTERNAL_ROW
+#endif
+#if defined(TELEMETRY_MAVLINK)
   #if defined(CLI) || defined(DEBUG)
   #define MAVLINK_AUX_SERIAL_MODES     "\015""Debug\0       ""Telem Mirror\0""Telemetry In\0""SBUS Trainer\0""LUA\0         ""Mavlink\0     "
   #else
   #define MAVLINK_AUX_SERIAL_MODES     "\015""OFF\0         ""Telem Mirror\0""Telemetry In\0""SBUS Trainer\0""LUA\0         ""Mavlink\0     "
   #endif
   #define MAVLINK_AUX_BAUDRATES        "\006""57600\0""115200""38400\0""19200\0"
+  #define MAVLINK_EXTERNAL             "\007""OFF\0   ""Mavlink"
 #endif
 //OWEND
 
@@ -198,6 +207,7 @@ bool menuRadioHardware(event_t event)
 //OW
     MAVLINK_BAUDRATE_ROW
     MAVLINK_BAUDRATE2_ROW
+    MAVLINK_EXTERNAL_ROW
 //OWEND
     0, /* ADC filter */
     READONLY_ROW /* RAS */,
@@ -455,6 +465,13 @@ bool menuRadioHardware(event_t event)
         if (attr && checkIncDec_Ret) {
           aux2SerialInit(g_eeGeneral.aux2SerialMode, modelTelemetryProtocol());
         }
+        break;
+#endif
+#if defined(TELEMETRY_MAVLINK)
+      case ITEM_RADIO_HARDWARE_MAVLINK_EXTERNAL:
+        lcdDrawText(MENUS_MARGIN_LEFT, y, "Mavlink external");
+        //g_eeGeneral.mavlinkExternal = editChoice(HW_SETTINGS_COLUMN2, y, MAVLINK_EXTERNAL, g_eeGeneral.mavlinkExternal, 0, 1, attr, event);
+        g_eeGeneral.mavlinkExternal = editCheckBox(g_eeGeneral.mavlinkExternal, HW_SETTINGS_COLUMN2, y, attr, event);
         break;
 #endif
 //OWEND
