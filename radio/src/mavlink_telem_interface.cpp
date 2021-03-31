@@ -54,8 +54,8 @@ void mavlinkStart()
   RTOS_CREATE_TASK(mavlinkTaskId, mavlinkTask, "mavlink", mavlinkStack, MAVLINK_STACK_SIZE, MAVLINK_TASK_PRIO);
 }
 
-// -- EXTERNAL BY SERIAL handlers --
-//we essentially redo everything from scratch
+// -- EXTERNAL BAY SERIAL handlers --
+// we essentially redo everything from scratch
 
 MAVLINK_RAM_SECTION Fifo<uint8_t, 32> mavlinkTelemExternalTxFifo_frame;
 MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> mavlinkTelemExternalTxFifo;
@@ -86,13 +86,11 @@ void mavlinkTelemExternal_init(bool flag)
   EXTI_InitStructure.EXTI_LineCmd = DISABLE;
   EXTI_Init(&EXTI_InitStructure);
 
-  // I believe has been called already through telemetryInit() -> telemetryPortInit(FRSKY_SPORT_BAUDRATE) -> telemetryInitDirPin()
-
-  GPIO_InitTypeDef GPIO_InitStructure;
-
+  // is it called already? through telemetryInit() -> telemetryPortInit(FRSKY_SPORT_BAUDRATE) -> telemetryInitDirPin()
   GPIO_PinAFConfig(TELEMETRY_GPIO, TELEMETRY_GPIO_PinSource_RX, TELEMETRY_GPIO_AF);
   GPIO_PinAFConfig(TELEMETRY_GPIO, TELEMETRY_GPIO_PinSource_TX, TELEMETRY_GPIO_AF);
 
+  GPIO_InitTypeDef GPIO_InitStructure;
   GPIO_InitStructure.GPIO_Pin = TELEMETRY_TX_GPIO_PIN | TELEMETRY_RX_GPIO_PIN;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
   GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
@@ -100,10 +98,7 @@ void mavlinkTelemExternal_init(bool flag)
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
   GPIO_Init(TELEMETRY_GPIO, &GPIO_InitStructure);
 
-  // I believe has been called already through telemetryInit() -> telemetryPortInit(FRSKY_SPORT_BAUDRATE) -> telemetryInitDirPin()
-/*
-  telemetryInitDirPin();
-*/
+  // is it called already? through telemetryInit() -> telemetryPortInit(FRSKY_SPORT_BAUDRATE) -> telemetryInitDirPin()
   GPIO_InitStructure.GPIO_Pin   = TELEMETRY_DIR_GPIO_PIN;
   GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_OUT;
   GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
@@ -112,6 +107,7 @@ void mavlinkTelemExternal_init(bool flag)
   GPIO_Init(TELEMETRY_DIR_GPIO, &GPIO_InitStructure);
   GPIO_ResetBits(TELEMETRY_DIR_GPIO, TELEMETRY_DIR_GPIO_PIN);
 
+  // init uart itself
   USART_InitTypeDef USART_InitStructure;
   USART_InitStructure.USART_BaudRate = 400000;
   USART_InitStructure.USART_WordLength = USART_WordLength_8b;
@@ -129,18 +125,17 @@ void mavlinkTelemExternal_init(bool flag)
 }
 
 // this must be called regularly, at 2 ms
-// we send at most 24 bytes per frame
-// 115200 bps = 86 us per byte => 12 bytes per ms = 24 bytes per 2ms
-// 3+24 bytes @ 400000 bps = 0.675 ms
-// => enough time for a tx and rx packet in 2ms slot
-// however, the slots are not totally fixed to 2ms, can be shorter
-// so design only for lower data rate
-// 16 bytes per slot = 8000 bytes/s = effectively 80000 bps, shoudl be way enough
-// 3+16 bytes @ 400000 bps = 0.475 ms + 16 bytes @ 400000 bps = 0.4 ms == 0.875 ms
+// 115200 bps = 86 us per byte => 12 bytes per ms = 24 bytes per 2 ms
+// 3+24 bytes @ 400000 bps = 0.675 ms, 24 bytes @ 400000 bps = 0.6 ms => 1.275 ms
+// => enough time for a tx and rx packet in a 2 ms slot
+// however, the slots are not precisely fixed to 2 ms, can be shorter
+// so design for lower data rate, we send at most 16 bytes per slot
+// 16 bytes per slot = 8000 bytes/s = effectively 80000 bps, should be way enough
+// 3+16 bytes @ 400000 bps = 0.475 ms, 16 bytes @ 400000 bps = 0.4 ms, => 0.875 ms
 void mavlinkTelemExternal_wakeup(void)
 {
-  // we do it at the beginning, so it gives few cycles before we enable TX
-  TELEMETRY_DIR_GPIO->BSRRL = TELEMETRY_DIR_GPIO_PIN; // output enable
+  // we do it at the beginning, so it gives few cycles before TX is enabled
+  TELEMETRY_DIR_GPIO->BSRRL = TELEMETRY_DIR_GPIO_PIN; // enable output
   TELEMETRY_USART->CR1 &= ~USART_CR1_RE; // turn off receiver
 
   uint32_t count = mavlinkTelemExternalTxFifo.size();
@@ -158,7 +153,7 @@ void mavlinkTelemExternal_wakeup(void)
     mavlinkTelemExternalTxFifo_frame.push(c);
   }
 
-  USART_ITConfig(TELEMETRY_USART, USART_IT_TXE, ENABLE); // enable TX interrupt
+  USART_ITConfig(TELEMETRY_USART, USART_IT_TXE, ENABLE); // enable TX interrupt, starts sending
 }
 
 uint32_t mavlinkTelemExternalAvailable(void)
@@ -183,7 +178,7 @@ bool mavlinkTelemExternalPutBuf(const uint8_t *buf, const uint16_t count)
   return true;
 }
 
-// -- SERIAL and USB CDC handlers --
+// -- AUX1, AUX2 handlers --
 
 uint32_t _cvtBaudrate(uint16_t baud)
 {
@@ -320,6 +315,8 @@ bool mavlinkTelem2HasSpace(uint16_t count){ return false; }
 bool mavlinkTelem2PutBuf(const uint8_t* buf, const uint16_t count){ return false; }
 #endif
 
+// -- USB handlers --
+
 #if defined(TELEMETRY_MAVLINK_USB_SERIAL)
 
 uint32_t mavlinkTelem3Available(void)
@@ -358,6 +355,8 @@ bool mavlinkTelem3HasSpace(uint16_t count){ return false; }
 bool mavlinkTelem3PutBuf(const uint8_t* buf, const uint16_t count){ return false; }
 #endif
 
+// -- MavlinkTelem stuff --
+
 // map aux1,aux2,external onto serial1 & serial2
 void MavlinkTelem::map_serials(void)
 {
@@ -388,8 +387,6 @@ void MavlinkTelem::map_serials(void)
     serial1_isexternal = serial2_isexternal = false;
   }
 }
-
-// -- Miscellaneous stuff --
 
 void MavlinkTelem::telemetrySetValue(uint16_t id, uint8_t subId, uint8_t instance, int32_t value, uint32_t unit, uint32_t prec)
 {

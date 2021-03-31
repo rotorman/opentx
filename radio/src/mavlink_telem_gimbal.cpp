@@ -131,7 +131,6 @@ float q[4];
     q[0] = q[1] = q[2] = q[3] = NAN;
   }
 
-  setOutVersionV2();
   fmav_msg_storm32_gimbal_device_control_pack(
       &_msg_out, _my_sysid, _my_compid, //_sys_id and not _my_sysid !!! we mimic being part of the autopilot system
       tsystem, tcomponent,
@@ -165,7 +164,6 @@ float q[4];
     q[0] = q[1] = q[2] = q[3] = NAN;
   }
 
-  setOutVersionV2();
   fmav_msg_storm32_gimbal_manager_control_pack(
       &_msg_out, _my_sysid, _my_compid,
       tsystem, tcomponent,
@@ -183,7 +181,6 @@ float q[4];
 void MavlinkTelem::generateStorm32GimbalManagerControlPitchYaw(uint8_t tsystem, uint8_t tcomponent,
     uint8_t gimbal_id, float pitch_deg, float yaw_deg, uint16_t device_flags, uint16_t manager_flags)
 {
-  setOutVersionV2();
   fmav_msg_storm32_gimbal_manager_control_pitchyaw_pack(
       &_msg_out, _my_sysid, _my_compid,
       tsystem, tcomponent,

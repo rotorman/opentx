@@ -19,7 +19,6 @@ void MavlinkTelem::generateCmdDoQShotConfigure(uint8_t tsystem, uint8_t tcompone
 //STorM32 specific
 void MavlinkTelem::generateQShotStatus(uint8_t mode, uint8_t shot_state)
 {
-  setOutVersionV2();
   fmav_msg_qshot_status_pack(
       &_msg_out, _my_sysid, _my_compid,
       mode, shot_state,

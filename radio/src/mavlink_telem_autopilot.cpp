@@ -80,7 +80,6 @@ void MavlinkTelem::generateCmdDoChangeSpeed(uint8_t tsystem, uint8_t tcomponent,
 void MavlinkTelem::generateMissionItemInt(uint8_t tsystem, uint8_t tcomponent,
     uint8_t frame, uint16_t cmd, uint8_t current, int32_t lat, int32_t lon, float alt_m)
 {
-  setOutVersionV2();
   fmav_msg_mission_item_int_pack(
       &_msg_out, _my_sysid, _my_compid,
       tsystem, tcomponent,
@@ -94,7 +93,6 @@ void MavlinkTelem::generateSetPositionTargetGlobalInt(uint8_t tsystem, uint8_t t
     uint8_t frame, uint16_t type_mask,
     int32_t lat, int32_t lon, float alt, float vx, float vy, float vz, float yaw_rad, float yaw_rad_rate)
 {
-  setOutVersionV2();
   fmav_msg_set_position_target_global_int_pack(
       &_msg_out, _my_sysid, _my_compid,
       time_boot_ms(),
@@ -114,7 +112,6 @@ void MavlinkTelem::generateCmdConditionYaw(uint8_t tsystem, uint8_t tcomponent, 
 
 void MavlinkTelem::generateRcChannelsOverride(uint8_t sysid, uint8_t tsystem, uint8_t tcomponent, uint16_t* chan_raw)
 {
-  setOutVersionV2();
   fmav_msg_rc_channels_override_pack(
       &_msg_out, _my_sysid, _my_compid,
       tsystem, tcomponent,
@@ -128,7 +125,6 @@ void MavlinkTelem::generateRcChannelsOverride(uint8_t sysid, uint8_t tsystem, ui
 
 void MavlinkTelem::generateMissionRequestList(uint8_t tsystem, uint8_t tcomponent, uint8_t mission_type)
 {
-  setOutVersionV2();
   fmav_msg_mission_request_list_pack(
       &_msg_out, _my_sysid, _my_compid,
       tsystem, tcomponent,
@@ -140,7 +136,6 @@ void MavlinkTelem::generateMissionRequestList(uint8_t tsystem, uint8_t tcomponen
 
 void MavlinkTelem::generateMissionRequestInt(uint8_t tsystem, uint8_t tcomponent, uint16_t seq, uint8_t mission_type)
 {
-  setOutVersionV2();
   fmav_msg_mission_request_int_pack(
       &_msg_out, _my_sysid, _my_compid,
       tsystem, tcomponent,

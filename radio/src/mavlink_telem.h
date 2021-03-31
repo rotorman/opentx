@@ -86,10 +86,6 @@ class MavlinkTelem
     void wakeup();
     void tick10ms();
 
-    // SOME MAVLINK stuff
-
-    void setOutVersionV2(void);
-
     // GENERATE MAVLink messages
 
     void _generateCmdLong(uint8_t tsystem, uint8_t tcomponent, uint16_t cmd, float p1=0.0f, float p2=0.0f, float p3=0.0f, float p4=0.0f, float p5=0.0f, float p6=0.0f, float p7=0.0f);
@@ -184,7 +180,7 @@ class MavlinkTelem
     }
 
     // MAVLINK API
-    // in the receive list we probably need to differentiate not only by msgid, but also by sysis-compid
+    // in the receive list we need to differentiate not only by msgid, but also by sysis-compid
     // if two components send the same message at (too) high rate considering only msgid leads to message loss
 
     #define MAVMSGLIST_MAX   64
@@ -210,10 +206,10 @@ class MavlinkTelem
     MavMsg* mavapiMsgInGet(uint32_t msgid);
     MavMsg* mavapiMsgInGetLast(void);
 
-    //opentx's FiFo isn't ideal as it can hold only N-1 elements, which for
-    //big elements is a huge waste of mem. It is thread safe though.
-    //we go with it despite it's cost
-    //it doesn't really allow us to work on pointers, so we redo what we need
+    // opentx's FiFo isn't ideal as it can hold only N-1 elements, which for
+    // big elements is a huge waste of mem. It is thread safe though.
+    // we go with it despite it's cost
+    // it doesn't really allow us to work on pointers, so we redo what we need
 
     #define MAVOUTFIFO_MAX  4
     fmav_message_t* _mavapiMsgOutFifo = NULL; // we allocate it only then it is really needed
@@ -882,7 +878,7 @@ class MavlinkTelem
     void map_serials(void);
 
   public:
-    //map of aux1,aux2,external onto serial1, serial2
+    // map of aux1, aux2, external onto serial1, serial2
     bool serial1_enabled = false;
     bool serial2_enabled = false;
     bool serial1_isexternal = false;

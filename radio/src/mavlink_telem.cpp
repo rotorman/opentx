@@ -6,12 +6,6 @@
 
 MAVLINK_RAM_SECTION MavlinkTelem mavlinkTelem;
 
-// -- CoOS RTOS mavlink task handlers --
-// -- SERIAL and USB CDC handlers --
-// -- Miscellaneous stuff --
-
-// is located in mavlink_telem_interface.cpp
-
 // -- TASK handlers --
 // tasks can be set directly with SETTASK()
 // some tasks don't need immediate execution, or need reliable request
@@ -100,12 +94,6 @@ void MavlinkTelem::do_requests(void)
   }
 }
 
-// -- MAVLink stuff --
-
-void MavlinkTelem::setOutVersionV2(void)
-{
-}
-
 // -- Generate MAVLink messages --
 // these should never be called directly, should only by called by the task handler
 
@@ -113,7 +101,6 @@ void MavlinkTelem::_generateCmdLong(
     uint8_t tsystem, uint8_t tcomponent, uint16_t cmd,
     float p1, float p2, float p3, float p4, float p5, float p6, float p7)
 {
-  setOutVersionV2();
   fmav_msg_command_long_pack(
       &_msg_out, _my_sysid, _my_compid,
       tsystem, tcomponent, cmd, 0, p1, p2, p3, p4, p5, p6, p7,
@@ -124,7 +111,6 @@ void MavlinkTelem::_generateCmdLong(
 
 void MavlinkTelem::generateHeartbeat(uint8_t base_mode, uint32_t custom_mode, uint8_t system_status)
 {
-  setOutVersionV2();
   fmav_msg_heartbeat_pack(
       &_msg_out, _my_sysid, _my_compid,
       MAV_TYPE_GCS, MAV_AUTOPILOT_INVALID, base_mode, custom_mode, system_status,
@@ -135,7 +121,6 @@ void MavlinkTelem::generateHeartbeat(uint8_t base_mode, uint32_t custom_mode, ui
 
 void MavlinkTelem::generateParamRequestList(uint8_t tsystem, uint8_t tcomponent)
 {
-  setOutVersionV2();
   fmav_msg_param_request_list_pack(
       &_msg_out, _my_sysid, _my_compid,
       tsystem, tcomponent,
@@ -149,7 +134,6 @@ void MavlinkTelem::generateParamRequestRead(uint8_t tsystem, uint8_t tcomponent,
 char param_id[16];
 
   strncpy(param_id, param_name, 16);
-  setOutVersionV2();
   fmav_msg_param_request_read_pack(
       &_msg_out, _my_sysid, _my_compid,
       tsystem, tcomponent, param_id, -1,
@@ -161,7 +145,6 @@ char param_id[16];
 void MavlinkTelem::generateRequestDataStream(
     uint8_t tsystem, uint8_t tcomponent, uint8_t data_stream, uint16_t rate_hz, uint8_t startstop)
 {
-  setOutVersionV2();
   fmav_msg_request_data_stream_pack(
       &_msg_out, _my_sysid, _my_compid,
       tsystem, tcomponent, data_stream, rate_hz, startstop,
@@ -176,15 +159,8 @@ void MavlinkTelem::generateCmdSetMessageInterval(uint8_t tsystem, uint8_t tcompo
   _generateCmdLong(tsystem, tcomponent, MAV_CMD_SET_MESSAGE_INTERVAL, msgid, (startstop) ? period_us : -1.0f);
 }
 
-// -- Task handlers --
+// -- Main message handler for incoming MAVLink messages --
 
-// -- Handle incoming MAVLink messages, which are for the Gimbal --
-// -- Handle incoming MAVLink messages, which are for the Gimbal Manager --
-// -- Handle incoming MAVLink messages, which are for the Camera --
-// -- Handle incoming MAVLink messages, which are for the Autopilot --
-// -- Handle incoming MAVLink messages, which are for QShots --
-
-// -- Main handler for incoming MAVLink messages --
 void MavlinkTelem::handleMessage(void)
 {
   if (_msg.sysid == 0) return; //this can't be anything meaningful
@@ -671,7 +647,6 @@ void MavlinkTelem::_reset(void)
   _msg_tx_persec_cnt = 0;
   _bytes_tx_persec_cnt = 0;
 
-  // MAVLINK
   mavapiInit();
 }
 

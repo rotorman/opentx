@@ -77,9 +77,10 @@ modified files in radio/src/
     targets/common/arm/stm32/usb_driver.h:           1x
     targets/common/arm/stm32/usbd_cdc.cpp:           1x
     targets/common/arm/stm32/usbd_dec.cpp:           4x
-    targets/horus/board.h:           1x
-    targets/horus/hal.h:             1x
-    targets/horus/CMakeList.txt:     2x
+    targets/horus/hal.h:                             1x
+    targets/horus/lcd_driver.cpp:                    2x
+    targets/horus/telemetry_driver.cpp:              8x
+    targets/horus/CMakeList.txt:                     2x
     telemetry/telemetry.cpp:         2x
     telemetry/telemetry.h:           1x
     thirdparty/Lua/src/lauxlib.h:    1x
@@ -90,8 +91,9 @@ added files in radio/src/
     mavlink_telem_autopilot.cpp
     mavlink_telem_camera.cpp
     mavlink_telem_gimbal.cpp
-    mavlink_telem_qshot.cpp
+    mavlink_telem_interface.cpp
     mavlink_telem_mavapi.cpp
+    mavlink_telem_qshot.cpp
     mavlink_telem.cpp
     mavlink_telem.h
     lua/api_mavlink.cpp
@@ -100,7 +102,7 @@ added files in radio/src/
 
 
 TODO:
-- mavlink api: differentiate received messages by sys-comp ids?
+- TELEMETRY_USART_IRQHandler: optimize, USART_xxx() functions are not very efficient
 - mavlink router: wipeout&reassign when link changes? wipeout after timeout?
 
 COMMENTS:
