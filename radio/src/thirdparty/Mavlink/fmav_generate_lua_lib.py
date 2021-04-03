@@ -28,6 +28,14 @@ def excludeMessage(msg):
     return True
 
 
+def cvtIgnoreAttr(ignore_str):
+    if ignore_str == 'NaN':
+        return 'NAN'
+    elif ignore_str == 'INT32_MAX':
+        return 'INT32_MAX'
+    else:
+        return ignore_str
+
 def shortenName(name, width):
     nameshort = name[:]
     if len(nameshort) > width:
@@ -69,7 +77,7 @@ def msgFieldCount(msg, excludetargets):
     return count        
 
 def generateLibMessageForPush(msg, m):
-    m.append('  case FASTMAVLINK_MSG_ID_'+msg.name+': {')
+    m.append('  case FASTMAVLINK_MSG_ID_'+msg.name+': { // #'+str(msg.id))
     if msgFieldCount(msg,True) > 0:
         m.append('    fmav_'+msg.name.lower()+'_t* payload = (fmav_'+msg.name.lower()+'_t*)(mavmsg->payload_ptr);')
     #for field in msg.ordered_fields:
@@ -92,7 +100,7 @@ def generateLibMessageForPush(msg, m):
 
 
 def generateLibMessageForCheck(msg, m):
-    m.append('  case FASTMAVLINK_MSG_ID_'+msg.name+': {')
+    m.append('  case FASTMAVLINK_MSG_ID_'+msg.name+': { // #'+str(msg.id))
     if msgFieldCount(msg,False) > 0:
         m.append('    fmav_'+msg.name.lower()+'_t* payload = (fmav_'+msg.name.lower()+'_t*)(msg_out->payload);')
     for field in msg.fields:
@@ -105,6 +113,13 @@ def generateLibMessageForCheck(msg, m):
             if msg.name == 'HEARTBEAT' and nameshort == 'mavlink_version':
                 m.append('    payload->mavlink_version = FASTMAVLINK_MAVLINK_VERSION;')
                 continue
+            # special handling for COMMAND_LONG/INT    
+            if msg.name == 'COMMAND_LONG' and field.name[:-1] == 'param':    
+                default = cvtIgnoreAttr('NaN')
+            if msg.name == 'COMMAND_INT' and (field.name[:-1] == 'param' or field.name == 'z'):
+                default = cvtIgnoreAttr('NaN')
+            if msg.name == 'COMMAND_INT' and (field.name == 'x' or field.name == 'y'):
+                default = cvtIgnoreAttr('INT32_MAX')
             m.append('    lua_checktablenumber(L, payload->'+field.name+', "'+nameshort+'", '+default+');')
         else:
             m.append('    lua_pushstring(L, "'+nameshort+'"); // array '+field.name+'['+str(field.array_length)+']' )
