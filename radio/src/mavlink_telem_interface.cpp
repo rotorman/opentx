@@ -42,7 +42,6 @@ TASK_FUNCTION(mavlinkTask)
 
     mavlinkTaskStat.run = getTmr2MHz() - mavlinkTaskStat.start;
     if (mavlinkTaskStat.run > mavlinkTaskStat.max) mavlinkTaskStat.max = mavlinkTaskStat.run;
-    //mavlinkTaskStat.load = (mavlinkTaskStat.run*100) / (mavlinkTaskStat.start - start_last);
     mavlinkTaskStat.loop = (mavlinkTaskStat.start - start_last);
 
     RTOS_WAIT_TICKS(2);
@@ -61,12 +60,35 @@ MAVLINK_RAM_SECTION Fifo<uint8_t, 32> mavlinkTelemExternalTxFifo_frame;
 MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> mavlinkTelemExternalTxFifo;
 MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> mavlinkTelemExternalRxFifo;
 
-void mavlinkTelemExternal_init(bool flag)
+void extmoduleOn(void){
+  if(g_eeGeneral.mavlinkExternal != 1) GPIO_SetBits(EXTMODULE_PWR_GPIO, EXTMODULE_PWR_GPIO_PIN);
+}
+
+void extmoduleOff(void)
 {
-  if (!flag) {
-    USART_DeInit(TELEMETRY_USART);
-    return;
-  }
+  if(g_eeGeneral.mavlinkExternal != 1) GPIO_ResetBits(EXTMODULE_PWR_GPIO, EXTMODULE_PWR_GPIO_PIN);
+}
+
+void extmoduleMavlinkTelemStop(void)
+{
+  USART_ITConfig(TELEMETRY_USART, USART_IT_RXNE, DISABLE);
+  USART_ITConfig(TELEMETRY_USART, USART_IT_TXE, DISABLE);
+  NVIC_DisableIRQ(TELEMETRY_USART_IRQn);
+
+  NVIC_DisableIRQ(TELEMETRY_EXTI_IRQn);
+  NVIC_DisableIRQ(TELEMETRY_TIMER_IRQn);
+  DMA_ITConfig(TELEMETRY_DMA_Stream_TX, DMA_IT_TC, DISABLE);
+  NVIC_DisableIRQ(TELEMETRY_DMA_TX_Stream_IRQ);
+
+  USART_DeInit(TELEMETRY_USART);
+  DMA_DeInit(TELEMETRY_DMA_Stream_TX);
+
+  GPIO_ResetBits(EXTMODULE_PWR_GPIO, EXTMODULE_PWR_GPIO_PIN); //EXTERNAL_MODULE_OFF();
+}
+
+void extmoduleMavlinkTelemStart(void)
+{
+  GPIO_SetBits(EXTMODULE_PWR_GPIO, EXTMODULE_PWR_GPIO_PIN); //EXTERNAL_MODULE_ON();
 
   // we don't want or need all this
   NVIC_DisableIRQ(TELEMETRY_EXTI_IRQn);
@@ -122,6 +144,19 @@ void mavlinkTelemExternal_init(bool flag)
   USART_ITConfig(TELEMETRY_USART, USART_IT_TXE, DISABLE);
   NVIC_SetPriority(TELEMETRY_USART_IRQn, 6);
   NVIC_EnableIRQ(TELEMETRY_USART_IRQn);
+}
+
+void mavlinkTelemExternal_init(bool flag)
+{
+  if (flag) {
+    extmoduleStop(); //??? good or bad
+    // this overrides ext module settings, so nothing else to do
+    extmoduleMavlinkTelemStart();
+  }
+  else {
+    extmoduleMavlinkTelemStop();
+    //TODO: we should re-enable an external module if one is configured
+  }
 }
 
 // this must be called regularly, at 2 ms

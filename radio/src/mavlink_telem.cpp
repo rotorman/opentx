@@ -422,7 +422,7 @@ void MavlinkTelem::wakeup()
 #else
   bool usb_enabled = false;
 #endif
-  bool external_enabled = (g_eeGeneral.mavlinkExternal == 1);
+  bool external_enabled = (g_eeGeneral.mavlinkExternal == 1) && !s_pulses_paused;
 
   if ((_aux1_enabled != aux1_enabled) || (_aux2_enabled != aux2_enabled) ||
       (_aux1_baudrate != g_eeGeneral.mavlinkBaudrate) || (_aux2_baudrate != g_eeGeneral.mavlinkBaudrate2) ||

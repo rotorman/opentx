@@ -32,6 +32,7 @@
 //OWEND
 
 /*
+correct power handling for SPort bidirectional
 SPort bidirectional
 mavMsgOut w fifo
 mavMsgOut
