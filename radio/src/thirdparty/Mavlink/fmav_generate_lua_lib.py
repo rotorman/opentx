@@ -6,8 +6,8 @@ calls fastMavlink generator modules
 '''
 import os, sys
 
-mavlinkpathtorepository = os.path.join('fastmavlink')
-#mavlinkpathtorepository = r'C:/Users/Olli/Documents/GitHub/fastmavlink'
+#mavlinkpathtorepository = os.path.join('fastmavlink')
+mavlinkpathtorepository = r'C:/Users/Olli/Documents/GitHub/fastmavlink'
 
 sys.path.insert(0, mavlinkpathtorepository)
 
@@ -28,13 +28,11 @@ def excludeMessage(msg):
     return True
 
 
-def cvtIgnoreAttr(ignore_str):
-    if ignore_str == 'NaN':
+def cvtInvalidAttr(invalid_str):
+    if invalid_str == 'NaN':
         return 'NAN'
-    elif ignore_str == 'INT32_MAX':
-        return 'INT32_MAX'
     else:
-        return ignore_str
+        return invalid_str
 
 def shortenName(name, width):
     nameshort = name[:]
@@ -105,7 +103,6 @@ def generateLibMessageForCheck(msg, m):
         m.append('    fmav_'+msg.name.lower()+'_t* payload = (fmav_'+msg.name.lower()+'_t*)(msg_out->payload);')
     for field in msg.fields:
         nameshort = shortenName(field.name, 32)
-        default = '0'
         if field.array_length == 0:
             #we substitute target fields
             if msg.is_target_system_field(field): nameshort = 'target_sysid'
@@ -113,20 +110,29 @@ def generateLibMessageForCheck(msg, m):
             if msg.name == 'HEARTBEAT' and nameshort == 'mavlink_version':
                 m.append('    payload->mavlink_version = FASTMAVLINK_MAVLINK_VERSION;')
                 continue
-            # special handling for COMMAND_LONG/INT    
-            if msg.name == 'COMMAND_LONG' and field.name[:-1] == 'param':    
-                default = cvtIgnoreAttr('NaN')
-            if msg.name == 'COMMAND_INT' and (field.name[:-1] == 'param' or field.name == 'z'):
-                default = cvtIgnoreAttr('NaN')
-            if msg.name == 'COMMAND_INT' and (field.name == 'x' or field.name == 'y'):
-                default = cvtIgnoreAttr('INT32_MAX')
-            m.append('    lua_checktablenumber(L, payload->'+field.name+', "'+nameshort+'", '+default+');')
+            invalid = '0'
+            if field.invalid:
+                invalid = cvtInvalidAttr(field.invalid)
+            m.append('    lua_checktablenumber(L, payload->'+field.name+', "'+nameshort+'", '+invalid+');')
         else:
             m.append('    lua_pushstring(L, "'+nameshort+'"); // array '+field.name+'['+str(field.array_length)+']' )
             m.append('    lua_gettable(L, -2);')
-            m.append('    for (int i = 0; i < '+str(field.array_length)+'; i++) { ')
-            m.append('      lua_checktableinumber(L, payload->'+field.name+'[i], i, '+default+');')
-            m.append('    }')
+            invalid = '[0]'
+            if field.invalid:
+                invalid = cvtInvalidAttr(field.invalid)
+            invalid = invalid[1:-1]
+            if invalid.find(',') < 0:
+                invalid = cvtInvalidAttr(invalid)
+                m.append('    for (int i = 0; i < '+str(field.array_length)+'; i++) { ')
+                m.append('      lua_checktableinumber(L, payload->'+field.name+'[i], i, '+invalid+');')
+                m.append('    }')
+            else:
+                invalid = cvtInvalidAttr(invalid[:-1])
+                m.append('    lua_checktableinumber(L, payload->'+field.name+'[0], 0, '+invalid+');')
+                if field.array_length > 0:
+                    m.append('    for (int i = 1; i < '+str(field.array_length)+'; i++) { ')
+                    m.append('      lua_checktableinumber(L, payload->'+field.name+'[i], i, '+'0'+');')
+                    m.append('    }')
             m.append('    lua_pop(L, 1);')
             
     for field in msg.fields:
