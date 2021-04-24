@@ -650,3 +650,13 @@ void MavlinkTelem::_reset(void)
   mavapiInit();
 }
 
+
+void MavlinkTelem::_init(void)
+{
+  fmav_router_init();
+  fmav_router_set_link_properties_all(
+      FASTMAVLINK_ROUTER_LINK_PROPERTY_FLAG_ALWAYS_SEND_HEARTBEAT |
+      FASTMAVLINK_ROUTER_LINK_PROPERTY_FLAG_DISCOVER_BY_HEARTBEAT
+      );
+  _reset();
+}

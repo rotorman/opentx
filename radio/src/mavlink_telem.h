@@ -81,7 +81,7 @@ bool mavlinkTelem3PutBuf(const uint8_t *buf, const uint16_t count);
 class MavlinkTelem
 {
   public:
-    MavlinkTelem() { _reset(); } // constructor
+    MavlinkTelem() { _init(); } // constructor
 
     void wakeup();
     void tick10ms();
@@ -698,6 +698,8 @@ class MavlinkTelem
     void _resetGimbalAndGimbalClient(void);
     void _resetGimbalClient(void);
     void _resetQShot(void);
+
+    void _init(void);
 
     uint8_t _my_sysid = MAVLINK_TELEM_MY_SYSID;
     uint8_t _my_compid = MAVLINK_TELEM_MY_COMPID;
