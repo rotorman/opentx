@@ -28,10 +28,11 @@
 #include "opentx_helpers.h"
 
 //OW
-#define OWVERSIONSTR  "v27rc07"
+#define OWVERSIONSTR  "v27"
 //OWEND
 
 /*
+update mavlink, fastmavlink, have invalid attr
 correct power handling for SPort bidirectional
 SPort bidirectional
 mavMsgOut w fifo
