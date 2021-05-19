@@ -1233,7 +1233,7 @@ constexpr uint8_t SD_SCREEN_FILE_LENGTH = 64;
 
 //OW
 #if defined(TELEMETRY_MAVLINK)
-#include "mavlink_telem.h"
+#include "telemetry/mavlink/mavlink_telem.h"
 #endif
 //OWEND
 

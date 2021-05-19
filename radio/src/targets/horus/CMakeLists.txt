@@ -60,6 +60,7 @@ if (PCB STREQUAL X10)
     option(INTERNAL_MODULE_MULTI "Support for MULTI internal module" OFF)
     option(BLUETOOTH "Support for bluetooth module" OFF)
     add_definitions(-DMANUFACTURER_JUMPER)
+# //OW    
     if (TELEMETRY_MAVLINK)
       option(INTERNAL_GPS "Support for internal ublox GPS" OFF)
       set(AUX_SERIAL ON)
@@ -67,7 +68,8 @@ if (PCB STREQUAL X10)
         set(AUX2_SERIAL ON)
       endif()
       set(INTERNAL_GPS_BAUDRATE "9600" CACHE STRING "Baud rate for internal GPS")
-    endif()  
+    endif()
+# //OWEND
   elseif (PCBREV STREQUAL TX16S)
     set(FLAVOUR tx16s)
     set(LUA_EXPORT lua_export_t16)
@@ -94,6 +96,7 @@ if (PCB STREQUAL X10)
     option(INTERNAL_MODULE_MULTI "Support for MULTI internal module" ON)
     option(BLUETOOTH "Support for bluetooth module" OFF)
     add_definitions(-DMANUFACTURER_JUMPER)
+# //OW    
     if (TELEMETRY_MAVLINK)
       option(INTERNAL_GPS "Support for internal ublox GPS" OFF)
       set(AUX_SERIAL ON)
@@ -101,7 +104,8 @@ if (PCB STREQUAL X10)
         set(AUX2_SERIAL ON)
       endif()
       set(INTERNAL_GPS_BAUDRATE "9600" CACHE STRING "Baud rate for internal GPS")
-    endif()  
+    endif()
+# //OWEND      
   else()
     set(FLAVOUR x10)
     option(INTERNAL_MODULE_PXX1 "Support for PXX1 internal module" ON)
@@ -298,24 +302,43 @@ if (SBUS_TRAINER)
     )
 endif()
 
+# //OW
 if (TELEMETRY_MAVLINK)
   add_definitions(-DTELEMETRY_MAVLINK)
   if (USB_SERIAL AND NOT DEBUG AND NOT CLI)
     add_definitions(-DTELEMETRY_MAVLINK_USB_SERIAL)
   endif()
   set(SRC ${SRC} 
-    mavlink_telem.cpp
-    mavlink_telem_interface.cpp
-    mavlink_telem_mavapi.cpp
-    mavlink_telem_autopilot.cpp 
-    mavlink_telem_camera.cpp
-    mavlink_telem_gimbal.cpp 
-    mavlink_telem_qshot.cpp
+    telemetry/mavlink/mavlink_telem.cpp
+    telemetry/mavlink/mavlink_telem_interface.cpp
+    telemetry/mavlink/mavlink_telem_mavapi.cpp
+    telemetry/mavlink/mavlink_telem_autopilot.cpp 
+    telemetry/mavlink/mavlink_telem_camera.cpp
+    telemetry/mavlink/mavlink_telem_gimbal.cpp 
+    telemetry/mavlink/mavlink_telem_qshot.cpp
     )
   if(NOT LUA STREQUAL NO)
     set(SRC ${SRC} lua/api_mavlink.cpp lua/api_mavsdk.cpp)
   endif()
+  # generate required header files from fastmavlink submodule
+  execute_process(
+    COMMAND ${PYTHON_EXECUTABLE} fmav_generate_c_library.py 
+    WORKING_DIRECTORY ${RADIO_DIRECTORY}/src/${THIRDPARTY_DIR}/Mavlink
+    RESULT_VARIABLE FMAV_GENERATE_CLIB_RESULT
+    )
+  if (NOT FMAV_GENERATE_CLIB_RESULT EQUAL "0")
+    message(FATAL_ERROR "fmav_generate_c_library.py could not be run: ${FMAV_GENERATE_CLIB_RESULT}")
+  endif()
+  execute_process(
+    COMMAND ${PYTHON_EXECUTABLE} fmav_generate_lua_lib.py 
+    WORKING_DIRECTORY ${RADIO_DIRECTORY}/src/${THIRDPARTY_DIR}/Mavlink
+    RESULT_VARIABLE FMAV_GENERATE_LUALIB_RESULT
+    )
+  if (NOT FMAV_GENERATE_LUALIB_RESULT EQUAL "0")
+    message(FATAL_ERROR "fmav_generate_lua_lib.py could not be run: ${FMAV_GENERATE_LUALIB_RESULT}")
+  endif()
 endif()
+# //OWEND
 
 set(FIRMWARE_TARGET_SRC
   ${FIRMWARE_TARGET_SRC}

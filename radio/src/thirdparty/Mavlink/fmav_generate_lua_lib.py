@@ -1,14 +1,21 @@
 #!/usr/bin/env python
 '''
-fmav_generate_lua-lib.py
+fmav_generate_lua_lib.py
 calls fastMavlink generator modules
 (c) OlliW, OlliW42, www.olliw.eu
 '''
 import os, sys
 
-#mavlinkpathtorepository = os.path.join('fastmavlink')
-mavlinkpathtorepository = r'C:/Users/Olli/Documents/GitHub/fastmavlink'
+#options to set
 
+mavlinkpathtorepository = os.path.join('fastmavlink')
+#mavlinkpathtorepository = r'C:/Users/Olli/Documents/GitHub/fastmavlink'
+
+mavlinkdialect = "opentx.xml"
+
+'''
+Imports
+'''
 sys.path.insert(0, mavlinkpathtorepository)
 
 from generator.modules import fmav_parse as mavparse
@@ -18,7 +25,6 @@ from generator.modules import fmav_flags as mavflags
 '''
 Attention: names must not be longer than 32 chars
 '''
-
 
 def excludeMessage(msg):
     #return True
@@ -149,6 +155,7 @@ def generateLibMessageForCheck(msg, m):
 
 def generateLuaLibHeaders(dialectname):
     print("Run XML %s" % os.path.basename(dialectname))
+    dialectnamewoext = os.path.splitext(os.path.basename(dialectname))[0]
     xml_list = mavparse.generateXmlList(dialectname)
     messagesoutname = os.path.splitext(os.path.basename(dialectname))[0] + '_lua_lib_messages.h'
     constantsoutname = os.path.splitext(os.path.basename(dialectname))[0] + '_lua_lib_constants.h'
@@ -162,7 +169,7 @@ def generateLuaLibHeaders(dialectname):
     dialectxml = None
     enums_all_by_name = {}
     for xml in xml_list:
-        if xml.basename == 'opentx':
+        if xml.basename == dialectnamewoext:
             dialectxml = xml
         for enum in xml.enums_merged:
             if not enum.name in enums_all_by_name.keys():
@@ -274,5 +281,5 @@ static uint8_t luaMavlinkCheckMsgOut(lua_State *L, fmav_message_t* msg_out)
 
 
 if __name__ == "__main__":
-    dialectname = os.path.join('opentx.xml')
+    dialectname = os.path.join(mavlinkdialect)
     generateLuaLibHeaders(dialectname)

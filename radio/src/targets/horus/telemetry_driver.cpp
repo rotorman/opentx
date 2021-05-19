@@ -389,7 +389,7 @@ extern "C" void TELEMETRY_DMA_TX_IRQHandler(void)
 extern "C" void TELEMETRY_USART_IRQHandler(void)
 {
   DEBUG_INTERRUPT(INT_TELEM_USART);
-
+//OW
 #if defined(TELEMETRY_MAVLINK)
   if (g_eeGeneral.mavlinkExternal == 1) {
 
@@ -424,7 +424,7 @@ extern "C" void TELEMETRY_USART_IRQHandler(void)
     return;
   }
 #endif
-
+//OWEND
   uint32_t status = TELEMETRY_USART->SR;
 
   if ((status & USART_SR_TC) && (TELEMETRY_USART->CR1 & USART_CR1_TCIE)) {
