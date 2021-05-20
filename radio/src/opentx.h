@@ -32,6 +32,7 @@
 //OWEND
 
 /*
+backport of some good stuff from etx2.4 pr
 update mavlink, fastmavlink, have invalid attr
 correct power handling for SPort bidirectional
 SPort bidirectional
