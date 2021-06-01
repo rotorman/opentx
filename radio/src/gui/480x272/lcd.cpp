@@ -649,7 +649,7 @@ void lcdFillCircleQuarter(coord_t x0, coord_t y0, int16_t r, uint8_t corners, Lc
   }
 }
 
-void lcdFillTriangle(coord_t x0, coord_t y0, coord_t x1, coord_t y1, coord_t x2, coord_t y2, LcdFlags att)
+void lcdFillTriangle(coord_t x0, coord_t y0, coord_t x1, coord_t y1, coord_t x2, coord_t y2, LcdFlags flags)
 {
   int32_t a, b;
 
@@ -667,7 +667,7 @@ void lcdFillTriangle(coord_t x0, coord_t y0, coord_t x1, coord_t y1, coord_t x2,
       a = x2;
     else if (x2 > b)
       b = x2;
-    lcd->drawSolidHorizontalLine(a, y0, b - a + 1, att);
+    lcd->drawSolidHorizontalLine(a, y0, b - a + 1, flags);
     return;
   }
 
@@ -682,7 +682,7 @@ void lcdFillTriangle(coord_t x0, coord_t y0, coord_t x1, coord_t y1, coord_t x2,
     sa += dx01;
     sb += dx02;
     if (a > b) SWAP(a, b);
-    lcd->drawSolidHorizontalLine(a, y, b - a + 1, att);
+    lcd->drawSolidHorizontalLine(a, y, b - a + 1, flags);
   }
 
   sa = dx12 * (y - y1);
@@ -694,7 +694,7 @@ void lcdFillTriangle(coord_t x0, coord_t y0, coord_t x1, coord_t y1, coord_t x2,
     sa += dx12;
     sb += dx02;
     if (a > b) SWAP(a, b);
-    lcd->drawSolidHorizontalLine(a, y, b - a + 1, att);
+    lcd->drawSolidHorizontalLine(a, y, b - a + 1, flags);
   }
 }
 
@@ -718,7 +718,7 @@ uint8_t ComputeOutCode(float x, float y, float xmin, float xmax, float ymin, flo
 
 // clipping algorithm clips a line from P0 = (x0, y0) to P1 = (x1, y1) against a rectangle with
 // diagonal from (xmin, ymin) to (xmax, ymax).
-void CohenSutherlandLineClipAndDraw(float x0, float y0, float x1, float y1, float xmin, float xmax, float ymin, float ymax, uint8_t pat=SOLID, LcdFlags att=0)
+void CohenSutherlandLineClipAndDraw(float x0, float y0, float x1, float y1, float xmin, float xmax, float ymin, float ymax, uint8_t pat, LcdFlags flags)
 {
   uint8_t outcode0 = ComputeOutCode(x0, y0, xmin, xmax, ymin, ymax);
   uint8_t outcode1 = ComputeOutCode(x1, y1, xmin, xmax, ymin, ymax);
@@ -764,16 +764,16 @@ void CohenSutherlandLineClipAndDraw(float x0, float y0, float x1, float y1, floa
     }
   }
   if (accept) {
-    lcdDrawLine(x0+0.5f, y0+0.5f, x1+0.5f, y1+0.5f, pat, att);
+    lcdDrawLine(x0+0.5f, y0+0.5f, x1+0.5f, y1+0.5f, pat, flags);
   }
 }
 
-void lcdDrawLineWithClipping(coord_t x0, coord_t y0, coord_t x1, coord_t y1, coord_t xmin, coord_t xmax, coord_t ymin, coord_t ymax, uint8_t pat, LcdFlags att)
+void lcdDrawLineWithClipping(coord_t x0, coord_t y0, coord_t x1, coord_t y1, coord_t xmin, coord_t xmax, coord_t ymin, coord_t ymax, uint8_t pat, LcdFlags flags)
 {
-  CohenSutherlandLineClipAndDraw(x0, y0, x1, y1, xmin, xmax, ymin, ymax, pat, att);
+  CohenSutherlandLineClipAndDraw(x0, y0, x1, y1, xmin, xmax, ymin, ymax, pat, flags);
 }
 
-void lcdDrawHudRectangle(float pitch, float roll, coord_t xmin, coord_t xmax, coord_t ymin, coord_t ymax, LcdFlags att)
+void lcdDrawHudRectangle(float pitch, float roll, coord_t xmin, coord_t xmax, coord_t ymin, coord_t ymax, LcdFlags flags)
 {
   constexpr float GRADTORAD = 0.017453293f;
 
@@ -787,10 +787,10 @@ void lcdDrawHudRectangle(float pitch, float roll, coord_t xmin, coord_t xmax, co
   if (roll == 0.0f) { // prevent divide by zero
 	lcdDrawFilledRect(
       xmin, max(ymin, ymin + (coord_t)(ywidth/2 + (int32_t)dy)),
-      xmax - xmin, min(ywidth, ywidth/2 - (int32_t)dy + (dy != 0.0f ? 1 : 0)), SOLID, att);
+      xmax - xmin, min(ywidth, ywidth/2 - (int32_t)dy + (dy != 0.0f ? 1 : 0)), SOLID, flags);
   }
   else if (fabs(roll) >= 180.0f) {
-    lcdDrawFilledRect(xmin, ymin, xmax - xmin, min(ywidth, ywidth/2 + (int32_t)fabsf(dy)), SOLID, att);
+    lcdDrawFilledRect(xmin, ymin, xmax - xmin, min(ywidth, ywidth/2 + (int32_t)fabsf(dy)), SOLID, flags);
   }
   else {
     bool inverted = (fabsf(roll) > 90.0f);
@@ -802,7 +802,7 @@ void lcdDrawHudRectangle(float pitch, float roll, coord_t xmin, coord_t xmax, co
         int32_t yy = ymin + s;
         int32_t xx = ox + ((float)yy - oy) / angle; // + 0.5f; rounding not needed
         if (xx >= xmin && xx <= xmax) {
-        	lcd->drawSolidHorizontalLine(xx, yy, xmax - xx + 1, att);
+       	  lcd->drawSolidHorizontalLine(xx, yy, xmax - xx + 1, flags);
         }
         else if (xx < xmin) {
           ybot = (inverted) ? max(yy, ybot) + 1 : min(yy, ybot);
@@ -815,7 +815,7 @@ void lcdDrawHudRectangle(float pitch, float roll, coord_t xmin, coord_t xmax, co
         int32_t yy = ymin + s;
         int32_t xx = ox + ((float)yy - oy) / angle; // + 0.5f; rounding not needed
         if (xx >= xmin && xx <= xmax) {
-        	lcd->drawSolidHorizontalLine(xmin, yy, xx - xmin, att);
+          lcd->drawSolidHorizontalLine(xmin, yy, xx - xmin, flags);
         }
         else if (xx > xmax) {
           ybot = (inverted) ? max(yy, ybot) + 1 : min(yy, ybot);
@@ -827,7 +827,7 @@ void lcdDrawHudRectangle(float pitch, float roll, coord_t xmin, coord_t xmax, co
     if (fillNeeded) {
       int32_t ytop = (inverted) ? ymin : ybot;
       int32_t height = (inverted) ? ybot - ymin : ymax - ybot;
-      lcdDrawFilledRect(xmin, ytop, xmax - xmin, height, SOLID, att);
+      lcdDrawFilledRect(xmin, ytop, xmax - xmin, height, SOLID, flags);
     }
   }
 }

@@ -265,25 +265,24 @@ inline void lcdDrawBitmapPattern(coord_t x, coord_t y, const uint8_t * img, LcdF
 //THANKS to Adafruit and its GFX library !
 //https://learn.adafruit.com/adafruit-gfx-graphics-library
 
-void lcdDrawCircleQuarter(coord_t x0, coord_t y0, int16_t r, uint8_t corners, LcdFlags att=0);
+void lcdDrawCircleQuarter(coord_t x0, coord_t y0, int16_t r, uint8_t corners, LcdFlags flags=0);
+void lcdFillCircleQuarter(coord_t x0, coord_t y0, int16_t r, uint8_t corners, LcdFlags flags=0);
 
-inline void lcdDrawCircleX(coord_t x0, coord_t y0, int16_t r, LcdFlags att=0)
+inline void lcdDrawCircleX(coord_t x0, coord_t y0, int16_t r, LcdFlags flags=0)
 {
-  lcdDrawCircleQuarter(x0, y0, r, 15, att);
+  lcdDrawCircleQuarter(x0, y0, r, 15, flags);
 }
 
-void lcdFillCircleQuarter(coord_t x0, coord_t y0, int16_t r, uint8_t corners, LcdFlags att=0);
-
-inline void lcdFillCircle(coord_t x0, coord_t y0, int16_t r, LcdFlags att=0)
+inline void lcdFillCircle(coord_t x0, coord_t y0, int16_t r, LcdFlags flags=0)
 {
-  lcdFillCircleQuarter(x0, y0, r, 3, att);
+  lcdFillCircleQuarter(x0, y0, r, 3, flags);
 }
 
-void lcdFillTriangle(coord_t x0, coord_t y0, coord_t x1, coord_t y1, coord_t x2, coord_t y2, LcdFlags att=0);
+void lcdFillTriangle(coord_t x0, coord_t y0, coord_t x1, coord_t y1, coord_t x2, coord_t y2, LcdFlags flags=0);
 
-void lcdDrawLineWithClipping(coord_t x0, coord_t y0, coord_t x1, coord_t y1, coord_t xmin, coord_t xmax, coord_t ymin, coord_t ymax, uint8_t pat=SOLID, LcdFlags att=0);
+void lcdDrawLineWithClipping(coord_t x0, coord_t y0, coord_t x1, coord_t y1, coord_t xmin, coord_t xmax, coord_t ymin, coord_t ymax, uint8_t pat=SOLID, LcdFlags flags=0);
 
-void lcdDrawHudRectangle(float pitch, float roll, coord_t xmin, coord_t xmax, coord_t ymin, coord_t ymax, LcdFlags att=0);
+void lcdDrawHudRectangle(float pitch, float roll, coord_t xmin, coord_t xmax, coord_t ymin, coord_t ymax, LcdFlags flags=0);
 //OWEND
 
 #endif // _LCD_H_
