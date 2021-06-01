@@ -563,7 +563,7 @@ void DMABitmapConvert(uint16_t * dest, const uint8_t * src, uint16_t w, uint16_t
 //THANKS to Adafruit and its GFX library !
 //https://learn.adafruit.com/adafruit-gfx-graphics-library
 
-void lcdDrawCircleQuarter(coord_t x0, coord_t y0, int16_t r, uint8_t corners, LcdFlags att)
+void lcdDrawCircleQuarterADA(coord_t x0, coord_t y0, int16_t r, uint8_t corners, LcdFlags att)
 {
   int16_t f = 1 - r;
   int16_t ddF_x = 1;
@@ -606,7 +606,7 @@ void lcdDrawCircleQuarter(coord_t x0, coord_t y0, int16_t r, uint8_t corners, Lc
   }
 }
 
-void lcdFillCircleQuarter(coord_t x0, coord_t y0, int16_t r, uint8_t corners, LcdFlags att)
+void lcdFillCircleQuarterADA(coord_t x0, coord_t y0, int16_t r, uint8_t corners, LcdFlags att)
 {
   int16_t f = 1 - r;
   int16_t ddF_x = 1;
@@ -649,7 +649,7 @@ void lcdFillCircleQuarter(coord_t x0, coord_t y0, int16_t r, uint8_t corners, Lc
   }
 }
 
-void lcdFillTriangle(coord_t x0, coord_t y0, coord_t x1, coord_t y1, coord_t x2, coord_t y2, LcdFlags flags)
+void lcdDrawFilledTriangle(coord_t x0, coord_t y0, coord_t x1, coord_t y1, coord_t x2, coord_t y2, LcdFlags flags)
 {
   int32_t a, b;
 
@@ -698,7 +698,169 @@ void lcdFillTriangle(coord_t x0, coord_t y0, coord_t x1, coord_t y1, coord_t x2,
   }
 }
 
-// Cohen–Sutherland, see wikipedia
+//from libopenui
+
+void lcdDrawCircleLOUI(coord_t x, coord_t y, coord_t radius, LcdFlags flags)
+{
+  int x1 = radius;
+  int y1 = 0;
+  int decisionOver2 = 1 - x1;
+  while (y1 <= x1) {
+    lcdDrawPoint(x1 + x, y1 + y, flags);
+    lcdDrawPoint(y1 + x, x1 + y, flags);
+    lcdDrawPoint(-x1 + x, y1 + y, flags);
+    lcdDrawPoint(-y1 + x, x1 + y, flags);
+    lcdDrawPoint(-x1 + x, -y1 + y, flags);
+    lcdDrawPoint(-y1 + x, -x1 + y, flags);
+    lcdDrawPoint(x1 + x, -y1 + y, flags);
+    lcdDrawPoint(y1 + x, -x1 + y, flags);
+    y1++;
+    if (decisionOver2 <= 0) {
+      decisionOver2 += 2 * y1 + 1;
+    }
+    else {
+      x1--;
+      decisionOver2 += 2 * (y1 - x1) + 1;
+    }
+  }
+}
+
+void lcdDrawFilledCircleLOUI(coord_t x, coord_t y, coord_t radius, LcdFlags flags)
+{
+  coord_t imax = ((coord_t)((coord_t)radius * 707)) / 1000 + 1;
+  coord_t sqmax = (coord_t)radius * (coord_t)radius + (coord_t)radius / 2;
+  coord_t x1 = radius;
+  lcd->drawSolidHorizontalLine(x - radius, y, radius * 2, flags);
+  for (coord_t i = 1; i <= imax; i++) {
+    if ((i * i + x1 * x1) > sqmax) {
+      // Draw lines from outside
+      if (x1 > imax) {
+          lcd->drawSolidHorizontalLine(x - i + 1, y + x1, (i - 1) * 2, flags);
+          lcd->drawSolidHorizontalLine(x - i + 1, y - x1, (i - 1) * 2, flags);
+      }
+      x1--;
+    }
+    // Draw lines from inside (center)
+    lcd->drawSolidHorizontalLine(x - x1, y + i, x1 * 2, flags);
+    lcd->drawSolidHorizontalLine(x - x1, y - i, x1 * 2, flags);
+  }
+}
+
+class Slope
+{
+  public:
+    explicit Slope(int angle)
+    {
+      if (angle < 0)
+        angle += 360;
+      if (angle > 360)
+        angle %= 360;
+      float radians = float(angle) * (M_PI / 180.0f);
+      if (angle == 0) {
+        left = false;
+        value = 100000;
+      }
+      else if (angle == 360) {
+        left = true;
+        value = 100000;
+      }
+      else if (angle >= 180) {
+        left = true;
+        value = -(cosf(radians) * 100 / sinf(radians));
+      }
+      else {
+        left = false;
+        value = (cosf(radians) * 100 / sinf(radians));
+      }
+    }
+
+    Slope(bool left, int value):
+      left(left),
+      value(value)
+    {
+    }
+
+    bool isBetween(const Slope & start, const Slope & end) const
+    {
+      if (left) {
+        if (start.left) {
+          if (end.left)
+            return end.value > start.value ? (value <= end.value && value >= start.value) : (value <= end.value || value >= start.value);
+          else
+            return value >= start.value;
+        }
+        else {
+          if (end.left)
+            return value <= end.value;
+          else
+            return end.value > start.value;
+        }
+      }
+      else {
+        if (start.left) {
+          if (end.left)
+            return start.value > end.value;
+          else
+            return value >= end.value;
+        }
+        else {
+          if (end.left)
+            return value <= start.value;
+          else
+            return end.value < start.value ? (value >= end.value && value <= start.value) : (value <= start.value || value >= end.value);
+        }
+      }
+    }
+
+    Slope & invertVertical()
+    {
+      value = -value;
+      return *this;
+    }
+
+    Slope & invertHorizontal()
+    {
+      left = !left;
+      return *this;
+    }
+
+  protected:
+    bool left;
+    int value;
+};
+
+void lcdDrawAnnulusSector(coord_t x, coord_t y, coord_t internalRadius, coord_t externalRadius, int startAngle, int endAngle, LcdFlags flags)
+{
+  if (endAngle == startAngle) {
+    endAngle += 1;
+  }
+
+  Slope startSlope(startAngle);
+  Slope endSlope(endAngle);
+
+  coord_t internalDist = internalRadius * internalRadius;
+  coord_t externalDist = externalRadius * externalRadius;
+
+  for (int y1 = 0; y1 <= externalRadius; y1++) {
+    for (int x1 = 0; x1 <= externalRadius; x1++) {
+      int dist = x1 * x1 + y1 * y1;
+      if (dist >= internalDist && dist <= externalDist) {
+        Slope slope(false, x1 == 0 ? 99000 : y1 * 100 / x1);
+        if (slope.isBetween(startSlope, endSlope))
+          lcdDrawPoint(x + x1, y - y1, flags);
+        if (slope.invertVertical().isBetween(startSlope, endSlope))
+          lcdDrawPoint(x + x1, y + y1, flags);
+        if (slope.invertHorizontal().isBetween(startSlope, endSlope))
+          lcdDrawPoint(x - x1, y + y1, flags);
+        if (slope.invertVertical().isBetween(startSlope, endSlope))
+          lcdDrawPoint(x - x1, y - y1, flags);
+      }
+    }
+  }
+}
+
+// lcdDrawLineWithClipping()
+// Cohen-Sutherland, see wikipedia
 
 // Compute the bit code for a point (x, y) using the clip rectangle
 // bounded diagonally by (xmin, ymin), and (xmax, ymax)
