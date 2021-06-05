@@ -237,7 +237,6 @@ static uint16_t VCP_DataRx (uint8_t* Buf, uint32_t Len)
   }
 #endif
 //OWEND
-
   return USBD_OK;
 }
 

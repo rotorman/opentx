@@ -60,7 +60,8 @@ MAVLINK_RAM_SECTION Fifo<uint8_t, 32> mavlinkTelemExternalTxFifo_frame;
 MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> mavlinkTelemExternalTxFifo;
 MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> mavlinkTelemExternalRxFifo;
 
-void extmoduleOn(void){
+void extmoduleOn(void)
+{
   if(g_eeGeneral.mavlinkExternal != 1) GPIO_SetBits(EXTMODULE_PWR_GPIO, EXTMODULE_PWR_GPIO_PIN);
 }
 
@@ -246,7 +247,7 @@ MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> aux2SerialTxFifo;
 MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> mavlinkTelemAux2SerialRxFifo;
 #endif
 
-#if defined(TELEMETRY_MAVLINK_USB_SERIAL)
+#if defined(TELEMETRY_MAVLINK) && defined(USB_SERIAL)
 MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> mavlinkTelemUsbRxFifo;
 #endif
 
