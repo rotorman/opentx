@@ -9,7 +9,6 @@ import os, sys
 #options to set
 
 mavlinkpathtorepository = os.path.join('fastmavlink')
-#mavlinkpathtorepository = r'C:/Users/Olli/Documents/GitHub/fastmavlink'
 
 mavlinkdialect = "opentx.xml"
 
@@ -26,13 +25,25 @@ from generator.modules import fmav_flags as mavflags
 Attention: names must not be longer than 32 chars
 '''
 
+print_warnings = True
+print_verbose = True
+
+def printWarning(txt, warn=True):
+    if not print_warnings: return
+    if not warn: return
+    print(txt)
+
+def printVerbose(txt, verbose=True):
+    if not print_verbose: return
+    if not verbose: return
+    print(txt)
+
 def excludeMessage(msg):
     #return True
     return False
     if msg.name in ['AHRS','ATTITUDE','VIBRATION']: return False
     #if msg.name in ['AHRS']: return False
     return True
-
 
 def cvtInvalidAttr(invalid_str):
     if invalid_str == 'NaN':
@@ -43,14 +54,14 @@ def cvtInvalidAttr(invalid_str):
 def shortenName(name, width):
     nameshort = name[:]
     if len(nameshort) > width:
-        print('WARNING: msg id '+name+' too long')
+        printWarning('WARNING: msg id '+name+' too long')
         nn = str.split(name, '_')
         nameshort = nn[0]+'_'
         for i in range(1,len(nn)-1):
             nameshort += nn[i][:3] + '_'
         nameshort += nn[-1]
         if len(nameshort) > width:
-            print(' ! ! !   msg id too long even after shortening')
+            printWarning(' ! ! !   msg id too long even after shortening')
             nameshort = nameshort[:width]
     return nameshort 
 
@@ -58,14 +69,14 @@ def shortenNameEnum(name, width):
     nameshort = name[:]
     if nameshort[:4] == 'MAV_': nameshort = nameshort[4:]
     if len(nameshort) > width:
-        print('WARNING: msg id '+name+' too long')
+        printWarning('WARNING: msg id '+name+' too long')
         nn = str.split(name, '_')
         nameshort = nn[0]+'_'
         for i in range(1,len(nn)-1):
             nameshort += nn[i][:3]
         nameshort += '_' + nn[-1]
         if len(nameshort) > width:
-            print(' ! ! !   enum field too long even after shortening')
+            printWarning(' ! ! !   enum field too long even after shortening')
             nameshort = nameshort[:width]
     return nameshort 
 
@@ -161,7 +172,7 @@ def generateLuaLibHeaders(dialectname):
     constantsoutname = os.path.splitext(os.path.basename(dialectname))[0] + '_lua_lib_constants.h'
 
     for xml in xml_list:
-        print(xml.basename)
+        printVerbose(xml.basename)
     print("Found %u messages and %u enums in %u XML files" %
         (mavparse.totalNumberOfMessages(xml_list), mavparse.totalNumberOfEnums(xml_list), len(xml_list)))
 
@@ -175,8 +186,8 @@ def generateLuaLibHeaders(dialectname):
             if not enum.name in enums_all_by_name.keys():
                 enums_all_by_name[enum.name] = enum
 
-    print("Messages")
-    print('->',dialectxml.basename)
+    printVerbose("Messages")
+    printVerbose('-> '+dialectxml.basename)
     m = []
     m.append('''//------------------------------------------------------------
 // mavlink messages
@@ -245,8 +256,8 @@ static uint8_t luaMavlinkCheckMsgOut(lua_State *L, fmav_message_t* msg_out)
 ''')
 
     # constants
-    print("Constants")
-    print('->',dialectxml.basename)
+    printVerbose("Constants")
+    printVerbose('-> '+dialectxml.basename)
     s = []
     s.append('''//------------------------------------------------------------
 // mavlink constants
@@ -282,4 +293,19 @@ static uint8_t luaMavlinkCheckMsgOut(lua_State *L, fmav_message_t* msg_out)
 
 if __name__ == "__main__":
     dialectname = os.path.join(mavlinkdialect)
+
+    from argparse import ArgumentParser as AP
+    p = AP(description="Generate fastMAVLink Lua C code for OpenTx from a XML message definition file.")
+    p.add_argument("-nw", "--nowarnings", dest="no_warnings", action='store_true',
+                   default = False, 
+                   help = "Do not print out warnings [default: %(default)s]")
+    p.add_argument("-nv", "--noverbose", dest="no_verbose", action='store_true',
+                   default = False, 
+                   help = "Do not print out verbose [default: %(default)s]")
+    opts = p.parse_args()
+    if opts.no_warnings:
+        print_warnings = False
+    if opts.no_verbose:
+        print_verbose = False
+    
     generateLuaLibHeaders(dialectname)

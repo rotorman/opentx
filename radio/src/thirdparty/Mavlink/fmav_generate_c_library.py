@@ -12,14 +12,10 @@ import sys
 
 #options to set
 
-#mavlinkpathtorepository = os.path.join('..')
-#mavlinkpathtorepository = r'C:/Users/Olli/Documents/GitHub/fastmavlink'
 mavlinkpathtorepository = 'fastmavlink'
 
-#mavlinkdialect = os.path.join('..','..','mavlink','message_definitions','v1.0','all.xml')
 mavlinkdialect = "opentx.xml"
 
-#mavlinkoutputdirectory = os.path.join('..','c_library')
 mavlinkoutputdirectory = 'out'
 
 

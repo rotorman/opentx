@@ -51,7 +51,7 @@ if (TELEMETRY_MAVLINK)
     message(FATAL_ERROR "fmav_generate_c_library.py could not be run: ${FMAV_GENERATE_CLIB_RESULT}")
   endif()
   execute_process(
-    COMMAND ${PYTHON_EXECUTABLE} fmav_generate_lua_lib.py 
+    COMMAND ${PYTHON_EXECUTABLE} fmav_generate_lua_lib.py -nw
     WORKING_DIRECTORY ${RADIO_DIRECTORY}/src/${THIRDPARTY_DIR}/Mavlink
     RESULT_VARIABLE FMAV_GENERATE_LUALIB_RESULT
     )
