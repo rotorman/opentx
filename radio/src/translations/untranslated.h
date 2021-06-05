@@ -138,3 +138,19 @@
 
 #define LEN_AFHDS3_POWERS              "\006"
 #define TR_AFHDS3_POWERS               "25 mW\0""100 mW""500 mW""1 W\0  ""2 W\0  "
+
+//OW
+#define TR_MAVLINK                     "Mavlink"
+#define TR_MAVLINK_RSSI                "Rssi"
+#define TR_MAVLINK_RSSI_SCALE          "Rssi Scale"
+#define TR_MAVLINK_SENSOR_MIMICRY      "Sensor Mimicry"
+#define TR_MAVLINK_RC_OVERRIDE         "RC Override"
+#define LEN_MAVLINK_AUX_SERIAL_MODES   "\015"
+#define TR_MAVLINK_AUX_SERIAL_MODES    "OFF\0         ""Telem Mirror\0""Telemetry In\0""SBUS Trainer\0""LUA\0         ""Mavlink\0     "
+#define TR_MAVLINK_AUX_BAUDRATE        "Mavlink baudrate"
+#define TR_MAVLINK_AUX2_BAUDRATE       "Mavlink baudrate 2"
+#define LEN_MAVLINK_AUX_BAUDRATES      "\006"
+#define TR_MAVLINK_AUX_BAUDRATES       "57600\0""115200""38400\0""19200\0"
+#define TR_MAVLINK_EXTERNAL            "Mavlink external"
+#define TR_USB_MAVLINK                 "USB Mavlink (VCP)"
+//OWEND
