@@ -2,6 +2,8 @@
  * (c) www.olliw.eu, OlliW, OlliW42
  */
 
+#define MAVLINKTELEMVERSIONSTR  OWVERSIONSTR //FIXME: JUST FOR NOW, WILL HAVE TO BE REMOVED  "v27" //OW
+
 #define MAVLINK_RAM_SECTION  __attribute__((section (".ram")))
 
 // -- CoOS RTOS mavlink task handlers --
