@@ -700,6 +700,8 @@ void lcdDrawFilledTriangle(coord_t x0, coord_t y0, coord_t x1, coord_t y1, coord
 
 //from libopenui
 
+
+// seems to produce exactly the same as lcdDrawCircleQuarterADA() for all corners
 void lcdDrawCircleLOUI(coord_t x, coord_t y, coord_t radius, LcdFlags flags)
 {
   int x1 = radius;
@@ -725,6 +727,7 @@ void lcdDrawCircleLOUI(coord_t x, coord_t y, coord_t radius, LcdFlags flags)
   }
 }
 
+// does NOT produce exactly the same as lcdDrawCircleQuarterADA() for all corners, it is a tiny bit smaller radius
 void lcdDrawFilledCircleLOUI(coord_t x, coord_t y, coord_t radius, LcdFlags flags)
 {
   coord_t imax = ((coord_t)((coord_t)radius * 707)) / 1000 + 1;
@@ -844,7 +847,17 @@ void lcdDrawAnnulusSector(coord_t x, coord_t y, coord_t internalRadius, coord_t 
   for (int y1 = 0; y1 <= externalRadius; y1++) {
     for (int x1 = 0; x1 <= externalRadius; x1++) {
       int dist = x1 * x1 + y1 * y1;
+
+      dist += (dist + dist - 1) >> 1; //OW
+
       if (dist >= internalDist && dist <= externalDist) {
+
+          lcdDrawPoint(x + x1, y - y1, flags);
+          lcdDrawPoint(x + x1, y + y1, flags);
+          lcdDrawPoint(x - x1, y + y1, flags);
+          lcdDrawPoint(x - x1, y - y1, flags);
+
+/*
         Slope slope(false, x1 == 0 ? 99000 : y1 * 100 / x1);
         if (slope.isBetween(startSlope, endSlope))
           lcdDrawPoint(x + x1, y - y1, flags);
@@ -854,6 +867,7 @@ void lcdDrawAnnulusSector(coord_t x, coord_t y, coord_t internalRadius, coord_t 
           lcdDrawPoint(x - x1, y + y1, flags);
         if (slope.invertVertical().isBetween(startSlope, endSlope))
           lcdDrawPoint(x - x1, y - y1, flags);
+*/
       }
     }
   }

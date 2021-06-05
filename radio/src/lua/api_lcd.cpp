@@ -416,7 +416,7 @@ Bitmap loading can fail if:
  * System is low on memory
  * Combined memory usage of all Lua script bitmaps exceeds certain value
 
-@param name (string) full path to the bitmap on SD card (i.e. “/IMAGES/test.bmp”)
+@param name (string) full path to the bitmap on SD card (i.e. â€œ/IMAGES/test.bmpâ€�)
 
 @retval bitmap (object) a bitmap object that can be used with other bitmap functions
 
@@ -566,7 +566,7 @@ Draw a bitmap at (x,y)
 
 @param x,y (positive numbers) starting coordinates
 
-@param name (string) full path to the bitmap on SD card (i.e. “/IMAGES/test.bmp”)
+@param name (string) full path to the bitmap on SD card (i.e. â€œ/IMAGES/test.bmpâ€�)
 
 @notice Maximum image size is [display width / 2] x [display height] pixels.
 
