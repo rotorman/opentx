@@ -60,12 +60,15 @@ modified files in radio/src/
     datastructs.h:    3x
     keys.cpp:         2x
     keys.h:           1x
-    main.cpp:         3x
+    main.cpp:         2x
     opentx.cpp:       1x
     opentx.h:         2x
     options.h:        1x
     tasks.cpp:        2x
     tasks.h:          1x
+    translations.cpp: 1x
+    translations.h:   1x
+    CMakeList.txt:    1x
     gui/480x272/bitmap.cpp:          1x
     gui/480x272/bitmap.h:            1x
     gui/480x272/lcd.cpp:             1x
@@ -81,25 +84,27 @@ modified files in radio/src/
     targets/common/arm/stm32/usb_driver.h:           1x
     targets/common/arm/stm32/usbd_cdc.cpp:           1x
     targets/common/arm/stm32/usbd_dec.cpp:           4x
+    targets/horus/board.h:                           1x
     targets/horus/hal.h:                             1x
     targets/horus/lcd_driver.cpp:                    2x
-    targets/horus/telemetry_driver.cpp:              8x
-    targets/horus/CMakeList.txt:                     2x
+    targets/horus/telemetry_driver.cpp:              9x
+    targets/horus/CMakeList.txt:                     4x
     telemetry/telemetry.cpp:         2x
     telemetry/telemetry.h:           1x
     thirdparty/Lua/src/lauxlib.h:    1x
     thirdparty/Lua/src/linit.c:      1x
     thirdparty/Lua/src/lrotable.h:   1x
+    translations/untranslated.h:     1x
 
-added files in radio/src/
-    mavlink_telem_autopilot.cpp
-    mavlink_telem_camera.cpp
-    mavlink_telem_gimbal.cpp
-    mavlink_telem_interface.cpp
-    mavlink_telem_mavapi.cpp
-    mavlink_telem_qshot.cpp
-    mavlink_telem.cpp
-    mavlink_telem.h
+added files
+    telemetry/mavlink/mavlink_telem_autopilot.cpp
+    telemetry/mavlink/mavlink_telem_camera.cpp
+    telemetry/mavlink/mavlink_telem_gimbal.cpp
+    telemetry/mavlink/mavlink_telem_interface.cpp
+    telemetry/mavlink/mavlink_telem_mavapi.cpp
+    telemetry/mavlink/mavlink_telem_qshot.cpp
+    telemetry/mavlink/mavlink_telem.cpp
+    telemetry/mavlink/mavlink_telem.h
     lua/api_mavlink.cpp
     lua/api_mavsdk.cpp
     thirdparty/Mavlink/
