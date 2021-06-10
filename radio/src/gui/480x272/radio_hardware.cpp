@@ -81,7 +81,6 @@ enum MenuRadioHardwareItems {
 #if defined(AUX2_SERIAL)
   ITEM_RADIO_HARDWARE_MAVLINK_BAUDRATE2,
 #endif
-  ITEM_RADIO_HARDWARE_MAVLINK_EXTERNAL,
 #endif
 //OWEND
   ITEM_RADIO_HARDWARE_JITTER_FILTER,
@@ -117,11 +116,6 @@ enum MenuRadioHardwareItems {
   #define MAVLINK_BAUDRATE2_ROW        0,
 #else
   #define MAVLINK_BAUDRATE2_ROW
-#endif
-#if defined(TELEMETRY_MAVLINK)
-  #define MAVLINK_EXTERNAL_ROW         0,
-#else
-  #define MAVLINK_EXTERNAL_ROW
 #endif
 //OWEND
 
@@ -198,7 +192,6 @@ bool menuRadioHardware(event_t event)
 //OW
     MAVLINK_BAUDRATE_ROW
     MAVLINK_BAUDRATE2_ROW
-    MAVLINK_EXTERNAL_ROW
 //OWEND
     0, /* ADC filter */
     READONLY_ROW /* RAS */,
@@ -456,12 +449,6 @@ bool menuRadioHardware(event_t event)
         if (attr && checkIncDec_Ret) {
           aux2SerialInit(g_eeGeneral.aux2SerialMode, modelTelemetryProtocol());
         }
-        break;
-#endif
-#if defined(TELEMETRY_MAVLINK)
-      case ITEM_RADIO_HARDWARE_MAVLINK_EXTERNAL:
-        lcdDrawText(MENUS_MARGIN_LEFT, y, STR_MAVLINK_EXTERNAL);
-        g_eeGeneral.mavlinkExternal = editCheckBox(g_eeGeneral.mavlinkExternal, HW_SETTINGS_COLUMN2, y, attr, event);
         break;
 #endif
 //OWEND

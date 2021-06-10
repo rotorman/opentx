@@ -60,16 +60,6 @@ MAVLINK_RAM_SECTION Fifo<uint8_t, 32> mavlinkTelemExternalTxFifo_frame;
 MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> mavlinkTelemExternalTxFifo;
 MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> mavlinkTelemExternalRxFifo;
 
-void extmoduleOn(void)
-{
-  if(g_eeGeneral.mavlinkExternal != 1) GPIO_SetBits(EXTMODULE_PWR_GPIO, EXTMODULE_PWR_GPIO_PIN);
-}
-
-void extmoduleOff(void)
-{
-  if(g_eeGeneral.mavlinkExternal != 1) GPIO_ResetBits(EXTMODULE_PWR_GPIO, EXTMODULE_PWR_GPIO_PIN);
-}
-
 void extmoduleMavlinkTelemStop(void)
 {
   USART_ITConfig(TELEMETRY_USART, USART_IT_RXNE, DISABLE);

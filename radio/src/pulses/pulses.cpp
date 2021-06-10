@@ -198,6 +198,14 @@ uint8_t getRequiredProtocol(uint8_t module)
       break;
 #endif
 
+//OW
+#if defined(TELEMETRY_MAVLINK)
+    case MODULE_TYPE_MAVLINK:
+      protocol = PROTOCOL_CHANNELS_MAVLINK;
+      break;
+#endif
+//OWEND
+
     default:
       protocol = PROTOCOL_CHANNELS_NONE;
       break;
@@ -289,6 +297,13 @@ void enablePulsesExternalModule(uint8_t protocol)
       break;
 #endif
 
+//OW
+#if defined(TELEMETRY_MAVLINK)
+    case PROTOCOL_CHANNELS_MAVLINK:
+      EXTERNAL_MODULE_ON();
+      break;
+#endif
+//OWEND
 
     default:
       break;

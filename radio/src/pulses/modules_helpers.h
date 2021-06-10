@@ -322,6 +322,15 @@ inline bool isModuleAFHDS3(uint8_t idx)
   return g_model.moduleData[idx].getType() == MODULE_TYPE_AFHDS3;
 }
 
+//OW
+#if defined(TELEMETRY_MAVLINK)
+inline bool isModuleMavlink(uint8_t idx)
+{
+  return idx == EXTERNAL_MODULE && g_model.moduleData[idx].getType() == MODULE_TYPE_MAVLINK;
+}
+#endif
+//OWEND
+
 // order is the same as in enum Protocols in myeeprom.h (none, ppm, pxx, pxx2, dsm, crossfire, multi, r9m, r9m2, sbus)
 //qba667 count is not matching!
 static const int8_t maxChannelsModules[] = { 0, 8, 8, 16, -2, 8, 4, 8, 16, 8, 10}; // relative to 8!

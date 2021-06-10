@@ -87,6 +87,12 @@ bool isModuleSynchronous(uint8_t moduleIdx)
   if (protocol == PROTOCOL_CHANNELS_PXX1_SERIAL)
     return true;
 #endif
+//OW
+#if defined(TELEMETRY_MAVLINK)
+  if (protocol == PROTOCOL_CHANNELS_MAVLINK)
+    return true; //must be true since otherwise setupPulsesExternalModule() is not called, and it will crash
+#endif
+//OWEND
   return false;
 }
 

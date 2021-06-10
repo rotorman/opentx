@@ -484,8 +484,23 @@ PACK(struct ModuleData {
     rfProtocol = (uint8_t) (proto & 0x0F);
     multi.rfProtocolExtra = (proto & 0x70) >> 4;
   })
+//OW
+#if defined(TELEMETRY_MAVLINK)
+  uint8_t typeExtraBits:4; // extension bits
+
+  NOBACKUP(uint8_t getType(void) {
+    return (uint8_t)type4Bits + ((uint8_t)typeExtraBits << 4);
+  })
+
+  NOBACKUP(void setType(uint8_t _type) {
+    type4Bits = (_type & 0x0F); // lower 4 bits
+    typeExtraBits = (_type & 0xF0) >> 4; // extension bits
+  })
+#else
   NOBACKUP(inline uint8_t getType(void) { return (uint8_t)type4Bits; })
   NOBACKUP(inline void setType(uint8_t _type) { type4Bits = _type; })
+#endif
+//OWEND
 });
 
 /*
@@ -634,12 +649,12 @@ PACK(struct ModelData {
 #if defined(TELEMETRY_MAVLINK)
   uint16_t _mavlinkEnabled:1; // currently not used
   uint16_t mavlinkRssi:1;
-  uint16_t _mavlinkDummy:2; // currently not used
+  uint16_t _mavlinkSpare:2;
   uint16_t mavlinkMimicSensors:3; // currently just off/on, but allow e.g. FrSky, CF, FrSky passthrough.
   uint16_t mavlinkRcOverride:1;
   uint16_t _mavlinkGpsIcon:1; // currently not used
   uint8_t  mavlinkRssiScale;
-  uint8_t  _mavlinkDummy2; // currently not used
+  uint8_t  _mavlinkSpare2;
   // needs to adapt CHKSIZE below //if not all are use compiled optiomizes to lowest size, which may raise error
 #endif
 //OWEND
@@ -842,8 +857,7 @@ PACK(struct RadioData {
 #if defined(TELEMETRY_MAVLINK)
   uint16_t mavlinkBaudrate:3;
   uint16_t mavlinkBaudrate2:3;
-  uint16_t mavlinkExternal:2;
-  uint16_t mavlinkDummy:8;
+  uint16_t _mavlinkSpare:10;
   // needs to adapt CHKSIZE below
 #endif
 //OWEND
@@ -957,7 +971,14 @@ static inline void check_struct()
 
   CHKSIZE(LogicalSwitchData, 9);
   CHKSIZE(TelemetrySensor, 14);
+//OW
+//  CHKSIZE(ModuleData, 29);
+#if defined(TELEMETRY_MAVLINK)
+  CHKSIZE(ModuleData, 29+1);
+#else
   CHKSIZE(ModuleData, 29);
+#endif
+//OWEND
   CHKSIZE(GVarData, 7);
   CHKSIZE(RssiAlarmData, 2);
   CHKSIZE(TrainerData, 16);
@@ -986,7 +1007,7 @@ static inline void check_struct()
 //  CHKSIZE(ModelData, 9736);
 #if defined(TELEMETRY_MAVLINK)
   CHKSIZE(RadioData, 881+2);
-  CHKSIZE(ModelData, 9736+4);
+  CHKSIZE(ModelData, 9736+4+2); //2 from extending ModuleData, 4 from extending ModelData
 #else
   CHKSIZE(RadioData, 881);
   CHKSIZE(ModelData, 9736);

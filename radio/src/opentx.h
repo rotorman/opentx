@@ -32,6 +32,7 @@
 //OWEND
 
 /*
+ext rf module mavlink, poweron/off sorted
 backport of some good stuff from etx2.4 pr
 update mavlink, fastmavlink, have invalid attr
 correct power handling for SPort bidirectional
@@ -114,6 +115,12 @@ TODO:
 - TELEMETRY_USART_IRQHandler: optimize, USART_xxx() functions are not very efficient
 - mavlink router: wipeout&reassign when link changes? wipeout after timeout?
 
+//OW
+#if defined(TELEMETRY_MAVLINK)
+#endif
+//OWEND
+
+
 COMMENTS:
 perMain() in main.cpp, where GPS is:
   it seems it is called at 20 Hz or 50 ms
@@ -147,6 +154,26 @@ INTERNAL_GPS MIXSRC_TX_GPS
 BLUETOOTH
 TELEMETRY_MAVLINK   TELEMETRY_MAVLINK_USB_SERIAL  USB_SERIAL  DEBUG  AUX_SERIAL  AUX2_SERIAL  CLI
 T16 TX16S T18 X10
+
+external
+problem is: the moduleData.type is only 4 bits, and there are already 16 modules, so one can't go the native way
+the "simplest" would be to just increase but this would break storage format
+thus, idea: add some more bits somewhere else so as to not break storage compatibility
+the type is then made up by fusing the 4 original bits with the new bits, effectively extending size
++ add setter getter to struct and ensure that the type is never used directly but only through the
+I now see: this kind of trick was in fact used before for rfProtocolExtra LOL
+
+moduleData[idx].type
+MULTIMODULE
+ITEM_MODEL_SETUP_EXTERNAL_MODULE_TYPE
+STR_EXTERNAL_MODULE_PROTOCOLS
+TelemetryProtocol
+setModuleType(uint8_t moduleIdx, uint8_t moduleType)
+EXTERNAL_MODULE
+
+enablePulsesExternalModule()
+extmoduleSerialStart()
+extmoduleStop()
 
 rssi
 telemetryData.rssi

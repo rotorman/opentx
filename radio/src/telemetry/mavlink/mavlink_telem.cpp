@@ -422,7 +422,7 @@ void MavlinkTelem::wakeup()
 #else
   bool usb_enabled = false;
 #endif
-  bool external_enabled = (g_eeGeneral.mavlinkExternal == 1) && !s_pulses_paused;
+  bool external_enabled = (isModuleMavlink(EXTERNAL_MODULE)) && !s_pulses_paused;
 
   if ((_aux1_enabled != aux1_enabled) || (_aux2_enabled != aux2_enabled) ||
       (_aux1_baudrate != g_eeGeneral.mavlinkBaudrate) || (_aux2_baudrate != g_eeGeneral.mavlinkBaudrate2) ||
@@ -606,7 +606,6 @@ void MavlinkTelem::_reset(void)
 #if !defined(AUX2_SERIAL)
   if (g_eeGeneral.aux2SerialMode == UART_MODE_MAVLINK) g_eeGeneral.aux2SerialMode = UART_MODE_NONE_OR_DEBUG;
 #endif
-  if (g_eeGeneral.mavlinkExternal > 1) g_eeGeneral.mavlinkExternal = 0;
 
   _my_sysid = MAVLINK_TELEM_MY_SYSID;
   _my_compid = MAVLINK_TELEM_MY_COMPID;
