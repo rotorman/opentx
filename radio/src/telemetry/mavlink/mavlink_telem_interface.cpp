@@ -74,12 +74,12 @@ void extmoduleMavlinkTelemStop(void)
   USART_DeInit(TELEMETRY_USART);
   DMA_DeInit(TELEMETRY_DMA_Stream_TX);
 
-  GPIO_ResetBits(EXTMODULE_PWR_GPIO, EXTMODULE_PWR_GPIO_PIN); //EXTERNAL_MODULE_OFF();
+  EXTERNAL_MODULE_OFF();
 }
 
 void extmoduleMavlinkTelemStart(void)
 {
-  GPIO_SetBits(EXTMODULE_PWR_GPIO, EXTMODULE_PWR_GPIO_PIN); //EXTERNAL_MODULE_ON();
+  EXTERNAL_MODULE_ON();
 
   // we don't want or need all this
   NVIC_DisableIRQ(TELEMETRY_EXTI_IRQn);
