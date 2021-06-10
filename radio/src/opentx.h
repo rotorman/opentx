@@ -28,10 +28,11 @@
 #include "opentx_helpers.h"
 
 //OW
-#define OWVERSIONSTR  "v27"
+#define OWVERSIONSTR  "v28rc01"
 //OWEND
 
 /*
+v27 2021-06-10
 ext rf module mavlink, poweron/off sorted
 backport of some good stuff from etx2.4 pr
 update mavlink, fastmavlink, have invalid attr
