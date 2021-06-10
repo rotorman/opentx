@@ -225,12 +225,12 @@ enum TrainerMode {
 #endif
 
 #if defined(HARDWARE_INTERNAL_MODULE)
-  #define IS_INTERNAL_MODULE_ENABLED() (g_model.moduleData[INTERNAL_MODULE].type != MODULE_TYPE_NONE)
+  #define IS_INTERNAL_MODULE_ENABLED() (g_model.moduleData[INTERNAL_MODULE].getType() != MODULE_TYPE_NONE)
 #else
   #define IS_INTERNAL_MODULE_ENABLED() (false)
 #endif
 
-#define IS_EXTERNAL_MODULE_ENABLED() (g_model.moduleData[EXTERNAL_MODULE].type != MODULE_TYPE_NONE)
+#define IS_EXTERNAL_MODULE_ENABLED() (g_model.moduleData[EXTERNAL_MODULE].getType() != MODULE_TYPE_NONE)
 
 #if defined(HARDWARE_INTERNAL_MODULE)
   #define IS_MODULE_ENABLED(moduleIdx)         (moduleIdx==INTERNAL_MODULE ? IS_INTERNAL_MODULE_ENABLED() : moduleIdx==EXTERNAL_MODULE ? IS_EXTERNAL_MODULE_ENABLED() : false)

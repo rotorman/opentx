@@ -93,7 +93,7 @@ void setModuleMode(int moduleIndex, ModuleSettingsMode mode)
 
 uint8_t getModuleType(uint8_t module)
 {
-  uint8_t type = g_model.moduleData[module].type;
+  uint8_t type = g_model.moduleData[module].getType();
 
 #if defined(HARDWARE_INTERNAL_MODULE)
   if (module == INTERNAL_MODULE && isInternalModuleAvailable(type)) {

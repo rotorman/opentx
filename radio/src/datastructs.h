@@ -408,7 +408,8 @@ PACK(struct TrainerModuleData {
 #define MM_RF_CUSTOM_SELECTED 0xff
 #define MULTI_MAX_PROTOCOLS 127 //  rfProtocol:4 +  rfProtocolExtra:3
 PACK(struct ModuleData {
-  uint8_t type:4;
+//  uint8_t type:4;
+  uint8_t type4Bits:4; //we rename it to catch all occurences
   // TODO some refactoring is needed, rfProtocol is only used by DSM2 and MULTI, it could be merged with subType
   int8_t  rfProtocol:4;
   uint8_t channelsStart;
@@ -483,6 +484,8 @@ PACK(struct ModuleData {
     rfProtocol = (uint8_t) (proto & 0x0F);
     multi.rfProtocolExtra = (proto & 0x70) >> 4;
   })
+  NOBACKUP(inline uint8_t getType(void) { return (uint8_t)type4Bits; })
+  NOBACKUP(inline void setType(uint8_t _type) { type4Bits = _type; })
 });
 
 /*
