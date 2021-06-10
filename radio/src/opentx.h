@@ -58,14 +58,14 @@ one needs to run mavgenerate_dialect.py to generate the mavlink c code files
 modified files in radio/src/
 
     dataconstants.h:  1x
-    datastructs.h:    3x
+    datastructs.h:    5x
     keys.cpp:         2x
     keys.h:           1x
     main.cpp:         2x
     opentx.cpp:       1x
     opentx.h:         2x
     options.h:        1x
-    tasks.cpp:        2x
+    tasks.cpp:        3x
     tasks.h:          1x
     translations.cpp: 1x
     translations.h:   1x
@@ -77,9 +77,14 @@ modified files in radio/src/
     gui/480x272/model_setup.cpp:     3x
     gui/480x272/radio_hardware.cpp:  6x
     gui/480x272/topbar.cpp:          2x
-    gui/gui_common.cpp:              2x
-    lua/api_general.cpp:    3x
-    lua/api_lcd.cpp:        2x
+    gui/gui_common.cpp:              3x
+    gui/gui_common.h:                1x
+    lua/api_general.cpp:             3x
+    lua/api_lcd.cpp:                 2x
+    pulses/modules_constants.h:      1x
+    pulses/modules_helpers.h:        1x
+    pulses/pulses.cpp:               2x
+    pulses/pulses.h:                 1x
     targets/common/arm/stm32/aux_serial_driver.cpp:  8x
     targets/common/arm/stm32/usb_driver.cpp:         1x
     targets/common/arm/stm32/usb_driver.h:           1x
@@ -95,7 +100,7 @@ modified files in radio/src/
     thirdparty/Lua/src/lauxlib.h:    1x
     thirdparty/Lua/src/linit.c:      1x
     thirdparty/Lua/src/lrotable.h:   1x
-    translations/untranslated.h:     1x
+    translations/untranslated.h:     2x
 
 added files
     telemetry/mavlink/mavlink_telem_autopilot.cpp
