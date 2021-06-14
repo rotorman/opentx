@@ -32,6 +32,7 @@
 //OWEND
 
 /*
+upgraded to otx2.3.12 as base
 v27 2021-06-10
 ext rf module mavlink, poweron/off sorted
 backport of some good stuff from etx2.4 pr
