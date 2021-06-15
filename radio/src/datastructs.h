@@ -665,7 +665,7 @@ PACK(struct ModelData {
   uint16_t _mavlinkGpsIcon:1; // currently not used
   uint8_t  mavlinkRssiScale;
   uint8_t  _mavlinkSpare2;
-  // needs to adapt CHKSIZE below //if not all are use compiled optiomizes to lowest size, which may raise error
+  // needs to adapt CHKSIZE below //if not all are used compile optimizes to lowest size, which may raise error
 #endif
 //OWEND
 

@@ -1,6 +1,7 @@
 /*
-* (c) www.olliw.eu, OlliW, OlliW42
-*/
+ * The MAVLink for OpenTx project
+ * (c) www.olliw.eu, OlliW, OlliW42
+ */
 
 #include "opentx.h"
 
