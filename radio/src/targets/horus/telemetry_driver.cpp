@@ -30,7 +30,7 @@ uint8_t telemetryFifoMode;
 
 //OW
 extern Fifo<uint8_t, 32> mavlinkTelemExternalTxFifo_frame;
-extern Fifo<uint8_t, 2*512> mavlinkTelemExternalRxFifo;
+extern Fifo<uint8_t, 1024> mavlinkTelemExternalRxFifo;
 //OWEND
 
 static void telemetryInitDirPin()

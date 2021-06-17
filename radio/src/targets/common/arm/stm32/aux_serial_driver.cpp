@@ -26,7 +26,7 @@ uint8_t auxSerialMode = UART_MODE_COUNT;  // Prevent debug output before port is
 //OW
 //Fifo<uint8_t, 512> auxSerialTxFifo;
 #if !defined(TELEMETRY_MAVLINK)
-Fifo<uint8_t, 512> auxSerialTxFifo;
+Fifo<uint8_t, 1024> auxSerialTxFifo;
 #endif
 //OWEND
 AuxSerialRxFifo auxSerialRxFifo __DMA (AUX_SERIAL_DMA_Stream_RX);
@@ -259,7 +259,7 @@ uint8_t aux2SerialMode = UART_MODE_COUNT;  // Prevent debug output before port i
 //OW
 //Fifo<uint8_t, 512> aux2SerialTxFifo;
 #if !defined(TELEMETRY_MAVLINK)
-Fifo<uint8_t, 512> aux2SerialTxFifo;
+Fifo<uint8_t, 1024> aux2SerialTxFifo;
 #endif
 //OWEND
 AuxSerialRxFifo aux2SerialRxFifo __DMA (AUX2_SERIAL_DMA_Stream_RX);

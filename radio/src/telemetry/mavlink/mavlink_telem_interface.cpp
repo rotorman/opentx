@@ -58,8 +58,8 @@ void mavlinkStart()
 // we essentially redo everything from scratch
 
 MAVLINK_RAM_SECTION Fifo<uint8_t, 32> mavlinkTelemExternalTxFifo_frame;
-MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> mavlinkTelemExternalTxFifo;
-MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> mavlinkTelemExternalRxFifo;
+MAVLINK_RAM_SECTION Fifo<uint8_t, 1024> mavlinkTelemExternalTxFifo;
+MAVLINK_RAM_SECTION Fifo<uint8_t, 1024> mavlinkTelemExternalRxFifo;
 
 void extmoduleMavlinkTelemStop(void)
 {
@@ -229,17 +229,17 @@ uint32_t mavlinkTelemAux2Baudrate(void)
 }
 
 #if defined(AUX_SERIAL)
-MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> auxSerialTxFifo;
-MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> mavlinkTelemAuxSerialRxFifo;
+MAVLINK_RAM_SECTION Fifo<uint8_t, 1024> auxSerialTxFifo;
+MAVLINK_RAM_SECTION Fifo<uint8_t, 1024> mavlinkTelemAuxSerialRxFifo;
 #endif
 
 #if defined(AUX2_SERIAL)
-MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> aux2SerialTxFifo;
-MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> mavlinkTelemAux2SerialRxFifo;
+MAVLINK_RAM_SECTION Fifo<uint8_t, 1024> aux2SerialTxFifo;
+MAVLINK_RAM_SECTION Fifo<uint8_t, 1024> mavlinkTelemAux2SerialRxFifo;
 #endif
 
 #if defined(TELEMETRY_MAVLINK) && defined(USB_SERIAL)
-MAVLINK_RAM_SECTION Fifo<uint8_t, 2*512> mavlinkTelemUsbRxFifo;
+MAVLINK_RAM_SECTION Fifo<uint8_t, 1024> mavlinkTelemUsbRxFifo;
 #endif
 
 #if defined(AUX_SERIAL)

@@ -20,23 +20,23 @@ uint32_t mavlinkTelemAuxBaudrate(void);
 uint32_t mavlinkTelemAux2Baudrate(void);
 
 #if defined(AUX_SERIAL)
-extern Fifo<uint8_t, 2*512> auxSerialTxFifo;
-extern Fifo<uint8_t, 2*512> mavlinkTelemAuxSerialRxFifo;
+extern Fifo<uint8_t, 1024> auxSerialTxFifo;
+extern Fifo<uint8_t, 1024> mavlinkTelemAuxSerialRxFifo;
 #endif
 
 #if defined(AUX2_SERIAL)
-extern Fifo<uint8_t, 2*512> aux2SerialTxFifo;
-extern Fifo<uint8_t, 2*512> mavlinkTelemAux2SerialRxFifo;
+extern Fifo<uint8_t, 1024> aux2SerialTxFifo;
+extern Fifo<uint8_t, 1024> mavlinkTelemAux2SerialRxFifo;
 #endif
 
 #if defined(TELEMETRY_MAVLINK) && defined(USB_SERIAL)
-extern Fifo<uint8_t, 2*512> mavlinkTelemUsbRxFifo;
+extern Fifo<uint8_t, 1024> mavlinkTelemUsbRxFifo;
 #endif
 
 //TODO: since we want to allow only 2 channels max, this is memory waste,
 //i.e., we should just have 2 instead of three Fifos.
 extern Fifo<uint8_t, 32> mavlinkTelemExternalTxFifo_frame;
-extern Fifo<uint8_t, 2*512> mavlinkTelemExternalRxFifo;
+extern Fifo<uint8_t, 1024> mavlinkTelemExternalRxFifo;
 
 void mavlinkTelemExternal_init(bool flag);
 void mavlinkTelemExternal_wakeup(void);
