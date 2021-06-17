@@ -18,15 +18,6 @@
  * GNU General Public License for more details.
  */
 
-#pragma once
-
-#include <stdlib.h>
-#include "definitions.h"
-#include "opentx_types.h"
-#include "debounce.h"
-#include "globals.h"
-#include "opentx_helpers.h"
-
 //OW
 #define OWVERSIONSTR  "v28rc01"
 //OWEND
@@ -282,6 +273,14 @@ gps_driver.cpp
 telemetry_driver.cpp
 */
 
+#pragma once
+
+#include <stdlib.h>
+#include "definitions.h"
+#include "opentx_types.h"
+#include "debounce.h"
+#include "globals.h"
+#include "opentx_helpers.h"
 
 #if defined(SIMU)
 #include "targets/simu/simpgmspace.h"
