@@ -210,6 +210,7 @@ extern "C" void AUX_SERIAL_USART_IRQHandler(void)
 //OW
 #if defined(TELEMETRY_MAVLINK)
   if (auxSerialMode == UART_MODE_MAVLINK) {
+    // Receive
     if (USART_GetITStatus(AUX_SERIAL_USART, USART_IT_RXNE) != RESET) {
       USART_ClearITPendingBit(AUX_SERIAL_USART, USART_IT_RXNE);
       uint8_t c = USART_ReceiveData(AUX_SERIAL_USART);
@@ -443,6 +444,7 @@ extern "C" void AUX2_SERIAL_USART_IRQHandler(void)
 //OW
 #if defined(TELEMETRY_MAVLINK)
   if (aux2SerialMode == UART_MODE_MAVLINK) {
+    // Receive
     if (USART_GetITStatus(AUX2_SERIAL_USART, USART_IT_RXNE) != RESET) {
       USART_ClearITPendingBit(AUX2_SERIAL_USART, USART_IT_RXNE);
       uint8_t c = USART_ReceiveData(AUX2_SERIAL_USART);

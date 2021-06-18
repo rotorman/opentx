@@ -716,13 +716,6 @@ bool isExternalModuleAvailable(int moduleType)
     return false;
 #endif
 
-//OW
-#if !defined(TELEMETRY_MAVLINK)
-  if (moduleType == MODULE_TYPE_MAVLINK)
-    return false;
-#endif
-//OWEND
-
   return true;
 }
 

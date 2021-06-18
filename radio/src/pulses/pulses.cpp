@@ -327,7 +327,7 @@ void enablePulsesExternalModule(uint8_t protocol)
     case PROTOCOL_CHANNELS_MAVLINK:
       EXTERNAL_MODULE_ON();
       extmoduleMavlinkTelemStart();
-      // TODO: mixerSchedulerSetPeriod() needed??
+      // TODO: mixerSchedulerSetPeriod() needed?? I think no, is reset by stop()
       break;
 #endif
 //OWEND

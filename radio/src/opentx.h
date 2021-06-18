@@ -51,7 +51,7 @@ one needs to run mavgenerate_dialect.py to generate the mavlink c code files
 modified files in radio/src/
 
     dataconstants.h:  1x
-    datastructs.h:    5x
+    datastructs.h:    6x
     keys.cpp:         2x
     keys.h:           1x
     main.cpp:         2x
@@ -70,7 +70,7 @@ modified files in radio/src/
     gui/480x272/model_setup.cpp:     3x
     gui/480x272/radio_hardware.cpp:  6x
     gui/480x272/topbar.cpp:          2x
-    gui/gui_common.cpp:              3x
+    gui/gui_common.cpp:              2x
     gui/gui_common.h:                1x
     lua/api_general.cpp:             3x
     lua/api_lcd.cpp:                 2x
@@ -83,12 +83,11 @@ modified files in radio/src/
     targets/common/arm/stm32/usb_driver.h:           1x
     targets/common/arm/stm32/usbd_cdc.cpp:           1x
     targets/common/arm/stm32/usbd_dec.cpp:           4x
-    targets/horus/board.h:                           1x
+    targets/horus/extmodule_driver.cpp:              1x
     targets/horus/hal.h:                             1x
-    targets/horus/lcd_driver.cpp:                    2x
     targets/horus/telemetry_driver.cpp:              9x
     targets/horus/CMakeList.txt:                     4x
-    telemetry/telemetry.cpp:         2x
+    telemetry/telemetry.cpp:         3x
     telemetry/telemetry.h:           1x
     thirdparty/Lua/src/lauxlib.h:    1x
     thirdparty/Lua/src/linit.c:      1x
