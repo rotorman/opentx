@@ -87,7 +87,7 @@ modified files in radio/src/
     targets/horus/hal.h:                             1x
     targets/horus/telemetry_driver.cpp:              9x
     targets/horus/CMakeList.txt:                     4x
-    telemetry/telemetry.cpp:         3x
+    telemetry/telemetry.cpp:         2x
     telemetry/telemetry.h:           1x
     thirdparty/Lua/src/lauxlib.h:    1x
     thirdparty/Lua/src/linit.c:      1x
