@@ -19,10 +19,11 @@
  */
 
 //OW
-#define OWVERSIONSTR  "v28rc01"
+#define OWVERSIONSTR  "v28rc02"
 //OWEND
 
 /*
+module mavlink handling even further improved
 upgraded to otx2.3.12 as base
 v27 2021-06-10
 ext rf module mavlink, poweron/off sorted
