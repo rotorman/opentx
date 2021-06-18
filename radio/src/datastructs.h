@@ -657,14 +657,12 @@ PACK(struct ModelData {
 
 //OW
 #if defined(TELEMETRY_MAVLINK)
-  uint16_t _mavlinkEnabled:1; // currently not used
   uint16_t mavlinkRssi:1;
-  uint16_t _mavlinkSpare:2;
   uint16_t mavlinkMimicSensors:3; // currently just off/on, but allow e.g. FrSky, CF, FrSky passthrough.
   uint16_t mavlinkRcOverride:1;
-  uint16_t _mavlinkGpsIcon:1; // currently not used
+  uint16_t mavlinkSpare1:11;
   uint8_t  mavlinkRssiScale;
-  uint8_t  _mavlinkSpare2;
+  uint8_t  mavlinkSpare2;
   // needs to adapt CHKSIZE below //if not all are used compile optimizes to lowest size, which may raise error
 #endif
 //OWEND
@@ -867,7 +865,7 @@ PACK(struct RadioData {
 #if defined(TELEMETRY_MAVLINK)
   uint16_t mavlinkBaudrate:3;
   uint16_t mavlinkBaudrate2:3;
-  uint16_t _mavlinkSpare:10;
+  uint16_t mavlinkSpare:10;
   // needs to adapt CHKSIZE below
 #endif
 //OWEND
@@ -1017,7 +1015,7 @@ static inline void check_struct()
 //  CHKSIZE(ModelData, 9736);
 #if defined(TELEMETRY_MAVLINK)
   CHKSIZE(RadioData, 881+2);
-  CHKSIZE(ModelData, 9736+4+2); //2 from extending ModuleData, 4 from extending ModelData
+  CHKSIZE(ModelData, 9736+4+NUM_MODULES);
 #else
   CHKSIZE(RadioData, 881);
   CHKSIZE(ModelData, 9736);
