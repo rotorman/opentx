@@ -38,7 +38,8 @@ extern Fifo<uint8_t, 1024> mavlinkTelemUsbRxFifo;
 extern Fifo<uint8_t, 32> mavlinkTelemExternalTxFifo_frame;
 extern Fifo<uint8_t, 1024> mavlinkTelemExternalRxFifo;
 
-void mavlinkTelemExternal_init(bool flag);
+void extmoduleMavlinkTelemStop(void);
+void extmoduleMavlinkTelemStart(void);
 void mavlinkTelemExternal_wakeup(void);
 
 uint32_t mavlinkTelem1Available(void);

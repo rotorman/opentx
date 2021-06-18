@@ -326,6 +326,8 @@ void enablePulsesExternalModule(uint8_t protocol)
 #if defined(TELEMETRY_MAVLINK)
     case PROTOCOL_CHANNELS_MAVLINK:
       EXTERNAL_MODULE_ON();
+      extmoduleMavlinkTelemStart();
+      // TODO: mixerSchedulerSetPeriod() needed??
       break;
 #endif
 //OWEND

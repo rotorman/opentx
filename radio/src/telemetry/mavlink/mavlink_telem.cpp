@@ -433,7 +433,6 @@ void MavlinkTelem::wakeup()
     _aux1_baudrate = g_eeGeneral.mavlinkBaudrate;
     _aux2_baudrate = g_eeGeneral.mavlinkBaudrate2;
     _external_enabled = external_enabled;
-    mavlinkTelemExternal_init(external_enabled);
     map_serials();
     _reset();
   }

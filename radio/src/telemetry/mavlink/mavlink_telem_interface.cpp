@@ -56,6 +56,7 @@ void mavlinkStart()
 
 // -- EXTERNAL BAY SERIAL handlers --
 // we essentially redo everything from scratch
+// it is a bit of a tricky thing since we use the telemetry uart and not the module uart
 
 MAVLINK_RAM_SECTION Fifo<uint8_t, 32> mavlinkTelemExternalTxFifo_frame;
 MAVLINK_RAM_SECTION Fifo<uint8_t, 1024> mavlinkTelemExternalTxFifo;
@@ -75,12 +76,12 @@ void extmoduleMavlinkTelemStop(void)
   USART_DeInit(TELEMETRY_USART);
   DMA_DeInit(TELEMETRY_DMA_Stream_TX);
 
-  EXTERNAL_MODULE_OFF();
+  //EXTERNAL_MODULE_OFF();
 }
 
 void extmoduleMavlinkTelemStart(void)
 {
-  EXTERNAL_MODULE_ON();
+  //EXTERNAL_MODULE_ON();
 
   // we don't want or need all this
   NVIC_DisableIRQ(TELEMETRY_EXTI_IRQn);
@@ -112,7 +113,6 @@ void extmoduleMavlinkTelemStart(void)
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
   GPIO_Init(TELEMETRY_GPIO, &GPIO_InitStructure);
 
-  // is it called already? through telemetryInit() -> telemetryPortInit(FRSKY_SPORT_BAUDRATE) -> telemetryInitDirPin()
   GPIO_InitStructure.GPIO_Pin   = TELEMETRY_DIR_GPIO_PIN;
   GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_OUT;
   GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
@@ -136,19 +136,6 @@ void extmoduleMavlinkTelemStart(void)
   USART_ITConfig(TELEMETRY_USART, USART_IT_TXE, DISABLE);
   NVIC_SetPriority(TELEMETRY_USART_IRQn, 6);
   NVIC_EnableIRQ(TELEMETRY_USART_IRQn);
-}
-
-void mavlinkTelemExternal_init(bool flag)
-{
-  if (flag) {
-    extmoduleStop(); //??? good or bad
-    // this overrides ext module settings, so nothing else to do
-    extmoduleMavlinkTelemStart();
-  }
-  else {
-    extmoduleMavlinkTelemStop();
-    //TODO: we should re-enable an external module if one is configured
-  }
 }
 
 // this must be called regularly, at 2 ms
