@@ -163,6 +163,5 @@
 #define TR_MAVLINK_AUX2_BAUDRATE       "Mavlink baudrate 2"
 #define LEN_MAVLINK_AUX_BAUDRATES      "\006"
 #define TR_MAVLINK_AUX_BAUDRATES       "57600\0""115200""38400\0""19200\0"
-#define TR_MAVLINK_EXTERNAL            "Mavlink external"
 #define TR_USB_MAVLINK                 "USB Mavlink (VCP)"
 //OWEND
