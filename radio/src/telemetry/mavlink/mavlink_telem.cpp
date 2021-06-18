@@ -423,7 +423,7 @@ void MavlinkTelem::wakeup()
 #else
   bool usb_enabled = false;
 #endif
-  bool external_enabled = (isModuleMavlink(EXTERNAL_MODULE)) && !s_pulses_paused;
+  bool external_enabled = isModuleMavlink(EXTERNAL_MODULE);
 
   if ((_aux1_enabled != aux1_enabled) || (_aux2_enabled != aux2_enabled) ||
       (_aux1_baudrate != g_eeGeneral.mavlinkBaudrate) || (_aux2_baudrate != g_eeGeneral.mavlinkBaudrate2) ||
@@ -442,7 +442,7 @@ void MavlinkTelem::wakeup()
     fmav_router_clearout_link(3);
   }
 
-  if (external_enabled) mavlinkTelemExternal_wakeup();
+  if (moduleState[EXTERNAL_MODULE].protocol == PROTOCOL_CHANNELS_MAVLINK) mavlinkTelemExternal_wakeup();
 
   // skip out if not one of the serial1, serial2 is enabled
   if (!serial1_enabled && !serial1_enabled) return;
