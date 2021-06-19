@@ -1,31 +1,13 @@
 /*
- * Copyright (C) OpenTX
- *
- * Based on code named
- *   th9x - http://code.google.com/p/th9x
- *   er9x - http://code.google.com/p/er9x
- *   gruvin9x - http://code.google.com/p/gruvin9x
- *
- * License GPLv2: http://www.gnu.org/licenses/gpl-2.0.html
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- */
-/*
- *  (c) www.olliw.eu, OlliW, OlliW42
+ * The MAVLink for OpenTx project
+ * (c) www.olliw.eu, OlliW, OlliW42
  */
 
 #include <ctype.h>
 #include <stdio.h>
 #include "opentx.h"
 #include "lua_api.h"
-#include "thirdparty/Mavlink/out/opentx/mavlink.h"
+
 
 constexpr float FPI = 3.141592653589793f;
 constexpr float FDEGTORAD = FPI/180.0f;
@@ -410,14 +392,14 @@ static int luaMavsdkCameraTakePhoto(lua_State *L)
 
 static int luaMavsdkMavTelemIsEnabled(lua_State *L)
 {
-  bool flag = (g_eeGeneral.auxSerialMode == UART_MODE_MAVLINK) || (g_eeGeneral.aux2SerialMode == UART_MODE_MAVLINK);
+  bool flag = (g_eeGeneral.auxSerialMode == UART_MODE_MAVLINK) || (g_eeGeneral.aux2SerialMode == UART_MODE_MAVLINK) || isModuleMavlink(EXTERNAL_MODULE);
   lua_pushboolean(L, flag);
   return 1;
 }
 
 static int luaMavsdkMavTelemVersion(lua_State *L)
 {
-  lua_pushstring(L, OWVERSIONSTR);
+  lua_pushstring(L, MAVLINKTELEMVERSIONSTR);
   return 1;
 }
 
@@ -582,6 +564,22 @@ static int luaMavsdkGetRadioRemoteNoise(lua_State *L)
 {
   if (mavlinkTelem.radio.is_receiving) {
     lua_pushinteger(L, mavlinkTelem.radio.remnoise);
+  }
+  else {
+    lua_pushnil(L);
+  }
+  return 1;
+}
+
+// -- MAVSDK SYSTEM STATUS --
+
+static int luaMavsdkGetSystemStatusSensors(lua_State *L)
+{
+  if (mavlinkTelem.sysstatus.received) {
+    lua_newtable(L);
+    lua_pushtablenumber(L, "present", mavlinkTelem.sysstatus.sensors_present);
+    lua_pushtablenumber(L, "enabled", mavlinkTelem.sysstatus.sensors_enabled);
+    lua_pushtablenumber(L, "health", mavlinkTelem.sysstatus.sensors_health);
   }
   else {
     lua_pushnil(L);
@@ -1252,6 +1250,18 @@ static int luaMavsdkApGetRangefinder(lua_State *L)
   return 1;
 }
 
+static int luaMavsdkApGetArmingCheck(lua_State *L)
+{
+  if (mavlinkTelem.param.ARMING_CHECK < 0) {
+    lua_pushnil(L);
+  }
+  else {
+    lua_pushnumber(L, mavlinkTelem.param.ARMING_CHECK);
+  }
+  return 1;
+}
+
+
 // -- MAVSDK STATUSTEXT --
 
 static int luaMavsdkIsStatusTextAvailable(lua_State *L)
@@ -1262,8 +1272,8 @@ static int luaMavsdkIsStatusTextAvailable(lua_State *L)
 
 static int luaMavsdkGetStatusText(lua_State *L)
 {
-  char text[MAVLINK_MSG_STATUSTEXT_FIELD_TEXT_LEN+1]; //mavlink string is not necessarily \0 terminated
-  mavlink_statustext_t payload;
+  char text[FASTMAVLINK_MSG_STATUSTEXT_FIELD_TEXT_LEN+1]; //mavlink string is not necessarily \0 terminated
+  fmav_statustext_t payload;
   if (!mavlinkTelem.statustext.fifo.pop(payload)) { //should not happen, use isStatusTextAvailable() to check beforehand
     text[0] = '\0';
     payload.severity = MAV_SEVERITY_INFO;
@@ -1271,8 +1281,8 @@ static int luaMavsdkGetStatusText(lua_State *L)
     lua_pushnil(L);
   }
   else {
-    memcpy(text, payload.text, MAVLINK_MSG_STATUSTEXT_FIELD_TEXT_LEN);
-    text[MAVLINK_MSG_STATUSTEXT_FIELD_TEXT_LEN] = '\0';
+    memcpy(text, payload.text, FASTMAVLINK_MSG_STATUSTEXT_FIELD_TEXT_LEN);
+    text[FASTMAVLINK_MSG_STATUSTEXT_FIELD_TEXT_LEN] = '\0';
     lua_pushinteger(L, payload.severity);
     lua_pushstring(L, text);
   }
@@ -1330,17 +1340,6 @@ static int luaMavsdkGetMissionItem(lua_State *L)
   return 1;
 }
 
-// -- MAVSDK MAVLINKTASK STAT --
-
-static int luaMavsdkGetTaskStats(lua_State *L)
-{
-  lua_newtable(L);
-  lua_pushtableinteger(L, "time", mavlinkTaskRunTime());
-  lua_pushtableinteger(L, "max", mavlinkTaskRunTimeMax());
-  lua_pushtableinteger(L, "load", mavlinkTaskLoad());
-  return 1;
-}
-
 // -- Fake RSSI --
 
 static int luaMavsdkOptionIsRssiEnabled(lua_State *L)
@@ -1378,7 +1377,12 @@ static int luaMavsdkRadioDisableRssiVoice(lua_State *L)
   return 0;
 }
 
+
+//------------------------------------------------------------
+// mavsdk luaL and luaR arrays
+//------------------------------------------------------------
 // I believe the names can't be longer than 32 chars
+
 const luaL_Reg mavsdkLib[] = {
   { "mavtelemIsEnabled", luaMavsdkMavTelemIsEnabled },
   { "getVersion", luaMavsdkMavTelemVersion },
@@ -1443,6 +1447,8 @@ const luaL_Reg mavsdkLib[] = {
   { "getRadioNoise", luaMavsdkGetRadioNoise },
   { "getRadioRemoteNoise", luaMavsdkGetRadioRemoteNoise },
   { "getRadioRssiScaled", luaMavsdkGetRadioRssiScaled },
+
+  { "getSystemStatusSensors", luaMavsdkGetSystemStatusSensors },
 
   { "getAttRollDeg", luaMavsdkGetAttRollDeg },
   { "getAttPitchDeg", luaMavsdkGetAttPitchDeg },
@@ -1539,14 +1545,13 @@ const luaL_Reg mavsdkLib[] = {
   { "apCopterFlyHold", luaMavsdkApCopterFlyHold },
   { "apCopterFlyPause", luaMavsdkApCopterFlyPause },
   { "apGetRangefinder", luaMavsdkApGetRangefinder },
+  { "apGetArmingCheck", luaMavsdkApGetArmingCheck },
 
   { "optionIsRssiEnabled", luaMavsdkOptionIsRssiEnabled },
   { "optionEnableRssi", luaMavsdkOptionEnableRssi },
   { "optionGetRssiScale", luaMavsdkOptionGetRssiScale },
   { "optionSetRssiScale", luaMavsdkOptionSetRssiScale },
   { "radioDisableRssiVoice", luaMavsdkRadioDisableRssiVoice },
-
-  { "getTaskStats", luaMavsdkGetTaskStats },
 
   { NULL, NULL }  /* sentinel */
 };

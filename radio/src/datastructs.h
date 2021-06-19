@@ -390,7 +390,7 @@ PACK(struct TelemetrySensor {
  */
 
 PACK(struct TrainerModuleData {
-  uint8_t mode:3;
+  uint8_t mode:3;         //  TODO: simplify value at an eeprom change refer compile driven enum handling in dataconstants.h
   uint8_t spare1:5;
   uint8_t channelsStart;
   int8_t  channelsCount; // 0=8 channels
@@ -408,7 +408,10 @@ PACK(struct TrainerModuleData {
 #define MM_RF_CUSTOM_SELECTED 0xff
 #define MULTI_MAX_PROTOCOLS 127 //  rfProtocol:4 +  rfProtocolExtra:3
 PACK(struct ModuleData {
-  uint8_t type:4;
+//OW    
+//  uint8_t type:4;
+  uint8_t type4Bits:4; //we rename it to catch all occurences
+//OWEND  
   // TODO some refactoring is needed, rfProtocol is only used by DSM2 and MULTI, it could be merged with subType
   int8_t  rfProtocol:4;
   uint8_t channelsStart;
@@ -451,7 +454,8 @@ PACK(struct ModuleData {
       int8_t refreshRate;  // definition as framelength for ppm (* 5 + 225 = time in 1/10 ms)
     } sbus);
     NOBACKUP(PACK(struct {
-      uint8_t receivers; // 5 bits spare
+      uint8_t receivers:7; // 4 bits spare
+      uint8_t racingMode:1;
       char receiverName[PXX2_MAX_RECEIVERS_PER_MODULE][PXX2_LEN_RX_NAME];
     }) pxx2);
     NOBACKUP(PACK(struct {
@@ -475,14 +479,38 @@ PACK(struct ModuleData {
   };
 
   // Helper functions to set both of the rfProto protocol at the same time
-  NOBACKUP(inline uint8_t getMultiProtocol() {
+  NOBACKUP(inline uint8_t getMultiProtocol() const
+  {
     return ((uint8_t) (rfProtocol & 0x0F)) + (multi.rfProtocolExtra << 4);
   })
 
-  NOBACKUP(inline void setMultiProtocol(uint8_t proto) {
+  NOBACKUP(inline void setMultiProtocol(uint8_t proto)
+  {
     rfProtocol = (uint8_t) (proto & 0x0F);
     multi.rfProtocolExtra = (proto & 0x70) >> 4;
   })
+
+  NOBACKUP(inline uint8_t getChannelsCount() const
+  {
+    return channelsCount + 8;
+  })
+//OW
+#if defined(TELEMETRY_MAVLINK)
+  uint8_t typeExtraBits:4; // extension bits
+
+  NOBACKUP(uint8_t getType(void) {
+    return (uint8_t)type4Bits + ((uint8_t)typeExtraBits << 4);
+  })
+
+  NOBACKUP(void setType(uint8_t _type) {
+    type4Bits = (_type & 0x0F); // lower 4 bits
+    typeExtraBits = (_type & 0xF0) >> 4; // extension bits
+  })
+#else
+  NOBACKUP(inline uint8_t getType(void) { return (uint8_t)type4Bits; })
+  NOBACKUP(inline void setType(uint8_t _type) { type4Bits = _type; })
+#endif
+//OWEND
 });
 
 /*
@@ -629,15 +657,13 @@ PACK(struct ModelData {
 
 //OW
 #if defined(TELEMETRY_MAVLINK)
-  uint16_t _mavlinkEnabled:1; // not currently used
   uint16_t mavlinkRssi:1;
-  uint16_t _mavlinkDummy:2; // not currently used
   uint16_t mavlinkMimicSensors:3; // currently just off/on, but allow e.g. FrSky, CF, FrSky passthrough.
   uint16_t mavlinkRcOverride:1;
-  uint16_t mavlinkGpsIcon:1;
+  uint16_t mavlinkSpare1:11;
   uint8_t  mavlinkRssiScale;
-  uint8_t  _mavlinkDummy2; // not currently used
-  // needs to adapt CHKSIZE below //if not all are use compiled optiomizes to lowest size, which may raise error
+  uint8_t  mavlinkSpare2;
+  // needs to adapt CHKSIZE below //if not all are used compile optimizes to lowest size, which may raise error
 #endif
 //OWEND
 
@@ -839,7 +865,7 @@ PACK(struct RadioData {
 #if defined(TELEMETRY_MAVLINK)
   uint16_t mavlinkBaudrate:3;
   uint16_t mavlinkBaudrate2:3;
-  uint16_t mavlinkDummy:10;
+  uint16_t mavlinkSpare:10;
   // needs to adapt CHKSIZE below
 #endif
 //OWEND
@@ -953,7 +979,14 @@ static inline void check_struct()
 
   CHKSIZE(LogicalSwitchData, 9);
   CHKSIZE(TelemetrySensor, 14);
+//OW
+//  CHKSIZE(ModuleData, 29);
+#if defined(TELEMETRY_MAVLINK)
+  CHKSIZE(ModuleData, 29+1);
+#else
   CHKSIZE(ModuleData, 29);
+#endif
+//OWEND
   CHKSIZE(GVarData, 7);
   CHKSIZE(RssiAlarmData, 2);
   CHKSIZE(TrainerData, 16);
@@ -982,7 +1015,7 @@ static inline void check_struct()
 //  CHKSIZE(ModelData, 9736);
 #if defined(TELEMETRY_MAVLINK)
   CHKSIZE(RadioData, 881+2);
-  CHKSIZE(ModelData, 9736+4);
+  CHKSIZE(ModelData, 9736+4+NUM_MODULES);
 #else
   CHKSIZE(RadioData, 881);
   CHKSIZE(ModelData, 9736);
@@ -992,4 +1025,4 @@ static inline void check_struct()
 
 #undef CHKSIZE
 }
-#endif /* BACKUP */ 
+#endif /* BACKUP */

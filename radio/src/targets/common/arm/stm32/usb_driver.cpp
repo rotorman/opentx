@@ -79,18 +79,13 @@ void usbStart()
 #endif
 #if defined(USB_SERIAL)
     case USB_SERIAL_MODE:
+//OW
+    case USB_MAVLINK_MODE:
+//OWEND
       // initialize USB as CDC device (virtual serial port)
       USBD_Init(&USB_OTG_dev, USB_OTG_FS_CORE_ID, &USR_desc, &USBD_CDC_cb, &USR_cb);
       break;
-//OW
-#if defined(TELEMETRY_MAVLINK) && defined(USB_SERIAL)
-    case USB_MAVLINK_MODE:
-      //usbDriverStarted = false;
-      USBD_Init(&USB_OTG_dev, USB_OTG_FS_CORE_ID, &USR_desc, &USBD_CDC_cb, &USR_cb);
-      break;
 #endif
-//OWEND
-#endif //OW WHY THE HECK DOES IT HAVE TO BE HERE ???????
     default:
     case USB_MASS_STORAGE_MODE:
       // initialize USB as MSC device

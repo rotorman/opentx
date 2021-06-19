@@ -143,15 +143,17 @@ enum MultiModuleRFProtocols {
   MODULE_SUBTYPE_MULTI_MLINK,
   MODULE_SUBTYPE_MULTI_WFLY2,
   MODULE_SUBTYPE_MULTI_E016HV2,
-  MODULE_SUBTYPE_MULTI_LAST = MODULE_SUBTYPE_MULTI_E016HV2
-};
-
-enum TrainerProtocol {
-  TRAINER_MASTER_JACK,
-  TRAINER_SLAVE_JACK,
-  TRAINER_MASTER_SBUS_MODULE,
-  TRAINER_MASTER_CPPM_MODULE,
-  TRAINER_MASTER_SBUS_BATT_COMPARTMENT
+  MODULE_SUBTYPE_MULTI_E010R5,
+  MODULE_SUBTYPE_MULTI_LOLI,
+  MODULE_SUBTYPE_MULTI_E129,
+  MODULE_SUBTYPE_MULTI_JOYSWAY,
+  MODULE_SUBTYPE_MULTI_E016H,
+  MODULE_SUBTYPE_MULTI_CONFIG,
+  MODULE_SUBTYPE_MULTI_IKEAANSLUTA,
+  MODULE_SUBTYPE_MULTI_WILLIFM,
+  MODULE_SUBTYPE_MULTI_LOSI,
+  MODULE_SUBTYPE_MULTI_MOULDKG,
+  MODULE_SUBTYPE_MULTI_LAST = MODULE_SUBTYPE_MULTI_MOULDKG
 };
 
 enum ModuleSubtypeR9M {
@@ -215,12 +217,12 @@ class ModuleData {
     struct Access {
       unsigned int receivers;
       char         receiverName[PXX2_MAX_RECEIVERS_PER_MODULE][PXX2_LEN_RX_NAME+1];
+      unsigned int racingMode;
     } access;
 
     void clear() { memset(this, 0, sizeof(ModuleData)); }
     void convert(RadioDataConversionState & cstate);
     bool isPxx2Module() const;
-    bool isPxx1Module() const;
     bool supportRxNum() const;
     QString polarityToString() const { return ppm.pulsePol ? tr("Positive") : tr("Negative"); }
     QString rfProtocolToString() const;

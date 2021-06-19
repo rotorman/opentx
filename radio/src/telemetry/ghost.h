@@ -44,6 +44,8 @@
 #define GHST_DL_VTX_STAT                0x22
 #define GHST_DL_PACK_STAT               0x23
 #define GHST_DL_MENU_DESC               0x24
+#define GHST_DL_GPS_PRIMARY             0x25
+#define GHST_DL_GPS_SECONDARY           0x26
 
 #define GHST_RC_CTR_VAL_12BIT		0x7C0   // 0x3e0 << 1
 #define GHST_RC_CTR_VAL_8BIT		0x7C
@@ -78,9 +80,11 @@ enum GhstRFProfile
   GHST_RF_PROFILE_PureRace    = 3,
   GHST_RF_PROFILE_LongRange   = 4,
   GHST_RF_PROFILE_Reserved    = 5,
-  GHST_RF_PROFILE_Race2       = 6,
-  GHST_RF_PROFILE_PureRace2   = 7,
-  GHST_RF_PROFILE_MAX = GHST_RF_PROFILE_PureRace2,
+  GHST_RF_PROFILE_Race250     = 6,
+  GHST_RF_PROFILE_Race500     = 7,
+  GHST_RF_PROFILE_Solid125    = 8,
+  GHST_RF_PROFILE_Solid250    = 9,
+  GHST_RF_PROFILE_MAX = GHST_RF_PROFILE_Solid250,
   GHST_RF_PROFILE_COUNT
 };
 
@@ -113,7 +117,7 @@ enum GhostTelemetryBaudrates
 };
 #endif
 #define GHOST_BAUDRATE       400000
-#define GHOST_PERIOD         4
+#define GHOST_PERIOD         4000 /* us */
 
 enum GhostLineFlags
 {

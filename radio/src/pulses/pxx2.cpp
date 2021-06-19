@@ -47,14 +47,20 @@ void Pxx2Pulses::addFlag1(uint8_t module)
   else {
     subType = g_model.moduleData[module].subType;
   }
-  Pxx2Transport::addByte(subType << 4);
+
+  uint8_t flag1 = subType << 4u;
+  if (isRacingModeEnabled() && isFunctionActive(FUNCTION_RACING_MODE)) {
+    flag1 |= PXX2_CHANNELS_FLAG1_RACING_MODE;
+  }
+
+  Pxx2Transport::addByte(flag1);
 }
 
 void Pxx2Pulses::addPulsesValues(uint16_t low, uint16_t high)
 {
   Pxx2Transport::addByte(low); // Low byte of channel
-  Pxx2Transport::addByte(((low >> 8) & 0x0F) | (high << 4));  // 4 bits each from 2 channels
-  Pxx2Transport::addByte(high >> 4);  // High byte of channel
+  Pxx2Transport::addByte(((low >> 8u) & 0x0Fu) | (high << 4u));  // 4 bits each from 2 channels
+  Pxx2Transport::addByte(high >> 4u);  // High byte of channel
 }
 
 void Pxx2Pulses::addChannels(uint8_t module)
@@ -407,9 +413,9 @@ bool Pxx2Pulses::setupFrame(uint8_t module)
       setupRegisterFrame(module);
       break;
     case MODULE_MODE_BIND:
-      if (g_model.moduleData[module].type == MODULE_TYPE_ISRM_PXX2 && g_model.moduleData[module].subType != MODULE_SUBTYPE_ISRM_PXX2_ACCESS)
+      if (g_model.moduleData[module].getType() == MODULE_TYPE_ISRM_PXX2 && g_model.moduleData[module].subType != MODULE_SUBTYPE_ISRM_PXX2_ACCESS)
         setupAccstBindFrame(module);
-      else if (g_model.moduleData[module].type == MODULE_TYPE_XJT_LITE_PXX2)
+      else if (g_model.moduleData[module].getType() == MODULE_TYPE_XJT_LITE_PXX2)
         setupAccstBindFrame(module);
       else
         setupAccessBindFrame(module);

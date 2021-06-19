@@ -329,6 +329,9 @@
   #endif
 #endif
 
+#define ADC_MAIN_SMPR1                  (ADC_SAMPTIME << 0) + (ADC_SAMPTIME << 3) + (ADC_SAMPTIME << 6) + (ADC_SAMPTIME << 9) + (ADC_SAMPTIME << 12) + (ADC_SAMPTIME << 15) + (ADC_SAMPTIME << 18) + (ADC_SAMPTIME << 21) + (ADC_SAMPTIME << 24);
+#define ADC_MAIN_SMPR2                  (ADC_SAMPTIME << 0) + (ADC_SAMPTIME << 3) + (ADC_SAMPTIME << 6) + (ADC_SAMPTIME << 9) + (ADC_SAMPTIME << 12) + (ADC_SAMPTIME << 15) + (ADC_SAMPTIME << 18) + (ADC_SAMPTIME << 21) + (ADC_SAMPTIME << 24) + (ADC_SAMPTIME << 27);
+
 // Power
 #if defined(RADIO_T18)
 #define PWR_RCC_AHB1Periph              RCC_AHB1Periph_GPIOJ | RCC_AHB1Periph_GPIOB
@@ -417,9 +420,9 @@
   #define AUX_SERIAL_USART_IRQn               USART3_IRQn
   #define AUX_SERIAL_DMA_Stream_RX            DMA1_Stream1
   #define AUX_SERIAL_DMA_Channel_RX           DMA_Channel_4
-  #define AUX_SERIAL_PWR_GPIO                 GPIOA
-  #define AUX_SERIAL_PWR_GPIO_PIN             GPIO_Pin_15  // PB.00
 #if defined(RADIO_TX16S)
+  #define AUX_SERIAL_PWR_GPIO                 GPIOA
+  #define AUX_SERIAL_PWR_GPIO_PIN             GPIO_Pin_15  // PA.15
   #define TRAINER_BATTERY_COMPARTMENT         // allows serial port TTL trainer
 #endif
 #else
@@ -473,7 +476,7 @@
 #endif
 
 //OW
-#if defined(RADIO_T16) && defined(AUX_SERIAL)
+#if (defined(RADIO_T16) || defined(RADIO_T18)) && defined(AUX_SERIAL)
   #undef AUX_SERIAL_RCC_AHB1Periph
   #undef AUX_SERIAL_RCC_APB1Periph
   #undef AUX_SERIAL_RCC_APB2Periph
@@ -493,11 +496,11 @@
   #define AUX_SERIAL_DMA_Stream_RX            DMA1_Stream1
   #define AUX_SERIAL_DMA_Channel_RX           DMA_Channel_4
 #endif
-#if defined(RADIO_T16) && defined(AUX2_SERIAL)
+#if (defined(RADIO_T16) || defined(RADIO_T18)) && defined(AUX2_SERIAL)
   #undef AUX2_SERIAL_PWR_GPIO
   #undef AUX2_SERIAL_PWR_GPIO_PIN
 #endif
-#if defined(RADIO_T16) && defined(INTERNAL_GPS)
+#if (defined(RADIO_T16) || defined(RADIO_T18)) && defined(INTERNAL_GPS)
   #define GPS_RCC_AHB1Periph                   (RCC_AHB1Periph_GPIOB | RCC_AHB1Periph_GPIOG)
   #define GPS_RCC_APB1Periph                   0
   #define GPS_RCC_APB2Periph                   RCC_APB2Periph_USART6
@@ -944,6 +947,13 @@
 // 2MHz Timer
 #define TIMER_2MHz_RCC_APB1Periph       RCC_APB1Periph_TIM7
 #define TIMER_2MHz_TIMER                TIM7
+
+// Mixer scheduler timer
+#define MIXER_SCHEDULER_TIMER_RCC_APB1Periph RCC_APB1Periph_TIM13
+#define MIXER_SCHEDULER_TIMER                TIM13
+#define MIXER_SCHEDULER_TIMER_FREQ           (PERI1_FREQUENCY * TIMER_MULT_APB1)
+#define MIXER_SCHEDULER_TIMER_IRQn           TIM8_UP_TIM13_IRQn
+#define MIXER_SCHEDULER_TIMER_IRQHandler     TIM8_UP_TIM13_IRQHandler
 
 // Bluetooth
 #define STORAGE_BLUETOOTH

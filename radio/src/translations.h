@@ -161,6 +161,9 @@ extern const char STR_R9M_PXX2_RF_PROTOCOLS[];
 extern const char STR_DSM_PROTOCOLS[];
 extern const char STR_MULTI_PROTOCOLS[];
 extern const char STR_MULTI_POWER[];
+extern const char STR_MULTI_TELEMETRY_MODE[];
+extern const char STR_MULTI_WBUS_MODE[];
+extern const char STR_SPORT_MODES[];
 
 #if defined(AFHDS3)
 extern const char STR_AFHDS3_ONE_TO_ONE_TELEMETRY[];
@@ -402,6 +405,7 @@ extern const char STR_MULTI_OPTION[];
 extern const char STR_MULTI_VIDFREQ[];
 extern const char STR_MULTI_RFTUNE[];
 extern const char STR_MULTI_RFPOWER[];
+extern const char STR_MULTI_WBUS[];
 extern const char STR_MULTI_TELEMETRY[];
 extern const char STR_MULTI_AUTOBIND[];
 extern const char STR_DISABLE_CH_MAP[];
@@ -964,8 +968,25 @@ extern const char STR_ABOUT_PARENTS_3[];
 extern const char STR_ABOUT_PARENTS_4[];
 
 extern const char STR_AUTH_FAILURE[];
+extern const char STR_PROTOCOL[];
+extern const char STR_RACING_MODE[];
 
 #define CHR_HOUR   TR_CHR_HOUR
 #define CHR_INPUT  TR_CHR_INPUT
+
+//OW
+#if defined(TELEMETRY_MAVLINK)
+extern const char STR_MAVLINK[];
+extern const char STR_MAVLINK_RSSI[];
+extern const char STR_MAVLINK_RSSI_SCALE[];
+extern const char STR_MAVLINK_SENSOR_MIMICRY[];
+extern const char STR_MAVLINK_RC_OVERRIDE[];
+extern const char STR_MAVLINK_AUX_SERIAL_MODES[];
+extern const char STR_MAVLINK_AUX_BAUDRATE[];
+extern const char STR_MAVLINK_AUX2_BAUDRATE[];
+extern const char STR_MAVLINK_AUX_BAUDRATES[];
+extern const char STR_USB_MAVLINK[];
+#endif
+//OWEND
 
 #endif // _TRANSLATIONS_H_

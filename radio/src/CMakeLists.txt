@@ -345,6 +345,10 @@ if(RADIOMASTER_RELEASE)
   add_definitions(-DRADIOMASTER_RELEASE)
 endif()
 
+if(RADIOMASTER_RTF_RELEASE)
+  add_definitions(-DRADIOMASTER_RTF_RELEASE)
+endif()
+
 if(TBS_RELEASE)
   add_definitions(-DTBS_RELEASE)
 endif()
@@ -378,6 +382,7 @@ set(SRC
   strhelpers.cpp
   switches.cpp
   mixer.cpp
+  mixer_scheduler.cpp
   stamp.cpp
   timers.cpp
   trainer.cpp
@@ -533,6 +538,10 @@ if(NOT MSVC)
     add_custom_command(
       TARGET firmware POST_BUILD
       COMMAND arm-none-eabi-objcopy -O binary firmware.elf firmware.bin
+# //OW
+      COMMAND arm-none-eabi-size --format=berkeley firmware.elf
+      COMMAND arm-none-eabi-size --format=sysv firmware.elf
+# //OWEND
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     )
 

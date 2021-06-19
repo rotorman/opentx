@@ -18,22 +18,29 @@
  * GNU General Public License for more details.
  */
 
-#pragma once
-
-#include <stdlib.h>
-#include "definitions.h"
-#include "opentx_types.h"
-#include "debounce.h"
-#include "globals.h"
-#include "opentx_helpers.h"
-
 //OW
-#define OWVERSIONSTR  "v24rc07"
+#define OWVERSIONSTR  "v28rc02"
 //OWEND
 
 /*
+module mavlink handling even further improved
+upgraded to otx2.3.12 as base
+v27 2021-06-10
+ext rf module mavlink, poweron/off sorted
+backport of some good stuff from etx2.4 pr
+update mavlink, fastmavlink, have invalid attr
+correct power handling for SPort bidirectional
+SPort bidirectional
+mavMsgOut w fifo
+mavMsgOut
+mavMsgList
+v26 2021-03-21
+fastMavlink v003, prearm checks
+v25 2021-03-07
+fastMavlink
+v24 2021-02-11
 v22 2021-02-5:
-mavlink submodule changeg to main git repo, 600xx storm32
+mavlink submodule changed to main git repo, 600xx storm32
 v20 2021-01-23:
 mavlink submodule changed to main git repo, file generator updated
 uart totally revised, uses now AUX_SERIAL and AUX2_SERIAL
@@ -45,15 +52,18 @@ one needs to run mavgenerate_dialect.py to generate the mavlink c code files
 modified files in radio/src/
 
     dataconstants.h:  1x
-    datastructs.h:    3x
+    datastructs.h:    6x
     keys.cpp:         2x
     keys.h:           1x
-    main.cpp:         3x
+    main.cpp:         2x
     opentx.cpp:       1x
     opentx.h:         2x
     options.h:        1x
-    tasks.cpp:        2x
+    tasks.cpp:        3x
     tasks.h:          1x
+    translations.cpp: 1x
+    translations.h:   1x
+    CMakeList.txt:    1x
     gui/480x272/bitmap.cpp:          1x
     gui/480x272/bitmap.h:            1x
     gui/480x272/lcd.cpp:             1x
@@ -62,37 +72,52 @@ modified files in radio/src/
     gui/480x272/radio_hardware.cpp:  6x
     gui/480x272/topbar.cpp:          2x
     gui/gui_common.cpp:              2x
-    lua/api_general.cpp:    3x
-    lua/api_lcd.cpp:        2x
+    gui/gui_common.h:                1x
+    lua/api_general.cpp:             3x
+    lua/api_lcd.cpp:                 2x
+    pulses/modules_constants.h:      1x
+    pulses/modules_helpers.h:        1x
+    pulses/pulses.cpp:               2x
+    pulses/pulses.h:                 1x
     targets/common/arm/stm32/aux_serial_driver.cpp:  8x
     targets/common/arm/stm32/usb_driver.cpp:         1x
     targets/common/arm/stm32/usb_driver.h:           1x
     targets/common/arm/stm32/usbd_cdc.cpp:           1x
     targets/common/arm/stm32/usbd_dec.cpp:           4x
-    targets/horus/board.h:           1x
-    targets/horus/hal.h:             1x
-    targets/horus/CMakeList.txt:     2x
+    targets/horus/extmodule_driver.cpp:              1x
+    targets/horus/hal.h:                             1x
+    targets/horus/telemetry_driver.cpp:              9x
+    targets/horus/CMakeList.txt:                     4x
     telemetry/telemetry.cpp:         2x
     telemetry/telemetry.h:           1x
     thirdparty/Lua/src/lauxlib.h:    1x
     thirdparty/Lua/src/linit.c:      1x
     thirdparty/Lua/src/lrotable.h:   1x
+    translations/untranslated.h:     2x
 
-added files in radio/src/
-    mavlink_router.h
-    mavlink_telem_autopilot.cpp
-    mavlink_telem_camera.cpp
-    mavlink_telem_gimbal.cpp
-    mavlink_telem_qshot.cpp
-    mavlink_telem.cpp
-    mavlink_telem.h
+added files
+    telemetry/mavlink/mavlink_telem_autopilot.cpp
+    telemetry/mavlink/mavlink_telem_camera.cpp
+    telemetry/mavlink/mavlink_telem_gimbal.cpp
+    telemetry/mavlink/mavlink_telem_interface.cpp
+    telemetry/mavlink/mavlink_telem_mavapi.cpp
+    telemetry/mavlink/mavlink_telem_qshot.cpp
+    telemetry/mavlink/mavlink_telem.cpp
+    telemetry/mavlink/mavlink_telem.h
     lua/api_mavlink.cpp
     lua/api_mavsdk.cpp
     thirdparty/Mavlink/
 
 
 TODO:
-- mavlink api
+- TELEMETRY_USART_IRQHandler: optimize, USART_xxx() functions are not very efficient
+- mavlink router: wipeout&reassign when link changes? wipeout after timeout?
+
+//OW
+#if defined(TELEMETRY_MAVLINK)
+#endif
+//OWEND
+
 
 COMMENTS:
 perMain() in main.cpp, where GPS is:
@@ -117,7 +142,7 @@ g_eeGeneral.USBMode
 USB_UNSELECTED_MODE
 USB_JOYSTICK_MODE
 USB_MASS_STORAGE_MODE
-USB_SERIAL_MODE   if defined(USB_SERIAL) usbd_cdc_core  TR_USBMODES
+USB_SERIAL_MODE   if defined(USB_SERIAL) usbd_cdc_core  TR_USBMODES   error
 
 ----
 
@@ -125,7 +150,28 @@ STR_AUX_SERIAL_MODES
 MAVLINK_AUX_SERIAL_MODES
 INTERNAL_GPS MIXSRC_TX_GPS
 BLUETOOTH
-TELEMETRY_MAVLINK
+TELEMETRY_MAVLINK   TELEMETRY_MAVLINK_USB_SERIAL  USB_SERIAL  DEBUG  AUX_SERIAL  AUX2_SERIAL  CLI
+T16 TX16S T18 X10
+
+external
+problem is: the moduleData.type is only 4 bits, and there are already 16 modules, so one can't go the native way
+the "simplest" would be to just increase but this would break storage format
+thus, idea: add some more bits somewhere else so as to not break storage compatibility
+the type is then made up by fusing the 4 original bits with the new bits, effectively extending size
++ add setter getter to struct and ensure that the type is never used directly but only through the
+I now see: this kind of trick was in fact used before for rfProtocolExtra LOL
+
+moduleData[idx].type
+MULTIMODULE
+ITEM_MODEL_SETUP_EXTERNAL_MODULE_TYPE
+STR_EXTERNAL_MODULE_PROTOCOLS
+TelemetryProtocol
+setModuleType(uint8_t moduleIdx, uint8_t moduleType)
+EXTERNAL_MODULE
+
+enablePulsesExternalModule()
+extmoduleSerialStart()
+extmoduleStop()
 
 rssi
 telemetryData.rssi
@@ -144,6 +190,8 @@ opentxLib -> lauxlib.h, limit.c
 opentxConstants -> limit.c, lrotable.h
 lcdLib -> lauxlib.h, limit.c
 modelLib -> lauxlib.h, limit.c
+lsScripts lsWidgets lua_setglobal lua_istable
+malloc
 
 ----
 BOARD_NAME
@@ -225,6 +273,14 @@ gps_driver.cpp
 telemetry_driver.cpp
 */
 
+#pragma once
+
+#include <stdlib.h>
+#include "definitions.h"
+#include "opentx_types.h"
+#include "debounce.h"
+#include "globals.h"
+#include "opentx_helpers.h"
 
 #if defined(SIMU)
 #include "targets/simu/simpgmspace.h"
@@ -266,6 +322,12 @@ telemetry_driver.cpp
 #define CASE_GYRO(x) x,
 #else
 #define CASE_GYRO(x)
+#endif
+
+#if defined(BACKLIGHT_GPIO)
+#define CASE_BACKLIGHT(x) x,
+#else
+#define CASE_BACKLIGHT(x)
 #endif
 
 #if defined(LUA)
@@ -475,6 +537,12 @@ void memswap(void * a, void * b, uint8_t size);
   #define IS_MULTIPOS_CALIBRATED(cal)  (false)
 #endif
 
+#if NUM_XPOTS > 0
+  #define IS_SWITCH_MULTIPOS(x)         (SWSRC_FIRST_MULTIPOS_SWITCH <= (x) && (x) <= SWSRC_LAST_MULTIPOS_SWITCH)
+#else
+  #define IS_SWITCH_MULTIPOS(x)         (false)
+#endif
+
 #if defined(PWR_BUTTON_PRESS)
   #define pwrOffPressed()              pwrPressed()
 #else
@@ -507,7 +575,7 @@ void memswap(void * a, void * b, uint8_t size);
 #define MASK_CFN_TYPE  uint64_t  // current max = 64 function switches
 #define MASK_FUNC_TYPE uint32_t  // current max = 32 functions
 
-typedef struct {
+struct CustomFunctionsContext {
   MASK_FUNC_TYPE activeFunctions;
   MASK_CFN_TYPE  activeSwitches;
   tmr10ms_t lastFunctionTime[MAX_SPECIAL_FUNCTIONS];
@@ -521,7 +589,7 @@ typedef struct {
   {
     memclear(this, sizeof(*this));
   }
-} CustomFunctionsContext;
+};
 
 #include "strhelpers.h"
 #include "gui.h"
@@ -581,6 +649,8 @@ inline bool SPLASH_NEEDED()
   #define ROTENC_HIGHSPEED             50
   #define ROTENC_DELAY_MIDSPEED        32
   #define ROTENC_DELAY_HIGHSPEED       16
+#elif defined(RADIO_T8)
+  constexpr uint8_t rotencSpeed = 1;
 #endif
 
 constexpr uint8_t HEART_TIMER_10MS = 0x01;
@@ -636,6 +706,10 @@ extern uint8_t potsPos[NUM_XPOTS];
 bool trimDown(uint8_t idx);
 void readKeysAndTrims();
 
+#if defined(KEYS_GPIO_REG_BIND)
+void bindButtonHandler(event_t event);
+#endif
+
 uint16_t evalChkSum();
 
 void alert(const char * title, const char * msg, uint8_t sound);
@@ -682,6 +756,7 @@ extern uint32_t nextMixerTime[NUM_MODULES];
 void evalFlightModeMixes(uint8_t mode, uint8_t tick10ms);
 void evalMixes(uint8_t tick10ms);
 void doMixerCalculations();
+void doMixerPeriodicUpdates();
 void scheduleNextMixerCalculation(uint8_t module, uint32_t period_ms);
 
 void checkTrims();
@@ -1053,6 +1128,7 @@ enum FunctionsActive {
   FUNCTION_BACKGND_MUSIC,
   FUNCTION_BACKGND_MUSIC_PAUSE,
   FUNCTION_BACKLIGHT,
+  FUNCTION_RACING_MODE,
 };
 
 #define VARIO_FREQUENCY_ZERO   700/*Hz*/
@@ -1197,7 +1273,13 @@ constexpr uint8_t OPENTX_START_NO_CHECKS = 0x04;
 
 #if defined(STATUS_LEDS)
   #define LED_ERROR_BEGIN()            ledRed()
+#if defined(RADIO_T8)
+  // Because of green backlit logo, green is preferred on this radio
+  #define LED_ERROR_END()              ledGreen()
+  #define LED_BIND()                   ledBlue()
+#else
   #define LED_ERROR_END()              ledBlue()
+#endif
 #else
   #define LED_ERROR_BEGIN()
   #define LED_ERROR_END()
@@ -1216,7 +1298,7 @@ constexpr uint8_t SD_SCREEN_FILE_LENGTH = 64;
 
 //OW
 #if defined(TELEMETRY_MAVLINK)
-#include "mavlink_telem.h"
+#include "telemetry/mavlink/mavlink_telem.h"
 #endif
 //OWEND
 

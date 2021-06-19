@@ -19,6 +19,7 @@
  */
 
 #include "opentx.h"
+#include "mixer_scheduler.h"
 
 RTOS_TASK_HANDLE menusTaskId;
 RTOS_DEFINE_STACK(menusStack, MENUS_STACK_SIZE);
@@ -31,16 +32,6 @@ RTOS_DEFINE_STACK(audioStack, AUDIO_STACK_SIZE);
 
 RTOS_MUTEX_HANDLE audioMutex;
 RTOS_MUTEX_HANDLE mixerMutex;
-
-enum TaskIndex {
-  MENU_TASK_INDEX,
-  MIXER_TASK_INDEX,
-  AUDIO_TASK_INDEX,
-  CLI_TASK_INDEX,
-  BLUETOOTH_TASK_INDEX,
-  TASK_INDEX_COUNT,
-  MAIN_TASK_INDEX = 255
-};
 
 void stackPaint()
 {
@@ -80,13 +71,35 @@ bool isForcePowerOffRequested()
 
 bool isModuleSynchronous(uint8_t moduleIdx)
 {
-  uint8_t protocol = moduleState[moduleIdx].protocol;
-  if (protocol == PROTOCOL_CHANNELS_PXX2_HIGHSPEED || protocol == PROTOCOL_CHANNELS_PXX2_LOWSPEED || protocol == PROTOCOL_CHANNELS_CROSSFIRE || protocol == PROTOCOL_CHANNELS_GHOST || protocol == PROTOCOL_CHANNELS_NONE)
-    return true;
-#if defined(INTMODULE_USART) || defined(EXTMODULE_USART)
-  if (protocol == PROTOCOL_CHANNELS_PXX1_SERIAL)
-    return true;
+  switch(moduleState[moduleIdx].protocol) {
+    case PROTOCOL_CHANNELS_PXX2_HIGHSPEED:
+    case PROTOCOL_CHANNELS_PXX2_LOWSPEED:
+    case PROTOCOL_CHANNELS_CROSSFIRE:
+    case PROTOCOL_CHANNELS_GHOST:
+    case PROTOCOL_CHANNELS_AFHDS3:
+    case PROTOCOL_CHANNELS_NONE:
+
+#if defined(MULTIMODULE)
+    case PROTOCOL_CHANNELS_MULTIMODULE:
 #endif
+#if defined(INTMODULE_USART) || defined(EXTMODULE_USART)
+    case PROTOCOL_CHANNELS_PXX1_SERIAL:
+#endif
+    // case PROTOCOL_CHANNELS_PPM:
+    case PROTOCOL_CHANNELS_PXX1_PULSES:
+#if defined(DSM2)
+    case PROTOCOL_CHANNELS_SBUS:
+    case PROTOCOL_CHANNELS_DSM2_LP45:
+    case PROTOCOL_CHANNELS_DSM2_DSM2:
+    case PROTOCOL_CHANNELS_DSM2_DSMX:
+#endif
+//OW
+#if defined(TELEMETRY_MAVLINK)
+    case PROTOCOL_CHANNELS_MAVLINK: //must be true since otherwise setupPulsesExternalModule() is not called, and it will crash
+#endif
+//OWEND
+      return true;
+  }
   return false;
 }
 
@@ -99,10 +112,31 @@ void sendSynchronousPulses(uint8_t runMask)
   }
 #endif
 
+#if defined(HARDWARE_EXTERNAL_MODULE)
   if ((runMask & (1 << EXTERNAL_MODULE)) && isModuleSynchronous(EXTERNAL_MODULE)) {
     if (setupPulsesExternalModule())
       extmoduleSendNextFrame();
   }
+#endif
+}
+
+constexpr uint8_t MIXER_FREQUENT_ACTIONS_PERIOD = 5 /*ms*/;
+constexpr uint8_t MIXER_MAX_PERIOD = 30 /*ms*/;
+
+void execMixerFrequentActions()
+{
+#if defined(SBUS_TRAINER)
+  // SBUS trainer
+  processSbusInput();
+#endif
+
+#if defined(GYRO)
+  gyro.wakeup();
+#endif
+
+#if defined(BLUETOOTH)
+  bluetooth.wakeup();
+#endif
 }
 
 uint32_t nextMixerTime[NUM_MODULES];
@@ -111,21 +145,30 @@ TASK_FUNCTION(mixerTask)
 {
   s_pulses_paused = true;
 
+  mixerSchedulerInit();
+
+#if !defined(PCBSKY9X)
+  mixerSchedulerStart();
+#endif
+
   while (true) {
-#if defined(SBUS_TRAINER)
-    // SBUS trainer
-    processSbusInput();
+    for (int timeout = 0; timeout < MIXER_MAX_PERIOD; timeout += MIXER_FREQUENT_ACTIONS_PERIOD) {
+      execMixerFrequentActions();
+      bool interruptedByTimeout = mixerSchedulerWaitForTrigger(MIXER_FREQUENT_ACTIONS_PERIOD);
+      if (!interruptedByTimeout) {
+        break;
+      }
+    }
+
+#if defined(DEBUG_MIXER_SCHEDULER)
+    GPIO_SetBits(EXTMODULE_TX_GPIO, EXTMODULE_TX_GPIO_PIN);
+    GPIO_ResetBits(EXTMODULE_TX_GPIO, EXTMODULE_TX_GPIO_PIN);
 #endif
 
-#if defined(GYRO)
-    gyro.wakeup();
+#if !defined(PCBSKY9X)
+    mixerSchedulerClearTrigger();
+    mixerSchedulerEnableTrigger();
 #endif
-
-#if defined(BLUETOOTH)
-    bluetooth.wakeup();
-#endif
-
-    RTOS_WAIT_TICKS(1);
 
 #if defined(SIMU)
     if (pwrCheck() == e_power_off) {
@@ -137,29 +180,22 @@ TASK_FUNCTION(mixerTask)
     }
 #endif
 
-    uint32_t now = RTOS_GET_MS();
-    uint8_t runMask = 0;
-
-    if (now >= nextMixerTime[0]) {
-      runMask |= (1 << 0);
-    }
-
-#if NUM_MODULES >= 2
-    if (now >= nextMixerTime[1]) {
-      runMask |= (1 << 1);
-    }
-#endif
-
-    if (!runMask) {
-      continue;  // go back to sleep
-    }
-
     if (!s_pulses_paused) {
       uint16_t t0 = getTmr2MHz();
 
       DEBUG_TIMER_START(debugTimerMixer);
       RTOS_LOCK_MUTEX(mixerMutex);
+
       doMixerCalculations();
+
+#if defined(PCBSKY9X)
+      sendSynchronousPulses(1 << EXTERNAL_MODULE);
+#else
+      sendSynchronousPulses((1 << INTERNAL_MODULE) | (1 << EXTERNAL_MODULE));
+#endif
+
+      doMixerPeriodicUpdates();
+
       DEBUG_TIMER_START(debugTimerMixerCalcToUsage);
       DEBUG_TIMER_SAMPLE(debugTimerMixerIterval);
       RTOS_UNLOCK_MUTEX(mixerMutex);
@@ -188,7 +224,9 @@ TASK_FUNCTION(mixerTask)
       if (t0 > maxMixerDuration)
         maxMixerDuration = t0;
 
-      sendSynchronousPulses(runMask);
+      // TODO:
+      // - check the cause of timeouts when switching
+      //    between protocols with multi-proto RF
     }
   }
 }
@@ -285,6 +323,7 @@ void tasksStart()
 #if !defined(SIMU)
   RTOS_CREATE_TASK(audioTaskId, audioTask, "audio", audioStack, AUDIO_STACK_SIZE, AUDIO_TASK_PRIO);
 #endif
+
 //OW
 #if defined(TELEMETRY_MAVLINK)
   mavlinkStart();

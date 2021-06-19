@@ -161,7 +161,7 @@ const char * const unitsFilenames[] = {
   "hertz",
   "ms",
   "us",
-  "spare4",
+  "km",
   "spare5",
   "spare6",
   "spare7",
@@ -524,7 +524,7 @@ void audioTask(void * pdata)
 
   setSampleRate(AUDIO_SAMPLE_RATE);
 
-#if defined(PCBX12S)
+#if defined(PCBX12S) || defined(RADIO_TX16S)
   // The audio amp needs ~2s to start
   RTOS_WAIT_MS(1000); // 1s
 #endif

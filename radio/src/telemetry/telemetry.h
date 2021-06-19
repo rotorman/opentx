@@ -33,6 +33,7 @@
   #include "hitec.h"
   #include "hott.h"
   #include "multi.h"
+  #include "mlink.h"
 #endif
 #if defined(MULTIMODULE) || defined(AFHDS3)
   #include "flysky_ibus.h"
@@ -120,6 +121,7 @@ extern uint8_t telemetryProtocol;
                                          || (g_model.moduleData[module].getMultiProtocol() == MODULE_SUBTYPE_MULTI_FRSKYX2))
   #define IS_R9_MULTI(module)            (g_model.moduleData[module].getMultiProtocol() == MODULE_SUBTYPE_MULTI_FRSKY_R9)
   #define IS_HOTT_MULTI(module)          (g_model.moduleData[module].getMultiProtocol() == MODULE_SUBTYPE_MULTI_HOTT)
+  #define IS_CONFIG_MULTI(module)        (g_model.moduleData[module].getMultiProtocol() == MODULE_SUBTYPE_MULTI_CONFIG)
   #define IS_DSM_MULTI(module)           (g_model.moduleData[module].getMultiProtocol() == MODULE_SUBTYPE_MULTI_DSM2)
   #define IS_RX_MULTI(module)            ((g_model.moduleData[module].getMultiProtocol() == MODULE_SUBTYPE_MULTI_AFHDS2A_RX) || (g_model.moduleData[module].getMultiProtocol() == MODULE_SUBTYPE_MULTI_FRSKYX_RX) \
                                          || (g_model.moduleData[module].getMultiProtocol() == MODULE_SUBTYPE_MULTI_BAYANG_RX) || (g_model.moduleData[module].getMultiProtocol() == MODULE_SUBTYPE_MULTI_DSM_RX))
@@ -132,6 +134,7 @@ extern uint8_t telemetryProtocol;
   #define IS_D16_MULTI(module)           false
   #define IS_R9_MULTI(module)            false
   #define IS_HOTT_MULTI(module)          false
+  #define IS_CONFIG_MULTI(module)        false
   #define IS_DSM_MULTI(module)           false
   #define IS_FRSKY_SPORT_PROTOCOL()      (telemetryProtocol == PROTOCOL_TELEMETRY_FRSKY_SPORT)
   #define IS_RX_MULTI(module)            false
@@ -142,7 +145,7 @@ extern uint8_t telemetryProtocol;
 #if defined(PCBTARANIS) || defined(PCBHORUS)
 inline bool isSportLineUsedByInternalModule()
 {
-  return g_model.moduleData[INTERNAL_MODULE].type == MODULE_TYPE_XJT_PXX1;
+  return g_model.moduleData[INTERNAL_MODULE].getType() == MODULE_TYPE_XJT_PXX1;
 }
 #else
 inline bool isSportLineUsedByInternalModule()
@@ -156,33 +159,33 @@ inline uint8_t modelTelemetryProtocol()
   bool sportUsed = isSportLineUsedByInternalModule();
 
 #if defined(CROSSFIRE)
-  if (g_model.moduleData[EXTERNAL_MODULE].type == MODULE_TYPE_CROSSFIRE) {
+  if (g_model.moduleData[EXTERNAL_MODULE].getType() == MODULE_TYPE_CROSSFIRE) {
     return PROTOCOL_TELEMETRY_CROSSFIRE;
   }
 #endif
 
 #if defined(GHOST)
-  if (g_model.moduleData[EXTERNAL_MODULE].type == MODULE_TYPE_GHOST) {
+  if (g_model.moduleData[EXTERNAL_MODULE].getType() == MODULE_TYPE_GHOST) {
     return PROTOCOL_TELEMETRY_GHOST;
   }
 #endif
 
-  if (!sportUsed && g_model.moduleData[EXTERNAL_MODULE].type == MODULE_TYPE_PPM) {
+  if (!sportUsed && g_model.moduleData[EXTERNAL_MODULE].getType() == MODULE_TYPE_PPM) {
     return g_model.telemetryProtocol;
   }
 
 #if defined(MULTIMODULE)
-  if (!sportUsed && g_model.moduleData[EXTERNAL_MODULE].type == MODULE_TYPE_MULTIMODULE) {
+  if (!sportUsed && g_model.moduleData[EXTERNAL_MODULE].getType() == MODULE_TYPE_MULTIMODULE) {
     return PROTOCOL_TELEMETRY_MULTIMODULE;
   }
 #if defined(INTERNAL_MODULE_MULTI)
-  if (g_model.moduleData[INTERNAL_MODULE].type == MODULE_TYPE_MULTIMODULE && g_model.moduleData[EXTERNAL_MODULE].type == MODULE_TYPE_NONE) {
+  if (g_model.moduleData[INTERNAL_MODULE].getType() == MODULE_TYPE_MULTIMODULE && g_model.moduleData[EXTERNAL_MODULE].getType() == MODULE_TYPE_NONE) {
     return PROTOCOL_TELEMETRY_MULTIMODULE;
   }
 #endif
 #endif
 #if defined(AFHDS3)
-  if (g_model.moduleData[EXTERNAL_MODULE].type == MODULE_TYPE_AFHDS3) {
+  if (g_model.moduleData[EXTERNAL_MODULE].getType() == MODULE_TYPE_AFHDS3) {
     return PROTOCOL_TELEMETRY_AFHDS3;
   }
 #endif
@@ -291,5 +294,34 @@ extern Fifo<uint8_t, LUA_TELEMETRY_INPUT_FIFO_SIZE> * luaInputTelemetryFifo;
 #endif
 
 void processPXX2Frame(uint8_t module, const uint8_t *frame);
+
+// Module pulse synchronization
+struct ModuleSyncStatus
+{
+  // feedback input: last received values
+  uint16_t  refreshRate; // in us
+  int16_t   inputLag;    // in us
+
+  tmr10ms_t lastUpdate;  // in 10ms
+  int16_t   currentLag;  // in us
+  
+  inline bool isValid() {
+    // 2 seconds
+    return (get_tmr10ms() - lastUpdate < 200);
+  }
+
+  // Set feedback from RF module
+  void update(uint16_t newRefreshRate, int16_t newInputLag);
+
+  // Get computed settings for scheduler
+  uint16_t getAdjustedRefreshRate();
+
+  // Status string for the UI
+  void getRefreshString(char* refreshText);
+
+  ModuleSyncStatus();
+};
+
+ModuleSyncStatus& getModuleSyncStatus(uint8_t moduleIdx);
 
 #endif // _TELEMETRY_H_

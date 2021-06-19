@@ -186,6 +186,9 @@ enum ModuleIndex {
   EXTERNAL_MODULE,
   SPORT_MODULE,
 };
+
+//  TODO: simplify at an eeprom change to a single master list and use ui filters. Simplies radio conversions and both radio and companion code
+//        Companion opentxeeprom.cpp will require after import and before export manipulation removed
 enum TrainerMode {
   TRAINER_MODE_MASTER_TRAINER_JACK,
   TRAINER_MODE_SLAVE,
@@ -208,7 +211,12 @@ enum TrainerMode {
   };
 #endif
 
-#if defined(RADIO_T16) && !defined(INTERNAL_MODULE_MULTI)
+//  TODO: simplify at an eeprom change to a single master list and use ui filters
+#define TRAINER_MODE_MIN()               TRAINER_MODE_MASTER_TRAINER_JACK
+
+#if !defined(HARDWARE_EXTERNAL_MODULE)
+  #define TRAINER_MODE_MAX()             TRAINER_MODE_SLAVE
+#elif defined(RADIO_T16) && !defined(INTERNAL_MODULE_MULTI)
 #if  defined(BLUETOOTH)
   #define TRAINER_MODE_MAX()             TRAINER_MODE_SLAVE_BLUETOOTH
 #else
@@ -225,12 +233,12 @@ enum TrainerMode {
 #endif
 
 #if defined(HARDWARE_INTERNAL_MODULE)
-  #define IS_INTERNAL_MODULE_ENABLED() (g_model.moduleData[INTERNAL_MODULE].type != MODULE_TYPE_NONE)
+  #define IS_INTERNAL_MODULE_ENABLED() (g_model.moduleData[INTERNAL_MODULE].getType() != MODULE_TYPE_NONE)
 #else
   #define IS_INTERNAL_MODULE_ENABLED() (false)
 #endif
 
-#define IS_EXTERNAL_MODULE_ENABLED() (g_model.moduleData[EXTERNAL_MODULE].type != MODULE_TYPE_NONE)
+#define IS_EXTERNAL_MODULE_ENABLED() (g_model.moduleData[EXTERNAL_MODULE].getType() != MODULE_TYPE_NONE)
 
 #if defined(HARDWARE_INTERNAL_MODULE)
   #define IS_MODULE_ENABLED(moduleIdx)         (moduleIdx==INTERNAL_MODULE ? IS_INTERNAL_MODULE_ENABLED() : moduleIdx==EXTERNAL_MODULE ? IS_EXTERNAL_MODULE_ENABLED() : false)
@@ -279,6 +287,7 @@ enum TelemetryProtocol
   PROTOCOL_TELEMETRY_FLYSKY_IBUS,
   PROTOCOL_TELEMETRY_HITEC,
   PROTOCOL_TELEMETRY_HOTT,
+  PROTOCOL_TELEMETRY_MLINK,
   PROTOCOL_TELEMETRY_MULTIMODULE,
   PROTOCOL_TELEMETRY_AFHDS3,
   PROTOCOL_TELEMETRY_GHOST,
@@ -319,8 +328,8 @@ enum TelemetryUnit {
   UNIT_HERTZ,
   UNIT_MS,
   UNIT_US,
-  UNIT_MAX = UNIT_US,
-  UNIT_SPARE4,
+  UNIT_KM,
+  UNIT_MAX = UNIT_KM,
   UNIT_SPARE5,
   UNIT_SPARE6,
   UNIT_SPARE7,
@@ -675,7 +684,7 @@ enum MixSources {
   MIXSRC_GYRO2,                         LUA_EXPORT("gyry", "Gyro Y")
 #endif
 
-  MIXSRC_MAX,
+  MIXSRC_MAX,                          LUA_EXPORT("max", "MAX")
 
   MIXSRC_FIRST_HELI,
   MIXSRC_CYC1 = MIXSRC_FIRST_HELI,     LUA_EXPORT("cyc1", "Cyclic 1")
@@ -853,6 +862,7 @@ enum Functions {
   FUNC_LOGS,
   FUNC_BACKLIGHT,
   FUNC_SCREENSHOT,
+  FUNC_RACING_MODE,
 #if defined(DEBUG)
   FUNC_TEST, // should remain the last before MAX as not added in Companion
 #endif

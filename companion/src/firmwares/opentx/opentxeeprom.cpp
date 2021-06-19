@@ -76,6 +76,8 @@ inline int MAX_POTS(Board::Type board, int version)
 {
   if (version <= 218 && IS_FAMILY_HORUS_OR_T16(board))
     return 3;
+  if (IS_FAMILY_T12(board))
+    return 2;
   return Boards::getCapability(board, Board::Pots);
 }
 
@@ -85,6 +87,8 @@ inline int MAX_POTS_STORAGE(Board::Type board, int version)
     return 3;
   if (version >= 219 && IS_FAMILY_HORUS_OR_T16(board))
     return 5;
+  if (IS_FAMILY_T12(board))
+    return 2;
   return Boards::getCapability(board, Board::Pots);
 }
 
@@ -92,6 +96,8 @@ inline int MAX_POTS_SOURCES(Board::Type board, int version)
 {
   if (version <= 218 && IS_FAMILY_HORUS_OR_T16(board))
     return 5;
+  if (IS_FAMILY_T12(board))
+    return 2;
   return Boards::getCapability(board, Board::Pots);
 }
 
@@ -2152,15 +2158,16 @@ class ModuleUnionField: public UnionField<unsigned int> {
         module(module)
       {
         internalField.Append(new UnsignedField<3>(this, module.access.receivers));
-        internalField.Append(new SpareBitsField<5>(this));
+        internalField.Append(new SpareBitsField<4>(this));
+        internalField.Append(new UnsignedField<1>(this, module.access.racingMode));
 
-        for (int i=0; i<PXX2_MAX_RECEIVERS_PER_MODULE; i++)
+        for (int i = 0; i < PXX2_MAX_RECEIVERS_PER_MODULE; i++)
           internalField.Append(new CharField<8>(this, receiverName[i]));
 
         memset(receiverName, 0, sizeof(receiverName));
       }
 
-      bool select(const unsigned int& attr) const override
+      bool select(const unsigned int & attr) const override
       {
         return attr >= PULSES_ACCESS_ISRM && attr <= PULSES_ACCESS_R9M_LITE_PRO;
       }
@@ -2305,7 +2312,8 @@ OpenTxModelData::OpenTxModelData(ModelData & modelData, Board::Type board, unsig
       internalField.Append(new UnsignedField<2>(this, modelData.timers[i].countdownBeep));
       internalField.Append(new BoolField<1>(this, modelData.timers[i].minuteBeep));
       internalField.Append(new UnsignedField<2>(this, modelData.timers[i].persistent));
-      internalField.Append(new SpareBitsField<3>(this));
+      internalField.Append(new SignedField<2>(this, modelData.timers[i].countdownStart));
+      internalField.Append(new UnsignedField<1>(this, modelData.timers[i].direction));
       if (HAS_LARGE_LCD(board))
         internalField.Append(new ZCharField<8>(this, modelData.timers[i].name, "Timer name"));
       else
@@ -2548,6 +2556,15 @@ void OpenTxModelData::beforeExport()
     }
     modelData.switchWarningStates = newSwitchWarningStates;
   }
+
+  //  TODO remove when enum not radio specific requires eeprom change and conversion
+  if (modelData.trainerMode > TRAINER_MODE_SLAVE_JACK) {
+    if (!IS_TARANIS(board)) {
+      modelData.trainerMode -= 2;
+      if (!IS_RADIOMASTER_TX16S(board))
+        modelData.trainerMode -= 1;
+    }
+  }
 }
 
 void OpenTxModelData::afterImport()
@@ -2568,6 +2585,15 @@ void OpenTxModelData::afterImport()
 
   if (version <= 218 && IS_HORUS_X10(board) && modelData.thrTraceSrc > 3) {
     modelData.thrTraceSrc += 2;
+  }
+
+  //  TODO remove when enum not radio specific requires eeprom change and conversion
+  if (modelData.trainerMode > TRAINER_MODE_SLAVE_JACK) {
+    if (!IS_TARANIS(board)) {
+      modelData.trainerMode += 2;
+      if (!IS_RADIOMASTER_TX16S(board))
+        modelData.trainerMode += 1;
+    }
   }
 }
 
@@ -2752,7 +2778,7 @@ OpenTxGeneralData::OpenTxGeneralData(GeneralSettings & generalData, Board::Type 
     if (version >= 218) {
       internalField.Append(new UnsignedField<4>(this, generalData.auxSerialMode));
       if (IS_FAMILY_HORUS_OR_T16(board) && version >= 219) {
-        internalField.Append(new SpareBitsField<4>(this));
+        internalField.Append(new UnsignedField<4>(this, generalData.aux2SerialMode));
       }
       else {
         for (uint8_t i=0; i<SLIDERS_CONFIG_SIZE(board,version); i++) {

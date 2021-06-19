@@ -18,12 +18,18 @@
  * GNU General Public License for more details.
  */
 
-#ifndef _BOARDS_H_
-#define _BOARDS_H_
+#pragma once
 
 #include <QtCore>
 #include <QObject>
 #include <QString>
+
+class AbstractStaticItemModel;
+
+// identiying names of static abstract item models
+constexpr char AIM_BOARDS_POT_TYPE[]        {"boards.pottype"};
+constexpr char AIM_BOARDS_SLIDER_TYPE[]     {"boards.slidertype"};
+constexpr char AIM_BOARDS_SWITCH_TYPE[]     {"boards.switchtype"};
 
 // TODO create a Board class with all these functions
 
@@ -53,22 +59,26 @@ namespace Board {
     BOARD_RADIOMASTER_TX16S,
     BOARD_JUMPER_T18,
     BOARD_RADIOMASTER_TX12,
+    BOARD_RADIOMASTER_T8,
+    BOARD_JUMPER_TLITE,
+    BOARD_TYPE_COUNT,
+    BOARD_TYPE_MAX = BOARD_TYPE_COUNT - 1
   };
-
-  constexpr int BOARD_TYPE_MAX = BOARD_RADIOMASTER_TX12;
 
   enum PotType
   {
     POT_NONE,
     POT_WITH_DETENT,
     POT_MULTIPOS_SWITCH,
-    POT_WITHOUT_DETENT
+    POT_WITHOUT_DETENT,
+    POT_TYPE_COUNT
   };
 
   enum SliderType
   {
     SLIDER_NONE,
-    SLIDER_WITH_DETENT
+    SLIDER_WITH_DETENT,
+    SLIDER_TYPE_COUNT
   };
 
   enum SwitchType
@@ -76,7 +86,8 @@ namespace Board {
     SWITCH_NOT_AVAILABLE,
     SWITCH_TOGGLE,
     SWITCH_2POS,
-    SWITCH_3POS
+    SWITCH_3POS,
+    SWITCH_TYPE_COUNT
   };
 
   enum StickAxes {
@@ -128,7 +139,8 @@ namespace Board {
     SwitchPositions,
     FactoryInstalledSwitches,
     NumTrims,
-    NumTrimSwitches
+    NumTrimSwitches,
+    HasRTC
   };
 
   struct SwitchInfo
@@ -145,6 +157,13 @@ namespace Board {
       }
       unsigned int index;
       unsigned int position;
+  };
+
+  enum SwitchTypeMasks {
+    SwitchTypeFlag2Pos    = 0x01,
+    SwitchTypeFlag3Pos    = 0x02,
+    SwitchTypeContext2Pos = SwitchTypeFlag2Pos,
+    SwitchTypeContext3Pos = SwitchTypeFlag2Pos | SwitchTypeFlag3Pos
   };
 
 }
@@ -180,6 +199,12 @@ class Boards
     static QString getAnalogInputName(Board::Type board, int index);
     static bool isBoardCompatible(Board::Type board1, Board::Type board2);
     static QString getBoardName(Board::Type board);
+    static QString potTypeToString(int value);
+    static QString sliderTypeToString(int value);
+    static QString switchTypeToString(int value);
+    static AbstractStaticItemModel * potTypeItemModel();
+    static AbstractStaticItemModel * sliderTypeItemModel();
+    static AbstractStaticItemModel * switchTypeItemModel();
 
   protected:
 
@@ -204,6 +229,11 @@ inline bool IS_JUMPER_T12(Board::Type board)
   return board == Board::BOARD_JUMPER_T12;
 }
 
+inline bool IS_JUMPER_TLITE(Board::Type board)
+{
+  return board == Board::BOARD_JUMPER_TLITE;
+}
+
 inline bool IS_JUMPER_T16(Board::Type board)
 {
   return board == Board::BOARD_JUMPER_T16;
@@ -224,6 +254,11 @@ inline bool IS_RADIOMASTER_TX12(Board::Type board)
   return board == Board::BOARD_RADIOMASTER_TX12;
 }
 
+inline bool IS_RADIOMASTER_T8(Board::Type board)
+{
+  return board == Board::BOARD_RADIOMASTER_T8;
+}
+
 inline bool IS_FAMILY_T16(Board::Type board)
 {
   return board == Board::BOARD_JUMPER_T16 || board == Board::BOARD_RADIOMASTER_TX16S || board == Board::BOARD_JUMPER_T18;
@@ -231,7 +266,7 @@ inline bool IS_FAMILY_T16(Board::Type board)
 
 inline bool IS_FAMILY_T12(Board::Type board)
 {
-  return board == Board::BOARD_JUMPER_T12 || board == Board::BOARD_RADIOMASTER_TX12;
+  return board == Board::BOARD_JUMPER_T12 || board == Board::BOARD_RADIOMASTER_TX12 || board == Board::BOARD_RADIOMASTER_T8 || board == Board::BOARD_JUMPER_TLITE;
 }
 
 inline bool IS_TARANIS_XLITE(Board::Type board)
@@ -349,5 +384,3 @@ inline bool IS_ACCESS_RADIO(Board::Type board, const QString & id)
   return (IS_TARANIS_XLITES(board) || IS_TARANIS_X9LITE(board) || board == Board::BOARD_TARANIS_X9DP_2019 || board == Board::BOARD_X10_EXPRESS || IS_TARANIS_X7_ACCESS(board) ||
           (IS_FAMILY_HORUS_OR_T16(board) && id.contains("internalaccess")));
 }
-
-#endif // _BOARDS_H_

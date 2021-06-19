@@ -18,14 +18,13 @@
  * GNU General Public License for more details.
  */
 
-#ifndef _MODELEDIT_H_
-#define _MODELEDIT_H_
+#pragma once
 
 #include <QtWidgets>
 #include "genericpanel.h"
 
 class RadioData;
-class CommonItemModels;
+class CompoundItemModelFactory;
 
 namespace Ui {
   class ModelEdit;
@@ -60,14 +59,12 @@ class ModelEdit : public QDialog
   private:
     Ui::ModelEdit *ui;
     int modelId;
-    RadioData & radioData;
-    Firmware * firmware;
+    RadioData &radioData;
+    Firmware *firmware;
     QVector<GenericPanel *> panels;
-    CommonItemModels * commonItemModels;
+    CompoundItemModelFactory *sharedItemModels;
 
-    void addTab(GenericPanel *panel, QString text);
+    void addTab(GenericPanel * panel, QString text);
     void launchSimulation();
 
 };
-
-#endif // _MODELEDIT_H_

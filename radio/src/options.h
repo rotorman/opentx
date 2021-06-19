@@ -98,6 +98,9 @@ static const char * const options[] = {
 #if defined(HARDWARE_EXTERNAL_ACCESS_MOD)
   "externalaccessmod",
 #endif
+#if defined(BIND_KEY)
+  "bindkey",
+#endif
 //OW
 #if defined(TELEMETRY_MAVLINK)
   "mavlink",
